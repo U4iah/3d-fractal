@@ -114,9 +114,13 @@
     <button data-t="0">Neon</button>
     <button data-t="1">Realistic</button>
     <button data-t="2">Cosmic</button>
+    <button data-t="3">Clay</button>
     <button id="bCustom">Custom ★</button>
     <button id="bSaveCustom">Save my look</button>
   </div>
+  <button id="bFlow" style="width:100%;margin-top:8px">🌀 Dendrite flow (2D) <kbd>G</kbd></button>
+  <div class="sub" style="margin-top:8px">Reference scenes (the clay-render photos)</div>
+  <div class="grid" id="refs"></div>
   <h2>Audio</h2>
   <div class="grid">
     <button id="bDemo2">Demo beat</button>
@@ -227,6 +231,8 @@ uniform float uFoldA;
 uniform float uPower2, uQW2, uScale2, uFoldA2;   // parameter set of the fractal we are morphing INTO
 uniform vec3  uJC2;
 uniform int   uType2;
+uniform int   uMode;                              // 0 = 3D fractal, 1 = 2D dendrite flow
+uniform float uFlowRot, uFlowZoom, uFlowPhase;
 uniform int   uNW, uZero;                         // uNW: number of fractals evaluated (1, or 2 while morphing); uZero: always 0 (defeats loop unrolling)
 uniform float uMorph;                             // 0 = pure uType, 1 = pure uType2
 uniform float uK, uK2;                            // per-fractal normalisation (all fractals share one frame)
@@ -240,6 +246,7 @@ uniform float uTwist, uBend, uStep, uExpo;
 uniform int   uTheme, uShadowSteps, uReflSteps;
 uniform vec3  uMatA, uMatB, uSunCol, uSunDir, uSkyTop, uSkyHor, uGround;
 uniform float uMetal, uRough, uFloorOn, uFloorY, uSunI;
+uniform float uWrap, uShK, uAmb, uClay;            // clay look: wrap lighting, shadow softness, ambient boost, seamless-sky flag
 uniform vec3  uPA, uPB, uPC, uPD;
 uniform float uLDR;
 uniform sampler2D uFFT;
@@ -463,6 +470,28 @@ float deIcosa(vec3 p){
   return (length(p) - gQW)/sc;                    // end-sphere radius supplied by JS
 }
 
+// 19 / 20 : 3D Burning Ship and its Julia set, exactly as in the reference post (u/Adam-Pa):
+//   theta = atan2(sqrt(x²+z²), y)·n,  zangle = atan2(x,z)·n,  r = |z|^n
+//   z' = | ( sin(zangle)·sin(theta)·r , cos(theta)·r , sin(theta)·cos(zangle)·r ) + c |      (abs AFTER the power step; polar axis = y)
+float deShip2(vec3 pos, int julia){
+  vec3 z = (julia==1) ? pos : vec3(0.0);
+  vec3 c = (julia==1) ? gJC : pos;
+  float dr = 1.0, r = 0.0, tr = 1e9, P = gPower;
+  for(int i=0;i<26;i++){
+    if(i>=uIter) break;
+    r = max(length(z), 1e-4);
+    if(r>2.0) break;
+    float th = atan(length(z.xz), z.y)*P;
+    float za = atan(z.x, z.z)*P;
+    float rp = pow(r,P);
+    dr = pow(r,P-1.0)*P*dr + 1.0;
+    z = abs(vec3(sin(za)*sin(th)*rp, cos(th)*rp, sin(th)*cos(za)*rp) + c);
+    tr = min(tr, dot(z,z));
+  }
+  gTrap = tr;
+  return 0.5*0.7*log(r)*r/dr;                    // 0.7: the abs fold makes the estimate less conservative
+}
+
 // 18 : cubic quaternion Julia  q -> q^3 + c   (|d/dq| = 3|q|^2)
 float deQJ3(vec3 p){
   vec4 z = vec4(p,0.0), c = vec4(gJC,gQW), dz = vec4(1,0,0,0);
@@ -530,7 +559,9 @@ float evalType(int ty, vec3 p){
   else if(ty==15) d = deBox(p,0);
   else if(ty==16) d = deBox(p,1);
   else if(ty==17) d = deBristor(p);
-  else            d = deQJ3(p);
+  else if(ty==18) d = deQJ3(p);
+  else if(ty==19) d = deShip2(p,0);
+  else            d = deShip2(p,1);
   return d;
 }
 float map(vec3 p){
@@ -576,7 +607,7 @@ float shadow(vec3 ro, vec3 rd){
   for(int i=0;i<22;i++){
     if(i>=uShadowSteps) break;
     float h = map(ro+rd*t);
-    res = min(res, 10.0*h/t);
+    res = min(res, uShK*h/t);
     t += clamp(h, 0.004*uSize, 0.35*uSize);
     if(res<0.02 || t>3.0*uSize) break;
   }
@@ -584,6 +615,23 @@ float shadow(vec3 ro, vec3 rd){
 }
 
 float gPx = 0.001;
+
+// ─────────────── 2D DENDRITE FLOW scene (the "feathery tissue" video) ───────────────
+// FLOW-SCENE-BEGIN
+vec3 flowPal(float x, float phase){
+  vec3 ink=vec3(0.04,0.02,0.05), cu=vec3(0.78,0.42,0.18), cr=vec3(0.95,0.90,0.85), bg=vec3(0.55,0.62,0.75), vi=vec3(0.27,0.18,0.62);
+  float ph=fract(phase)*3.0; vec3 c1 = ph<1.0?cu:(ph<2.0?cu*0.55:vi), c2 = ph<1.0?cr:(ph<2.0?cu:bg); c1=mix(c1, ph<1.0?cu*0.55:(ph<2.0?vi:cu), smoothstep(0.8,1.0,fract(ph)));
+  x=clamp(x,0.0,1.0); return x<0.4?mix(ink,c1,x/0.4):mix(c1,c2,(x-0.4)/0.6);
+}
+vec3 flowScene(vec2 uv, float t, float phase){
+  vec2 c0=vec2(-1.7625,-0.0285); float sc=0.035*exp(-fract(t*0.05)*2.0);
+  vec2 c=c0+rot2(0.6+t*0.05)*uv*sc; vec2 z=vec2(0.0); float it=0.0;
+  for(int i=0;i<140;i++){ z=vec2(z.x*z.x-z.y*z.y, 2.0*abs(z.x*z.y))+c; if(dot(z,z)>1e4) break; it+=1.0; }
+  float sm=it-log2(max(log2(dot(z,z)),1.0))+4.0;
+  return (it>=139.0)?vec3(0.02,0.01,0.03):flowPal(fract(sm*0.03),phase);
+}
+// FLOW-SCENE-END
+float hashS(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 
 vec3 background(vec3 rd){
   float g = 0.5+0.5*rd.y;
@@ -595,11 +643,13 @@ vec3 background(vec3 rd){
 // procedural sky for the realistic theme
 vec3 envMap(vec3 d, bool disk){
   float h = d.y;
-  vec3 sky = mix(uSkyHor, uSkyTop, pow(clamp(h,0.0,1.0),0.45));
-  vec3 gr  = mix(uSkyHor*0.6, uGround, clamp(-h*3.0,0.0,1.0));
+  float skyF = (uClay>0.5) ? smoothstep(0.0,0.42,h) : pow(clamp(h,0.0,1.0),0.45);
+  vec3 sky = mix(uSkyHor, uSkyTop, skyF);
+  vec3 gr  = (uClay>0.5) ? mix(uSkyHor, uGround, smoothstep(0.0,0.33,-h))        // clay: zero-slope blend, so no visible horizon line
+                         : mix(uSkyHor*0.6, uGround, clamp(-h*3.0,0.0,1.0));
   vec3 c = h>0.0 ? sky : gr;
   float sd = max(dot(d,uSunDir),0.0);
-  c += uSunCol*(pow(sd,6.0)*0.25 + (disk ? pow(sd,900.0)*40.0 : 0.0));
+  c += uSunCol*(pow(sd,6.0)*0.25 + (disk ? pow(sd,900.0)*40.0*(1.0-uClay) : 0.0));
   return c;
 }
 
@@ -708,8 +758,9 @@ vec3 shadeReal(vec3 n, vec3 rd, float tc, float ao, float sh){
   float G = (NL/(NL*(1.0-k)+k))*(NV/(NV*(1.0-k)+k));
   vec3 F = F0 + (1.0-F0)*pow(clamp(1.0-VH,0.0,1.0),5.0);
   vec3 sun = uSunCol*uSunI;
-  vec3 direct = (alb*(1.0-metal)*(1.0-F)/3.14159265*NL + D*F*G/(4.0*NV))*sun*sh;
-  vec3 amb = mix(uGround, uSkyTop, 0.5+0.5*n.y)*alb*(1.0-metal)*ao*0.9;
+  float NLw = clamp((dot(n,L)+uWrap)/(1.0+uWrap),0.0,1.0);          // wrap lighting: soft terminator like a path-traced diffuse material
+  vec3 direct = (alb*(1.0-metal)*(1.0-F)/3.14159265*NLw + D*F*G/(4.0*NV))*sun*sh;
+  vec3 amb = mix(uGround, uSkyTop, 0.5+0.5*n.y)*alb*(1.0-metal)*mix(ao,1.0,0.22*uClay)*0.9*uAmb;   // clay: crevices stay soft, never pitch dark
   vec3 R = reflect(rd,n);
   vec3 Fr = F0 + (max(vec3(1.0-rough),F0)-F0)*pow(clamp(1.0-NV,0.0,1.0),5.0);
   float horizon = clamp(1.0 + 1.2*dot(R,n), 0.0, 1.0);
@@ -742,13 +793,25 @@ vec3 floorColor(vec3 rd, float tf, float sh, vec3 rc){
 void main(){
   gRot = rotM(uAng);
   vec2 uv = (gl_FragCoord.xy - 0.5*uRes)/uRes.y;
+  if(uMode==1){
+    vec2 q = rot2(uFlowRot)*uv*uFlowZoom;
+    vec3 fc = flowScene(q, uTime, uFlowPhase);
+    // drifting white sparks (tiny radial streaks), brighter on hats and beats
+    vec2 sp = uv*vec2(46.0,46.0) + vec2(uTime*0.6, -uTime*0.4);
+    vec2 si = floor(sp), sf = fract(sp)-0.5; float hs = hashS(si);
+    float spark = step(0.965,hs) * smoothstep(0.30,0.0,length(sf*vec2(1.0,3.5))) * (0.5+0.5*sin(uTime*3.0+hs*40.0));
+    fc += vec3(1.0,0.95,0.9)*spark*(0.5+1.8*uHigh+1.2*uBeat);
+    fc *= 1.0 + 0.35*uBeat + 0.7*uDrop;
+    outCol = vec4(min(fc,vec3(12.0)), -1.0);
+    return;
+  }
   vec3 ro = uCam;
   vec3 fw = normalize(uTarget-ro);
   vec3 rt = normalize(cross(fw, vec3(0,1,0)));
   vec3 up = cross(rt, fw);
   vec3 rd = normalize(uv.x*rt + uv.y*up + uFocal*fw);
   gPx = 1.0/(uRes.y*uFocal);
-  bool real = (uTheme==1), cosmic = (uTheme==2);
+  bool real = (uTheme==1||uTheme==3), cosmic = (uTheme==2);
 
   float tf = 1e9;
   if(uFloorOn>0.5 && rd.y<-1e-4 && ro.y>uFloorY) tf = (uFloorY-ro.y)/rd.y;
@@ -916,6 +979,8 @@ const TYPES = [
   {name:'Julibox',           size:3.0, cam:18.0, bound:7.0,  info:'<b>Julibox</b> — Mandelbox with a fixed Julia-style constant in place of the point. The constant wanders with the mids; the box folds stay anchored.'},
   {name:'Bristorbrot',       size:1.2, cam:5.0,  bound:2.0,  info:'<b>Bristorbrot-style quadratic</b> — a power-2 3D map with asymmetric cross-terms (y(2x−z), z(2x+y)). The distance estimate is approximate, so expect the odd artifact.'},
   {name:'Cubic Quaternion Julia', size:1.2, cam:4.0, bound:1.6, info:'<b>Cubic quaternion Julia</b> — q → q³ + c over the quaternions. Three-fold lobes instead of the quadratic set\'s two; c drifts through 4D with the mids and treble.'},
+  {name:'Burning Ship 3D',    size:1.2, cam:5.8,  bound:1.9,  info:'<b>3D Burning Ship</b> — the exact Mandelbulb-method formula from the reference post: spherical power step with the polar axis along y, then <code>|·|</code> on every component <i>after</i> adding c. Craggy, ridged, almost geological.'},
+  {name:'Burning Ship Julia 3D', size:1.2, cam:5.8, bound:1.9, info:'<b>3D Burning Ship Julia</b> — the same map started at the point with a fixed constant c (wandering with the music).'},
 ];
 // cosine palettes: a + b·cos(2π(c·t + d))
 const PALS = [
@@ -934,14 +999,23 @@ const THEMES = [
   {id:0, name:'Neon',      bloomI:0.55, thresh:0.9, ca:1.0,  exp:1.05, punch:1.0,  vig:0.38, grain:1.5, glow:1, warp:0.6},
   {id:1, name:'Realistic', bloomI:0.40, thresh:1.5, ca:0.12, exp:1.0,  punch:0.25, vig:0.28, grain:1.0, glow:0, warp:0.35},
   {id:2, name:'Cosmic',    bloomI:0.75, thresh:0.8, ca:0.8,  exp:1.05, punch:0.8,  vig:0.4,  grain:1.2, glow:0.7, warp:0.5},
+  {id:3, name:'Clay',      bloomI:0.10, thresh:1.9, ca:0.0,  exp:1.14, punch:0.12, vig:0.10, grain:0.7, glow:0, warp:0.25},
 ];
 const lin = c => c.map(x=>Math.pow(x,2.2));
 const LOOKS = [
-  {n:'Bronze · golden hour', matA:lin([.78,.5,.25]), matB:lin([.2,.55,.45]), metal:.85, rough:.38, sunCol:[1,.7,.4],   sunEl:.38, skyTop:[.10,.20,.48], skyHor:[1.0,.55,.28], ground:[.12,.09,.07]},
-  {n:'Marble · overcast',    matA:lin([.82,.8,.74]), matB:lin([.35,.33,.32]), metal:.0,  rough:.42, sunCol:[1,.97,.92], sunEl:.85, skyTop:[.32,.40,.52], skyHor:[.7,.75,.8],  ground:[.25,.25,.25]},
-  {n:'Gold · dusk',          matA:lin([1,.78,.36]),  matB:lin([.05,.05,.07]), metal:.92, rough:.22, sunCol:[1,.45,.25], sunEl:.14, skyTop:[.04,.05,.17], skyHor:[.9,.3,.25],  ground:[.06,.04,.05]},
-  {n:'Ice · moonlight',      matA:lin([.7,.85,1]),   matB:lin([.3,.35,.45]),  metal:.25, rough:.12, sunCol:[.55,.7,1],  sunEl:.55, skyTop:[.01,.02,.06], skyHor:[.08,.12,.25], ground:[.02,.03,.05]},
+  {g:'real', wrap:0, shk:10, amb:1, clay:0, n:'Bronze · golden hour', matA:lin([.78,.5,.25]), matB:lin([.2,.55,.45]), metal:.85, rough:.38, sunCol:[1,.7,.4],   sunEl:.38, skyTop:[.10,.20,.48], skyHor:[1.0,.55,.28], ground:[.12,.09,.07]},
+  {g:'real', wrap:0, shk:10, amb:1, clay:0, n:'Marble · overcast',    matA:lin([.82,.8,.74]), matB:lin([.35,.33,.32]), metal:.0,  rough:.42, sunCol:[1,.97,.92], sunEl:.85, skyTop:[.32,.40,.52], skyHor:[.7,.75,.8],  ground:[.25,.25,.25]},
+  {g:'real', wrap:0, shk:10, amb:1, clay:0, n:'Gold · dusk',          matA:lin([1,.78,.36]),  matB:lin([.05,.05,.07]), metal:.92, rough:.22, sunCol:[1,.45,.25], sunEl:.14, skyTop:[.04,.05,.17], skyHor:[.9,.3,.25],  ground:[.06,.04,.05]},
+  {g:'real', wrap:0, shk:10, amb:1, clay:0, n:'Ice · moonlight',      matA:lin([.7,.85,1]),   matB:lin([.3,.35,.45]),  metal:.25, rough:.12, sunCol:[.55,.7,1],  sunEl:.55, skyTop:[.01,.02,.06], skyHor:[.08,.12,.25], ground:[.02,.03,.05]},
 ];
+const sr = (r,g,b)=>lin([r/255,g/255,b/255]);          // sRGB bytes → linear
+LOOKS.push(
+  // clay-render looks matched to the reference photos (matte diffuse material, low warm sun, blue sky fading to a hazy horizon)
+  {g:'clay', wrap:.35, shk:5, amb:1.5, clay:1, n:'Clay · sandstone, golden hour', matA:sr(226,172,150), matB:sr(150,104,82),  metal:0, rough:.92, sunCol:[1,.72,.46], sunEl:.34, skyTop:sr(52,82,130),  skyHor:sr(206,172,148), ground:sr(184,164,146)},
+  {g:'clay', wrap:.45, shk:4, amb:2.3, clay:1, n:'Clay · snow, clear day',        matA:sr(246,246,250), matB:sr(208,214,230), metal:0, rough:.95, sunCol:[1,.97,.92], sunEl:.58, skyTop:sr(86,132,196),  skyHor:sr(247,242,235), ground:sr(244,240,236)},
+  {g:'clay', wrap:.35, shk:5, amb:1.5, clay:1, n:'Clay · terracotta, dusk',       matA:sr(222,166,124), matB:sr(142,92,66),   metal:0, rough:.9,  sunCol:[1,.68,.4],  sunEl:.26, skyTop:sr(42,70,112),   skyHor:sr(176,148,118), ground:sr(160,140,112)},
+  {g:'clay', wrap:.4,  shk:4, amb:1.8, clay:1, n:'Clay · frost, pale blue',       matA:sr(232,238,248), matB:sr(150,172,206), metal:0, rough:.95, sunCol:[.95,.97,1], sunEl:.5,  skyTop:sr(110,152,208), skyHor:sr(240,243,248), ground:sr(236,240,246)}
+);
 const lerpObj=(cur,tgt,k)=>{ for(const key in tgt){ const v=tgt[key]; if(Array.isArray(v)) for(let i=0;i<v.length;i++) cur[key][i]+=(v[i]-cur[key][i])*k; else cur[key]+=(v-cur[key])*k; } };
 
 // ───────────────────────── GL setup ─────────────────────────
@@ -1021,7 +1095,7 @@ const bindTex=(unit,tex)=>{ gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(g
 // ───────────────────────── audio sources ─────────────────────────
 let recDest=null, actx=null, analyser=null, freq=null, srcNode=null, demoTimer=null, mediaStream=null, demoMaster=null;
 const player = $('player');
-let hasAudio = false, lastFileName = '';
+let hasAudio = false, lastFileName = '', flowMode = false;
 function ensureCtx(){
   if(!actx){
     actx = new (window.AudioContext||window.webkitAudioContext)();
@@ -1227,26 +1301,30 @@ function setType(i){
   A.beat=1; save();
   try{ emit('type',{type:nt,name:TYPES[nt].name}); recEv('type',nt); }catch(e){}
 }
+const isLookTheme=t=>t===1||t===3;                                    // Realistic and Clay both use the material "looks"
+const lookIdxs=t=>{ const g=t===3?'clay':'real'; return LOOKS.map((l,i)=>l.g===g?i:-1).filter(i=>i>=0); };
+const curPalPos=()=>isLookTheme(theme)?Math.max(0,lookIdxs(theme).indexOf(realIdx)):palIdx;
 function setPal(i){
-  if(theme!==1){ palIdx=((i%PALS.length)+PALS.length)%PALS.length; toast('Palette: '+PALS[palIdx].n); }
-  else { realIdx=((i%LOOKS.length)+LOOKS.length)%LOOKS.length; toast(LOOKS[realIdx].n); }
+  if(!isLookTheme(theme)){ palIdx=((i%PALS.length)+PALS.length)%PALS.length; toast('Palette: '+PALS[palIdx].n); }
+  else { const list=lookIdxs(theme); realIdx=list[((i%list.length)+list.length)%list.length]; toast(LOOKS[realIdx].n); }
   save();
-  try{ recEv(theme===1?'look':'pal',theme===1?realIdx:palIdx); }catch(e){}
+  try{ recEv(isLookTheme(theme)?'look':'pal',isLookTheme(theme)?realIdx:palIdx); }catch(e){}
 }
 function setTheme(t,quiet){
   t=((((+t)|0)%THEMES.length)+THEMES.length)%THEMES.length; theme=t; const th=THEMES[t];
-  if(!quiet){ el = t===1 ? 0.14 : 0.35; $('sGlow').value=th.glow; $('sBloom').value=1; $('sWarp').value=th.warp; }
+  if(isLookTheme(t) && LOOKS[realIdx] && LOOKS[realIdx].g!==(t===3?'clay':'real')) realIdx=lookIdxs(t)[0];
+  if(!quiet){ el = t===1 ? 0.14 : (t===3 ? 0.17 : 0.35); $('sGlow').value=th.glow; $('sBloom').value=1; $('sWarp').value=th.warp; }
   [...$('themes').querySelectorAll('button[data-t]')].forEach(b=>b.classList.toggle('on',+b.dataset.t===t));
   $('bPal').firstChild.textContent = t===1?'Look ':'Palette ';
   if(!quiet) toast('Theme: '+th.name); save();
   try{ recEv('theme',t); }catch(e){}
 }
 function randomize(){
-  if(theme!==1) palIdx=(Math.random()*PALS.length)|0; else realIdx=(Math.random()*LOOKS.length)|0; hue=Math.random(); az=Math.random()*6.28; el=(Math.random()-0.5)*1.2;
+  if(!isLookTheme(theme)) palIdx=(Math.random()*PALS.length)|0; else { const l=lookIdxs(theme); realIdx=l[(Math.random()*l.length)|0]; } hue=Math.random(); az=Math.random()*6.28; el=(Math.random()-0.5)*1.2;
   $('sWarp').value=(0.2+Math.random()*1.2).toFixed(2);
   toast('Randomized look'); save();
 }
-$('bPal').onclick=()=>setPal((theme===1?realIdx:palIdx)+1); $('bRand').onclick=randomize;
+$('bPal').onclick=()=>setPal(curPalPos()+1); $('bRand').onclick=randomize;
 
 // persistence
 const PERSIST=['cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
@@ -1268,6 +1346,7 @@ if(hashP.has('theme')) theme=+hashP.get('theme');
 if(hashP.has('q')) $('sQual').value=hashP.get('q');
 if(hashP.has('kal')) $('sKal').value=hashP.get('kal');
 if(hashP.get('director')==='1') $('cDirector').checked=true;
+if(hashP.get('flow')==='1') setTimeout(()=>setFlow(true,true),50);
 setType(hashP.has('type')? +hashP.get('type') : type);
 const nrm=(x,n)=>((((x|0)%n)+n)%n);
 palIdx=nrm(palIdx,PALS.length); realIdx=nrm(realIdx,LOOKS.length); theme=nrm(theme,THEMES.length);
@@ -1292,9 +1371,10 @@ addEventListener('keydown',e=>{
   else if(k==='h') { $('ui').classList.toggle('hidden'); }
   else if(k==='f') toggleFull();
   else if(k==='p') shot=true;
-  else if(k==='c') setPal((theme===1?realIdx:palIdx)+1);
-  else if(k==='t') setTheme((theme+1)%3);
+  else if(k==='c') setPal(curPalPos()+1);
+  else if(k==='t') setTheme((theme+1)%THEMES.length);
   else if(k==='d') setDive(!diveOn);
+  else if(k==='g') setFlow(!flowMode);
   else if(k==='r') randomize();
   else if(k==='k'){ const s=$('sKal'); s.value = +s.value<2? 6 : (+s.value>=12? 0 : +s.value+2); save(); }
   else if(k===' '){ e.preventDefault(); const c=$('cCycle'); c.checked=!c.checked; toast('Auto-cycle '+(c.checked?'on':'off')); save(); }
@@ -1370,6 +1450,8 @@ function params(ty){
     case 12: P.qw=0.55*Math.sin(t*0.17)+0.35*b-0.1*h; break;
     case 13: P.scale=1+0.06*b+0.03*Math.sin(t*0.4); P.fold=0.15*Math.sin(t*0.19)+0.3*m; break;
     case 14: P.scale=1+0.12*b+0.06*Math.sin(t*0.3); P.fold=0.18*Math.sin(t*0.15)+0.35*m; { const o=window.__ico||[0.7,0.7,0.7]; P.jc=[o[0]*P.scale,o[1]*P.scale,o[2]*P.scale]; P.qw=window.__icor||0.8; P.power=window.__icoS||(2.618+0.08*Math.sin(t*0.2)+0.12*b); } break;
+    case 19: P.power=clamp(2.6+0.3*Math.sin(t*0.13)+0.7*b-0.3*m,2,4); break;
+    case 20: P.power=clamp(2.4+0.3*Math.sin(t*0.11)+0.6*b,2,4); P.jc=[0.12+0.1*Math.cos(t*0.2+m),0.25+0.12*Math.sin(t*0.27),0.1+0.12*Math.cos(t*0.17)+0.1*b]; break;
     case 18: P.jc=[-0.3+0.15*Math.cos(t*0.2)+0.12*b, 0.25+0.2*Math.sin(t*0.27)+0.1*m, 0.15*Math.sin(t*0.19)]; P.qw=0.1+0.2*Math.sin(t*0.13)+0.2*h; break;
     case 15: P.scale=-clamp(1.7+0.35*Math.sin(t*0.11)+0.6*b,1.5,2.8); break;
     case 16: P.scale=clamp(2.0+0.2*Math.sin(t*0.1)+0.5*b,1.8,2.8); P.jc=[0.7*Math.cos(t*0.13+m),0.5*Math.sin(t*0.17),0.45*Math.cos(t*0.11)+0.3*b]; break;
@@ -1456,7 +1538,7 @@ function frameBody(nowMs){
   if(nowMs-lastStateEmit>500){ lastStateEmit=nowMs; emit('state',FP.state); }
   if(!playing){ tlTick(dt); director(dt); }
   const motion=+$('sMotion').value, warp=+$('sWarp').value*(1+3*chaosL);
-  if(A.animating) T+=dt*(0.6+0.8*motion);
+  if(A.animating||flowMode) T+=dt*(0.6+0.8*motion)*(flowMode?(0.55+0.9*A.bass+0.5*A.mid):1);
   if(A.onset||(A.idle&&A.beat>0.99)){
     const amt=(A.drop>0.9?3.5:1.4)*motion; for(let i=0;i<3;i++) kick[i]+=(Math.random()-0.5)*amt; hue+=0.012+0.05*A.drop;
     if(!playing && $('cCycle').checked && T-lastSwitch>(A.drop>0.9?4:26) && (A.drop>0.9 || beatCount%8===0)) setType(shown+1);
@@ -1523,11 +1605,11 @@ function frameBody(nowMs){
   // pass 1 — fractal → HDR scene buffer
   gl.bindFramebuffer(gl.FRAMEBUFFER,scenes[cur].fbo); gl.viewport(0,0,sw,sh);
   bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
-  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:12+Math.round(10*diveAmt),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
+  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uMode:flowMode?1:0,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:12+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:+$('sGlow').value,
     uSlice:$('cSlice').checked?1:0,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
-    uMatA:realCur.matA,uMatB:realCur.matB,uMetal:realCur.metal,uRough:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uFloorOn:floorOn?1:0,uFloorY:floorY,
+    uMatA:realCur.matA,uMatB:realCur.matB,uMetal:realCur.metal,uRough:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uWrap:realCur.wrap,uShK:realCur.shk,uAmb:realCur.amb,uClay:realCur.clay,uFloorOn:floorOn?1:0,uFloorY:floorY,
     uPA:palCur.a,uPB:palCur.b,uPC:palCur.c,uPD:palCur.d,uLDR:useFloat?0:1,uFFT:3});
   gl.drawArrays(gl.TRIANGLES,0,3);
   rendered=true;
@@ -1555,7 +1637,7 @@ function frameBody(nowMs){
 
   // pass 3 — composite to screen (kaleidoscope, CA, dissolve, tonemap)
   transT=Math.max(0,transT-Math.min(rawDt,0.5)/1.1);
-  const trailAmt=Math.max(+$('sTrail').value, chaosL*0.5), useTrail=trailAmt>0.01;
+  const trailAmt=Math.max(+$('sTrail').value, chaosL*0.5, flowMode?0.62:0), useTrail=trailAmt>0.01;
   gl.bindFramebuffer(gl.FRAMEBUFFER,useTrail?trails[tw].fbo:null); gl.viewport(0,0,cw,ch);
   bindTex(0,scenes[cur].tex); bindTex(1,scenes[1-cur].tex); bindTex(2,bloomB.tex); bindTex(3,trails[1-tw].tex);
   const kv=+$('sKal').value, kal=(playing&&playLook)?playKal:(kv>=2?kv:(dirKal||(chaosL>0.6?chaosKal:0)));
@@ -1607,7 +1689,7 @@ function tlTick(dt){
   if(tlBeats>=st.b || (A.drop>0.9 && tlBeats>=4)){
     tlBeats=0; tlIdx++;
     if(tlIdx>=tl.steps.length){ if($('cTlLoop').checked) tlIdx=0; else { tlSetPlay(false); return; } }
-    setType(tl.steps[tlIdx].t); if($('cTlPal').checked) setPal((theme===1?realIdx:palIdx)+1); renderTL();
+    setType(tl.steps[tlIdx].t); if($('cTlPal').checked) setPal(curPalPos()+1); renderTL();
   }
 }
 $('bTlPlay').onclick=()=>tlPlay?tlSetPlay(false):tlStart();
@@ -1666,7 +1748,7 @@ function applyStartState(){
   if(playLook){ setTheme(nrm(o.theme,THEMES.length),true); palIdx=nrm(o.palIdx,PALS.length); realIdx=nrm(o.realIdx,LOOKS.length);
     $('sHue').value=nv(o.hue,0,1,0); $('sKal').value=nv(o.kal,0,12,0); $('sBloom').value=nv(o.bloom,0,2,1); $('sGlow').value=nv(o.glow,0,2,1); $('sTrail').value=nv(o.trail,0,0.95,0); }
   if(playCam){ zoomMul=nv(o.zoom,0.08,4,1); az=nv(o.az,-100,100,0.6); el=nv(o.el,-1.5,1.5,0.35); }
-  padSync(); setType(o.type);
+  padSync(); setFlow(!!o.flow,true); setType(o.type);
 }
 function fireEvent(ev){
   const [,k,v]=ev;
@@ -1676,6 +1758,7 @@ function fireEvent(ev){
   else if(k==='look'){ if(playLook) realIdx=nrm(v,LOOKS.length); }
   else if(k==='dive'){ if(!playCam) setDive(!!v,true); }
   else if(k==='pulse') pulse();
+  else if(k==='flow') setFlow(!!v,true);
   else if(k==='slider'){ const [id,val]=v; if(LOOK_SLIDERS.includes(id) && !playLook) return; const e=$(id); if(!e) return; if(e.type==='checkbox') e.checked=!!val; else e.value=val; if(id==='sMB'||id==='sMM') padSync(); }
 }
 function playSeek(t,now){
@@ -1724,6 +1807,7 @@ function evDesc(ev){
   if(k==='look') return 'material → '+LOOKS[nrm(v,LOOKS.length)].n;
   if(k==='dive') return v?'dive in':'dive out';
   if(k==='pulse') return 'pulse';
+  if(k==='flow') return v?'scene → dendrite flow':'scene → 3D fractals';
   if(k==='slider') return v[0]+' = '+(+v[1]).toFixed(2);
   return k;
 }
@@ -1804,6 +1888,16 @@ async function saveClip(){
 $('bRec').onclick=toggleRec; $('bSaveClip').onclick=saveClip;
 if(!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) $('bRec').style.display='none';
 
+// ───────────────────────── 2D dendrite-flow scene ─────────────────────────
+function setFlow(on,quiet){
+  flowMode=!!on; $('bFlow').classList.toggle('on',flowMode);
+  if(flowMode && divePh!=='idle'){ diveOn=false; divePh='idle'; F[0]=F[1]=F[2]=0; $('bDive').classList.remove('on'); }
+  if(!quiet) toast(flowMode?'Dendrite flow: drag = rotate · pinch = zoom · bass drives the zoom':'Back to the 3D fractals',3200);
+  try{ recEv('flow',flowMode?1:0); }catch(e){}
+  save();
+}
+$('bFlow').onclick=()=>setFlow(!flowMode);
+
 // ───────────────────────── tilt (gyro) control ─────────────────────────
 function onOri(e){ if(e.beta==null) return;
   if(!gyroBase) gyroBase={b:e.beta,g:e.gamma||0};
@@ -1824,6 +1918,7 @@ async function setTilt(on){
 $('bTilt').onclick=()=>setTilt(!gyroOn);
 // ───────────────────────── DIVE: fly the camera into the fractal's surface ─────────────────────────
 function setDive(on,auto){
+  if(on && flowMode){ toast('Dive is for the 3D fractals'); return; }
   try{ recEv('dive',on?1:0); }catch(e){}
   if(on && !useFloat){ toast('Dive needs HDR render targets (not available on this device)',3500); return; }
   diveOn=on; diveAuto=!!auto; $('bDive').classList.toggle('on',on);
@@ -1836,7 +1931,7 @@ $('bDive').onclick=()=>setDive(!diveOn);
 // ───────────────────────── looks: save slots + shareable state ─────────────────────────
 function exportState(){ return {v:1,type:shown,theme,palIdx,realIdx,hue:+$('sHue').value,az:+az.toFixed(3),el:+el.toFixed(3),zoom:+zoomMul.toFixed(3),
   shape:+$('sMB').value,detail:+$('sMM').value,sparkle:+$('sMH').value,warp:+$('sWarp').value,kal:+$('sKal').value,bloom:+$('sBloom').value,
-  glow:+$('sGlow').value,trail:+$('sTrail').value,react:$('sReact').value}; }
+  glow:+$('sGlow').value,trail:+$('sTrail').value,react:$('sReact').value,ang:ang.map(v=>+v.toFixed(3)),flow:flowMode?1:0}; }
 function applyState(o){
   if(!o||typeof o!=='object') return; const nv=(v,a,b,d)=>Number.isFinite(+v)?clamp(+v,a,b):d;
   setTheme(nrm(o.theme,THEMES.length),true); palIdx=nrm(o.palIdx,PALS.length); realIdx=nrm(o.realIdx,LOOKS.length);
@@ -1844,15 +1939,23 @@ function applyState(o){
   $('sWarp').value=nv(o.warp,0,2,0.6); $('sKal').value=nv(o.kal,0,12,0); $('sBloom').value=nv(o.bloom,0,2,1); $('sGlow').value=nv(o.glow,0,2,1); $('sTrail').value=nv(o.trail,0,0.95,0);
   if(o.react in REACT) $('sReact').value=o.react;
   zoomMul=nv(o.zoom,0.08,4,1); az=nv(o.az,-100,100,0.6); el=nv(o.el,-1.5,1.5,0.35);
-  padSync(); setType(o.type); save();
+  if(Array.isArray(o.ang)&&o.ang.length===3) for(let i=0;i<3;i++) ang[i]=nv(o.ang[i],-100,100,ang[i]);
+  setFlow(!!o.flow,true); padSync(); setType(o.type); save();
 }
+// ── reference scenes: the clay-render look of the reference photos (3D Burning Ship over a sky-to-haze gradient, floating, no floor) ──
+const REFS=[
+  {n:'Ref 1 · sandstone',  s:{type:19,theme:3,palIdx:0,realIdx:4,hue:0,shape:0,detail:0,sparkle:0,warp:0.1, kal:0,bloom:0.3,glow:0,trail:0,az:0.5,el:-0.08,zoom:1,ang:[0.3,0.5,0.1]}},
+  {n:'Ref 2 · snow',       s:{type:19,theme:3,palIdx:0,realIdx:5,hue:0,shape:0,detail:0,sparkle:0,warp:0.1, kal:0,bloom:0.3,glow:0,trail:0,az:2.2,el:-0.04,zoom:1,ang:[0.3,0.5,0.1]}},
+  {n:'Ref 3 · terracotta', s:{type:20,theme:3,palIdx:0,realIdx:6,hue:0,shape:0,detail:0,sparkle:0,warp:0.1, kal:0,bloom:0.3,glow:0,trail:0,az:0.9,el:-0.1, zoom:1,ang:[0.9,0.2,0.4]}},
+];
+const refBox=$('refs'); REFS.forEach(r=>{ const b=document.createElement('button'); b.textContent=r.n; b.onclick=()=>{ applyState(r.s); toast(r.n); }; refBox.appendChild(b); });
 const SLOT_KEY='fractalPulseSlots';
 let slots=[null,null,null,null,null,null];
 try{ const o=JSON.parse(localStorage.getItem(SLOT_KEY)||'null'); if(Array.isArray(o)) slots=o.slice(0,6).concat(Array(6).fill(null)).slice(0,6); }catch(e){}
 function renderSlots(){
   const box=$('slots'); box.innerHTML='';
   slots.forEach((o,i)=>{ const b=document.createElement('button'); b.classList.toggle('on',!!o);
-    b.textContent=(i+1)+' · '+(o?(TYPES[nrm(o.type,TYPES.length)].name.split(' ')[0]+' · '+['Neon','Real','Cosmic'][nrm(o.theme,3)]):'empty');
+    b.textContent=(i+1)+' · '+(o?(TYPES[nrm(o.type,TYPES.length)].name.split(' ')[0]+' · '+THEMES[nrm(o.theme,THEMES.length)].name.slice(0,6)):'empty');
     b.onclick=()=>{ if(!o||$('cStore').checked){ slots[i]=exportState(); try{ localStorage.setItem(SLOT_KEY,JSON.stringify(slots)); }catch(e){} $('cStore').checked=false; toast('Saved to slot '+(i+1)); renderSlots(); } else { applyState(o); toast('Loaded slot '+(i+1)); } };
     box.appendChild(b); });
 }
@@ -1878,14 +1981,14 @@ function emit(type,data){
 
 // ───────────────────────── sculpt buttons + external control API ─────────────────────────
 $('bPulse').onclick=pulse;
-$('bResetView').onclick=()=>{ az=0.6; el=theme===1?0.14:0.35; zoomMul=1; azV=elV=0; ang[0]=0.3; ang[1]=0.5; ang[2]=0.1; kick[0]=kick[1]=kick[2]=0; ['sMB','sMM','sMH','sHue'].forEach(i=>$(i).value=0); toast('View reset'); };
+$('bResetView').onclick=()=>{ az=0.6; el=theme===1?0.14:(theme===3?0.17:0.35); zoomMul=1; azV=elV=0; ang[0]=0.3; ang[1]=0.5; ang[2]=0.1; kick[0]=kick[1]=kick[2]=0; ['sMB','sMM','sMH','sHue'].forEach(i=>$(i).value=0); toast('View reset'); };
 $('bRandShape').onclick=()=>{ $('sMB').value=(0.1+Math.random()*0.8).toFixed(3); $('sMM').value=(0.1+Math.random()*0.8).toFixed(3); $('sMH').value=(Math.random()*0.7).toFixed(3); $('sHue').value=Math.random().toFixed(3); pulse(); };
 // Programmatic control: window.FractalPulse.* from the console / a host page, or window.postMessage({fractalPulse:{...}}, '*')
 const FP = {
   get state(){ return {type:shown,theme,palette:palIdx,look:realIdx,hue:+$('sHue').value,az,el,zoom:zoomMul,
     shape:+$('sMB').value,detail:+$('sMM').value,sparkle:+$('sMH').value,live:!!A.live,bpm:A.bpm||0}; },
   apply(o){ if(!o||typeof o!=='object') return; const n=(v,a,b)=>clamp(+v||0,a,b);
-    if('theme' in o) setTheme(n(o.theme,0,2)|0);
+    if('theme' in o) setTheme(n(o.theme,0,THEMES.length-1)|0);
     if('type' in o) setType(n(o.type,0,TYPES.length-1)|0);
     if('palette' in o){ palIdx=n(o.palette,0,PALS.length-1)|0; }
     if('look' in o){ realIdx=n(o.look,0,LOOKS.length-1)|0; }
