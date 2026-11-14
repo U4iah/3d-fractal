@@ -11,7 +11,19 @@ Or serve the folder: `python3 -m http.server`, then open http://localhost:8000.
 - Drag to orbit, scroll to zoom, double-click to toggle the panel.
 - The sliders cover sensitivity, motion, glow and resolution. "Cut-away" slices the fractal open. "Auto-res" holds the frame rate.
 - Evolved features: HDR bloom, audio-driven twist/bend warp, kaleidoscope, dissolve transitions, BPM tracking, drop detection, **Director** (auto camera/look), saved settings.
-- URL hash options: `#type=4&scale=0.5&orbit=0&auto=0&pal=2&kal=8&director=1`.
+- URL hash options: `#type=4&scale=0.5&orbit=0&auto=0&pal=2&kal=8&director=1&theme=1&look=2&q=0`.
+
+## Themes
+- **Neon**: the original look, frozen as a named theme. Cosine palettes, volumetric halo, heavy bloom and chromatic aberration on a dark void. Palettes: Rainbow, Sunset, Ocean, Ember, Vapor, Toxic.
+- **Realistic**: GGX physically based materials under a procedural sky and sun, with ambient occlusion, soft shadows, a mirror-pool floor that reflects the fractal, and restrained bloom. Looks: Bronze · golden hour, Marble · overcast, Gold · dusk, Ice · moonlight. The music drives geometry, sun flicker, roughness, and ember glow in the crevices.
+- **Custom ★**: "Save my look" stores your current theme, palette, hue and sliders, and Custom ★ restores them.
+- **T** switches theme and **C** cycles the palette or look.
+
+## Phone / tablet
+- Touch layout with a ☰ menu and bottom sheet. One finger orbits and two fingers pinch-zoom. The screen is kept awake while audio plays.
+- Phones default to Quality = Low and render scale 0.5, and Auto-res keeps the frame rate up. Raise Quality or Resolution in the menu on a fast phone.
+- On phones, use the demo beat, a file, or the microphone (needs HTTPS). Tab/system-audio capture isn't available on mobile browsers, so that button is hidden.
+- On iOS, Web Audio follows the ringer switch, so unmute if you hear nothing.
 
 ## Fractals
 Mandelbulb · Juliabulb · Tricorn bulb · Burning-ship bulb · Quaternion Julia · Mandelbox · Menger sponge · Sierpinski tetrahedron · Apollonian packing · Box-folded bulb · Octahedron KIFS · Pseudo-Kleinian · Quaternion Mandelbrot · Menger×Tetra hybrid.

@@ -2,15 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
 <title>Fractal Pulse — music-reactive 3D fractals</title>
 <style>
   :root{--fg:#e8ecff;--dim:#8a93b8;--accent:#7cf0ff;--panel:rgba(10,12,24,.74)}
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:#000;color:var(--fg);font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden}
+  html,body{margin:0;height:100%;height:100dvh;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;background:#000;color:var(--fg);font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden}
   canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
   canvas#hud{position:fixed;left:0;right:0;bottom:0;width:100%;height:90px;pointer-events:none;transition:opacity .3s}
-  #ui{position:fixed;top:12px;right:12px;width:284px;max-height:calc(100% - 24px);overflow:auto;background:var(--panel);
+  #ui{position:fixed;top:58px;right:12px;width:284px;max-height:calc(100% - 70px);-webkit-overflow-scrolling:touch;overflow:auto;background:var(--panel);
       backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;transition:opacity .25s}
   #ui.hidden{opacity:0;pointer-events:none}
   h1{font-size:14px;margin:0 0 2px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
@@ -39,6 +42,22 @@
   .card button,.card label.btn{text-align:center;padding:12px}
   #err{position:fixed;left:12px;right:12px;bottom:100px;background:#400;color:#fcc;padding:10px;border-radius:8px;white-space:pre-wrap;font:11px monospace;display:none;z-index:9;max-height:40%;overflow:auto}
   audio{width:100%;height:32px;margin-top:6px}
+  select{font:inherit;color:var(--fg);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px;flex:1}
+  #menuBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;
+      text-align:center;padding:0;font-size:18px;background:rgba(10,12,24,.6);backdrop-filter:blur(8px)}
+  .grid3{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  @media (max-width:700px),(pointer:coarse){
+    #ui{top:auto;bottom:0;left:0;right:0;width:auto;max-height:64dvh;border-radius:18px 18px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));z-index:3}
+    button,label.btn,select{padding:10px 10px;font-size:14px}
+    .row{margin:9px 0}.row span{flex:0 0 96px}
+    input[type=range]{height:28px}
+    input[type=checkbox]{width:22px;height:22px}
+    #title{font-size:18px;bottom:64px}
+    .card{padding:18px;max-height:100dvh;overflow:auto}
+    .card h1{font-size:24px}
+    #stat{top:calc(12px + env(safe-area-inset-top));font-size:10px}
+    #err{bottom:70px}
+  }
 </style>
 </head>
 <body>
@@ -47,6 +66,7 @@
 <div id="stat"></div>
 <div id="title"></div>
 <div id="toast"></div>
+<button id="menuBtn" aria-label="menu">☰</button>
 <div id="err"></div>
 
 <div id="start"><div class="card">
@@ -63,9 +83,16 @@
 
 <div id="ui">
   <h1>Fractal Pulse</h1>
-  <div class="sub">H hides panel · drag = orbit · wheel = zoom · ←/→ = next fractal</div>
+  <div class="sub">drag = orbit · pinch / wheel = zoom · ☰ = menu · H hides · ←/→ next fractal · T theme</div>
   <h2>Fractal</h2>
   <div class="grid" id="types"></div>
+  <h2>Theme</h2>
+  <div class="grid" id="themes">
+    <button data-t="0">Neon</button>
+    <button data-t="1">Realistic</button>
+    <button id="bCustom">Custom ★</button>
+    <button id="bSaveCustom">Save my look</button>
+  </div>
   <h2>Audio</h2>
   <div class="grid">
     <button id="bDemo2">Demo beat</button>
@@ -91,6 +118,7 @@
   <div class="row"><span>Auto-orbit</span><input id="cOrbit" type="checkbox" checked></div>
   <div class="row"><span>Cut-away</span><input id="cSlice" type="checkbox"></div>
   <h2>Performance</h2>
+  <div class="row"><span>Quality</span><select id="sQual"><option value="0">Low (phones)</option><option value="1">Medium</option><option value="2">High</option></select></div>
   <div class="row"><span>Resolution</span><input id="sRes" type="range" min="0.3" max="1.5" step="0.01" value="0.7"></div>
   <div class="row"><span>Auto-res</span><input id="cAuto" type="checkbox" checked></div>
   <div class="grid" style="margin-top:8px">
@@ -125,6 +153,9 @@ uniform float uSlice;
 uniform float uBound;
 uniform float uSize;
 uniform float uTwist, uBend, uStep, uExpo;
+uniform int   uTheme, uShadowSteps, uReflSteps;
+uniform vec3  uMatA, uMatB, uSunCol, uSunDir, uSkyTop, uSkyHor, uGround;
+uniform float uMetal, uRough, uFloorOn, uFloorY, uSunI;
 uniform vec3  uPA, uPB, uPC, uPD;
 uniform float uLDR;
 uniform sampler2D uFFT;
@@ -367,6 +398,7 @@ vec3 calcN(vec3 p, float e){
 float shadow(vec3 ro, vec3 rd){
   float res = 1.0, t = 0.02*uSize;
   for(int i=0;i<22;i++){
+    if(i>=uShadowSteps) break;
     float h = map(ro+rd*t);
     res = min(res, 10.0*h/t);
     t += clamp(h, 0.004*uSize, 0.35*uSize);
@@ -375,11 +407,138 @@ float shadow(vec3 ro, vec3 rd){
   return clamp(res,0.0,1.0);
 }
 
+float gPx = 0.001;
+
 vec3 background(vec3 rd){
   float g = 0.5+0.5*rd.y;
   vec3 b = mix(vec3(0.004,0.005,0.02), pal(0.55)*0.10, g*g);
   b += pal(0.2)*0.05*(uBeat+uDrop)*(1.0-g);
   return b;
+}
+
+// procedural sky for the realistic theme
+vec3 envMap(vec3 d, bool disk){
+  float h = d.y;
+  vec3 sky = mix(uSkyHor, uSkyTop, pow(clamp(h,0.0,1.0),0.45));
+  vec3 gr  = mix(uSkyHor*0.6, uGround, clamp(-h*3.0,0.0,1.0));
+  vec3 c = h>0.0 ? sky : gr;
+  float sd = max(dot(d,uSunDir),0.0);
+  c += uSunCol*(pow(sd,6.0)*0.25 + (disk ? pow(sd,900.0)*40.0 : 0.0));
+  return c;
+}
+
+bool bsphere(vec3 ro, vec3 rd, out float t0, out float t1){
+  float b = dot(ro,rd), c = dot(ro,ro) - uBound*uBound, h = b*b - c;
+  t0 = 0.0; t1 = 1e4;
+  if(h<0.0) return false;
+  float s = sqrt(h); t0 = max(0.0,-b-s); t1 = -b+s;
+  return true;
+}
+
+bool march(vec3 ro, vec3 rd, float t0, float t1, int maxS, out float t, out int steps, out float halo){
+  t = t0; steps = 0; halo = 0.0;
+  for(int i=0;i<MAXS;i++){
+    if(i>=maxS) break;
+    gEps = gPx*t;
+    float d = map(ro+rd*t);
+    steps = i;
+    halo += exp(-max(d,0.0)*12.0/uSize);
+    if(d < gEps*0.6) return true;
+    t += d*uStep;
+    if(t>t1) return false;
+  }
+  return false;
+}
+
+float calcAO(vec3 p, vec3 n){
+  float occ = 0.0, sca = 1.0;
+  for(int i=0;i<5;i++){
+    float h = uSize*(0.01 + 0.12*float(i)/4.0);
+    float d = map(p + n*h);
+    occ += (h-d)*sca; sca *= 0.85;
+  }
+  return clamp(1.0 - 3.0*occ/uSize, 0.0, 1.0);
+}
+
+// ── NEON theme (the original look, preserved exactly) ──
+vec3 surfNeon(vec3 p, vec3 rd, float t, int steps, vec3 bgc){
+  float e = gPx*t*0.8;
+  vec3 n = calcN(p, e);
+  map(p);
+  float tc = log(1.0+gTrap);
+  vec3 base = pal(0.28*tc + 0.12*dot(n,vec3(0.3,0.5,0.2)));
+  float ao = clamp(1.0 - float(steps)/float(uSteps)*1.6, 0.0, 1.0);
+  ao = ao*ao*(3.0-2.0*ao)*0.85 + 0.15;
+  vec3 l = normalize(vec3(cos(uTime*0.25), 0.75, sin(uTime*0.25)));
+  float diff = max(dot(n,l),0.0);
+  float sh = shadow(p + n*e*2.0, l);
+  float spec = pow(max(dot(reflect(-l,n), -rd),0.0), 28.0);
+  float rim = pow(1.0 - max(dot(n,-rd),0.0), 3.0);
+  vec3 lit = base*(0.12 + 0.95*diff*sh)*ao*(1.0+0.7*uBass);
+  lit += vec3(0.8,0.9,1.0)*spec*0.45*sh;
+  lit += pal(0.5*tc+0.5)*rim*(0.35+1.2*uBeat+0.4*uHigh);
+  lit += base*base*(1.0-ao)*(uBeat+uDrop)*2.5;
+  float fv = texture(uFFT, vec2(clamp(0.04+0.9*fract(tc*0.35),0.0,1.0), 0.5)).r;
+  lit += pal(tc*0.4+0.15)*fv*fv*(1.6 + 2.0*uBeat);
+  lit *= uExpo;
+  float fog = 1.0 - exp(-t*t*0.004/(uSize*uSize));
+  return mix(lit, bgc, fog);
+}
+
+// ── REALISTIC theme: GGX PBR, sun + sky, AO, soft shadows, mirror floor ──
+vec3 shadeReal(vec3 n, vec3 rd, float tc, float ao, float sh){
+  float m = smoothstep(0.25,0.75,fract(0.33*tc + 0.15*n.y));      // material A/B mix from orbit trap
+  vec3 alb = mix(uMatA, uMatB, m);
+  float rough = clamp(uRough + 0.3*(m-0.5) - 0.08*uBass, 0.05, 1.0);
+  float metal = uMetal*(1.0 - 0.55*m);
+  vec3 F0 = mix(vec3(0.04), alb, metal);
+  vec3 V = -rd, L = uSunDir, H = normalize(V+L);
+  float NL = max(dot(n,L),0.0), NV = max(dot(n,V),1e-3), NH = max(dot(n,H),0.0), VH = max(dot(V,H),0.0);
+  float a = rough*rough, a2 = a*a, dn = NH*NH*(a2-1.0)+1.0;
+  float D = a2/(3.14159265*dn*dn);
+  float k = (rough+1.0)*(rough+1.0)/8.0;
+  float G = (NL/(NL*(1.0-k)+k))*(NV/(NV*(1.0-k)+k));
+  vec3 F = F0 + (1.0-F0)*pow(1.0-VH,5.0);
+  vec3 sun = uSunCol*uSunI;
+  vec3 direct = (alb*(1.0-metal)*(1.0-F)/3.14159265*NL + D*F*G/(4.0*NV))*sun*sh;
+  vec3 amb = mix(uGround, uSkyTop, 0.5+0.5*n.y)*alb*(1.0-metal)*ao*0.9;
+  vec3 R = reflect(rd,n);
+  vec3 Fr = F0 + (max(vec3(1.0-rough),F0)-F0)*pow(1.0-NV,5.0);
+  float horizon = clamp(1.0 + 1.2*dot(R,n), 0.0, 1.0);
+  vec3 refl = envMap(R,false)*Fr*ao*horizon*(1.0-0.6*rough);
+  float fv = texture(uFFT, vec2(clamp(0.04+0.9*fract(tc*0.35),0.0,1.0), 0.5)).r;
+  vec3 cav = uSunCol*vec3(1.0,0.55,0.25)*(1.0-ao)*fv*fv*(0.6+1.4*uBeat);   // ember glow in the crevices
+  return direct + amb + refl + cav;
+}
+vec3 surfReal(vec3 p, vec3 rd, float t, int steps, bool full){
+  float e = gPx*t*0.8;
+  vec3 n = calcN(p, e);
+  map(p);
+  float tc = log(1.0+gTrap);
+  float aoS = clamp(1.0 - float(steps)/float(uSteps)*1.4, 0.0, 1.0);
+  float ao = full ? calcAO(p,n)*(0.5+0.5*aoS) : aoS;
+  float sh = full ? shadow(p + n*e*2.0, uSunDir) : 0.75;
+  return shadeReal(n, rd, tc, ao, sh);
+}
+vec3 floorShade(vec3 pf, vec3 rd, float tf){
+  vec3 n = vec3(0,1,0);
+  float NV = max(dot(n,-rd),1e-3);
+  float F = 0.05 + 0.95*pow(1.0-NV,5.0);
+  vec3 R = reflect(rd,n);
+  vec3 rc = envMap(R,false);
+  if(uReflSteps>0){
+    float t0,t1; vec3 ro2 = pf + n*gPx*tf*2.0;
+    if(bsphere(ro2,R,t0,t1)){
+      float tr,hr; int sr;
+      if(march(ro2,R,t0,t1,uReflSteps,tr,sr,hr)) rc = surfReal(ro2+R*tr, R, tr, sr, false);
+    }
+  }
+  float sh = shadow(pf + n*0.002*uSize, uSunDir);
+  vec3 alb = vec3(0.035)*(0.4+uMatB*1.5);
+  vec3 diff = alb*(uSunCol*uSunI*max(dot(n,uSunDir),0.0)*sh + mix(uGround,uSkyTop,0.5)*0.6);
+  vec3 c = diff + rc*(0.18 + 0.82*F);
+  float fog = 1.0 - exp(-pow(tf/(uSize*16.0),1.4));
+  return mix(c, envMap(vec3(rd.x,0.02,rd.z),false), fog);
 }
 
 void main(){
@@ -390,57 +549,25 @@ void main(){
   vec3 rt = normalize(cross(fw, vec3(0,1,0)));
   vec3 up = cross(rt, fw);
   vec3 rd = normalize(uv.x*rt + uv.y*up + uFocal*fw);
+  gPx = 1.0/(uRes.y*uFocal);
+  bool real = (uTheme==1);
 
-  float t0 = 0.0, t1 = 1e4;
-  bool miss = false;
-  {
-    float b = dot(ro,rd), c = dot(ro,ro) - uBound*uBound, h = b*b - c;
-    if(h<0.0) miss = true;
-    else { float s = sqrt(h); t0 = max(0.0,-b-s); t1 = -b+s; }
-  }
+  float tf = 1e9;
+  if(uFloorOn>0.5 && rd.y<-1e-4 && ro.y>uFloorY) tf = (uFloorY-ro.y)/rd.y;
+  float t0, t1;
+  bool inb = bsphere(ro,rd,t0,t1);
 
-  vec3 col = background(rd);
-  float halo = 0.0;
-  float px = 1.0/(uRes.y*uFocal);
-  if(!miss){
-    float t = t0; bool hit = false; int steps = 0;
-    for(int i=0;i<MAXS;i++){
-      if(i>=uSteps) break;
-      gEps = px*t;
-      float d = map(ro+rd*t);
-      steps = i;
-      halo += exp(-max(d,0.0)*12.0/uSize);
-      if(d < gEps*0.6){ hit = true; break; }
-      t += d*uStep;
-      if(t>t1) break;
-    }
-    if(hit){
-      vec3 p = ro + rd*t;
-      float e = px*t*0.8;
-      vec3 n = calcN(p, e);
-      map(p);
-      float tc = log(1.0+gTrap);
-      vec3 base = pal(0.28*tc + 0.12*dot(n,vec3(0.3,0.5,0.2)));
-      float ao = clamp(1.0 - float(steps)/float(uSteps)*1.6, 0.0, 1.0);
-      ao = ao*ao*(3.0-2.0*ao)*0.85 + 0.15;
-      vec3 l = normalize(vec3(cos(uTime*0.25), 0.75, sin(uTime*0.25)));
-      float diff = max(dot(n,l),0.0);
-      float sh = shadow(p + n*e*2.0, l);
-      float spec = pow(max(dot(reflect(-l,n), -rd),0.0), 28.0);
-      float rim = pow(1.0 - max(dot(n,-rd),0.0), 3.0);
-      vec3 lit = base*(0.12 + 0.95*diff*sh)*ao*(1.0+0.7*uBass);
-      lit += vec3(0.8,0.9,1.0)*spec*0.45*sh;
-      lit += pal(0.5*tc+0.5)*rim*(0.35+1.2*uBeat+0.4*uHigh);
-      lit += base*base*(1.0-ao)*(uBeat+uDrop)*2.5;
-      // the spectrum paints the surface: orbit-trap value picks an FFT bin
-      float fv = texture(uFFT, vec2(clamp(0.04+0.9*fract(tc*0.35),0.0,1.0), 0.5)).r;
-      lit += pal(tc*0.4+0.15)*fv*fv*(1.6 + 2.0*uBeat);
-      lit *= uExpo;
-      float fog = 1.0 - exp(-t*t*0.004/(uSize*uSize));
-      col = mix(lit, col, fog);
-    }
+  vec3 col = real ? envMap(rd,true) : background(rd);
+  vec3 bgc = col;
+  float halo = 0.0, t = 0.0; int steps = 0; bool hit = false;
+  if(inb) hit = march(ro,rd,t0,min(t1,tf),uSteps,t,steps,halo);
+  if(hit){
+    vec3 p = ro + rd*t;
+    col = real ? surfReal(p,rd,t,steps,true) : surfNeon(p,rd,t,steps,bgc);
+  } else if(tf<1e8){
+    col = floorShade(ro+rd*tf, rd, tf);
   }
-  col += pal(0.15)*halo*0.011*uGlow*uExpo*(0.55 + 0.8*uBeat + 0.5*uEnergy + 0.3*uPulse + 1.2*uDrop);
+  if(!real) col += pal(0.15)*halo*0.011*uGlow*uExpo*(0.55 + 0.8*uBeat + 0.5*uEnergy + 0.3*uPulse + 1.2*uDrop);
   col = min(col, vec3(12.0));
   if(uLDR>0.5) col = col/(1.0+col);
   outCol = vec4(col,1.0);
@@ -476,7 +603,7 @@ precision highp float;
 out vec4 o;
 uniform sampler2D uScene, uPrev, uBloom;
 uniform vec2  uRes;
-uniform float uTime, uBeat, uDrop, uBloomI, uCA, uTrans, uKal, uKalRot, uHue;
+uniform float uTime, uBeat, uDrop, uBloomI, uCA, uTrans, uKal, uKalRot, uHue, uExp, uPunch, uVig, uGrain;
 
 float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
@@ -514,11 +641,11 @@ void main(){
   vec2 buv = (q*vec2(uRes.y/uRes.x,1.0)) + 0.5;
   vec3 bl = texture(uBloom, buv).rgb;
   vec3 col = cur + bl*uBloomI*(0.9 + 1.2*uBeat + 1.5*uDrop);
-  col *= 1.05 + 0.25*uBeat + 0.5*uDrop;
+  col *= uExp*(1.0 + uPunch*(0.25*uBeat + 0.5*uDrop));
   col = aces(col);
   col = pow(col, vec3(0.4545));
-  col *= 1.0 - 0.38*dot(p,p);
-  col += (h21(gl_FragCoord.xy+fract(uTime)*100.0)-0.5)*(1.5/255.0);
+  col *= 1.0 - uVig*dot(p,p);
+  col += (h21(gl_FragCoord.xy+fract(uTime)*100.0)-0.5)*(uGrain/255.0);
   o = vec4(col,1.0);
 }
 </script>
@@ -553,8 +680,25 @@ const PALS = [
   {n:'Toxic',   a:[.4,.5,.3], b:[.5,.5,.5], c:[1,1,.7],   d:[.1,.4,.7]},
 ];
 
+// ───────────────────────── themes ─────────────────────────
+// THEME 0 "Neon" = the original look, frozen: cosine palettes, volumetric halo, heavy bloom + aberration, dark void.
+// THEME 1 "Realistic" = PBR materials under a procedural sky, mirror-pool floor, AO + soft shadows, restrained bloom.
+const THEMES = [
+  {id:0, name:'Neon',      bloomI:0.55, thresh:0.9, ca:1.0,  exp:1.05, punch:1.0,  vig:0.38, grain:1.5, glow:1, warp:0.6},
+  {id:1, name:'Realistic', bloomI:0.40, thresh:1.5, ca:0.12, exp:1.0,  punch:0.25, vig:0.28, grain:1.0, glow:0, warp:0.35},
+];
+const lin = c => c.map(x=>Math.pow(x,2.2));
+const LOOKS = [
+  {n:'Bronze · golden hour', matA:lin([.78,.5,.25]), matB:lin([.2,.55,.45]), metal:.85, rough:.38, sunCol:[1,.7,.4],   sunEl:.38, skyTop:[.10,.20,.48], skyHor:[1.0,.55,.28], ground:[.12,.09,.07]},
+  {n:'Marble · overcast',    matA:lin([.82,.8,.74]), matB:lin([.35,.33,.32]), metal:.0,  rough:.42, sunCol:[1,.97,.92], sunEl:.85, skyTop:[.32,.40,.52], skyHor:[.7,.75,.8],  ground:[.25,.25,.25]},
+  {n:'Gold · dusk',          matA:lin([1,.78,.36]),  matB:lin([.05,.05,.07]), metal:.92, rough:.22, sunCol:[1,.45,.25], sunEl:.14, skyTop:[.04,.05,.17], skyHor:[.9,.3,.25],  ground:[.06,.04,.05]},
+  {n:'Ice · moonlight',      matA:lin([.7,.85,1]),   matB:lin([.3,.35,.45]),  metal:.25, rough:.12, sunCol:[.55,.7,1],  sunEl:.55, skyTop:[.01,.02,.06], skyHor:[.08,.12,.25], ground:[.02,.03,.05]},
+];
+const lerpObj=(cur,tgt,k)=>{ for(const key in tgt){ const v=tgt[key]; if(Array.isArray(v)) for(let i=0;i<v.length;i++) cur[key][i]+=(v[i]-cur[key][i])*k; else cur[key]+=(v-cur[key])*k; } };
+
 // ───────────────────────── GL setup ─────────────────────────
 const $ = id => document.getElementById(id);
+const isMobile = matchMedia('(pointer:coarse)').matches || Math.min(innerWidth,innerHeight)<600;
 const canvas = $('gl'), hudC = $('hud'), hud = hudC.getContext('2d');
 const gl = canvas.getContext('webgl2', {antialias:false, alpha:false, powerPreference:'high-performance'});
 function showErr(m){ const e=$('err'); e.style.display='block'; e.textContent=m; console.error(m); }
@@ -772,7 +916,7 @@ function analyse(dt,now){
 }
 
 // ───────────────────────── state & controls ─────────────────────────
-let type=0, T=0, hue=0.05, lastSwitch=0, palIdx=0, palCur=null, dirKal=0, dirTimer=0, camMode=0, camT=0;
+let type=0, T=0, hue=0.05, lastSwitch=0, palIdx=0, palCur=null, theme=0, realIdx=0, realCur=null, dirKal=0, dirTimer=0, camMode=0, camT=0;
 const ang=[0.3,0.5,0.1], kick=[0,0,0];
 let az=0.6, el=0.35, zoomMul=1, transT=0, kalRot=0;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
@@ -787,28 +931,51 @@ function setType(i, quiet){
   const t=$('title'); t.textContent=TYPES[type].name; t.style.opacity=1; clearTimeout(t._h); t._h=setTimeout(()=>t.style.opacity=.35,2500);
   A.beat=1; save();
 }
-function setPal(i){ palIdx=((i%PALS.length)+PALS.length)%PALS.length; toast('Palette: '+PALS[palIdx].n); save(); }
-function randomize(){
-  palIdx=(Math.random()*PALS.length)|0; hue=Math.random(); az=Math.random()*6.28; el=(Math.random()-0.5)*1.2;
-  $('sWarp').value=(0.2+Math.random()*1.2).toFixed(2);
-  toast('Randomized look · '+PALS[palIdx].n); save();
+function setPal(i){
+  if(theme===0){ palIdx=((i%PALS.length)+PALS.length)%PALS.length; toast('Palette: '+PALS[palIdx].n); }
+  else { realIdx=((i%LOOKS.length)+LOOKS.length)%LOOKS.length; toast(LOOKS[realIdx].n); }
+  save();
 }
-$('bPal').onclick=()=>setPal(palIdx+1); $('bRand').onclick=randomize;
+function setTheme(t,quiet){
+  theme=t; const th=THEMES[t];
+  if(!quiet){ el = t===1 ? 0.14 : 0.35; $('sGlow').value=th.glow; $('sBloom').value=1; $('sWarp').value=th.warp; }
+  [...$('themes').querySelectorAll('button[data-t]')].forEach(b=>b.classList.toggle('on',+b.dataset.t===t));
+  $('bPal').firstChild.textContent = t===0?'Palette ':'Look ';
+  if(!quiet) toast('Theme: '+th.name); save();
+}
+function randomize(){
+  if(theme===0) palIdx=(Math.random()*PALS.length)|0; else realIdx=(Math.random()*LOOKS.length)|0; hue=Math.random(); az=Math.random()*6.28; el=(Math.random()-0.5)*1.2;
+  $('sWarp').value=(0.2+Math.random()*1.2).toFixed(2);
+  toast('Randomized look'); save();
+}
+$('bPal').onclick=()=>setPal((theme===0?palIdx:realIdx)+1); $('bRand').onclick=randomize;
 
 // persistence
-const PERSIST=['sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
-function save(){ try{ const o={type,palIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
-try{ const o=JSON.parse(localStorage.getItem('fractalPulse')||'null'); if(o){ PERSIST.forEach(id=>{ if(id in o){const e=$(id); if(e.type==='checkbox') e.checked=o[id]; else e.value=o[id];}}); type=o.type|0; palIdx=o.palIdx|0; } }catch(e){}
+const PERSIST=['sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
+function save(){ try{ const o={type,palIdx,theme,realIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
+try{ const o=JSON.parse(localStorage.getItem('fractalPulse')||'null'); if(o){ PERSIST.forEach(id=>{ if(id in o){const e=$(id); if(e.type==='checkbox') e.checked=o[id]; else e.value=o[id];}}); type=o.type|0; palIdx=o.palIdx|0; theme=o.theme|0; realIdx=o.realIdx|0; } else if(isMobile){ $('sRes').value=0.5; $('sQual').value=0; } }catch(e){}
 PERSIST.forEach(id=>$(id).addEventListener('input',save));
 const hashP=new URLSearchParams(location.hash.slice(1));
 if(hashP.has('scale')) $('sRes').value=hashP.get('scale');
 if(hashP.get('orbit')==='0') $('cOrbit').checked=false;
 if(hashP.get('auto')==='0') $('cAuto').checked=false;
 if(hashP.has('pal')) palIdx=+hashP.get('pal');
+if(hashP.has('look')) realIdx=+hashP.get('look');
+if(hashP.has('theme')) theme=+hashP.get('theme');
+if(hashP.has('q')) $('sQual').value=hashP.get('q');
 if(hashP.has('kal')) $('sKal').value=hashP.get('kal');
 if(hashP.get('director')==='1') $('cDirector').checked=true;
 setType(hashP.has('type')? +hashP.get('type') : type);
 palCur=JSON.parse(JSON.stringify(PALS[((palIdx%PALS.length)+PALS.length)%PALS.length]));
+realCur=JSON.parse(JSON.stringify(LOOKS[((realIdx%LOOKS.length)+LOOKS.length)%LOOKS.length]));
+// themes & custom slot
+$('themes').querySelectorAll('button[data-t]').forEach(b=>b.onclick=()=>setTheme(+b.dataset.t));
+setTheme(theme,true);
+const CUSTOM_KEY='fractalPulseCustom';
+$('bSaveCustom').onclick=()=>{ try{ localStorage.setItem(CUSTOM_KEY,JSON.stringify({theme,palIdx,realIdx,hue,
+  sBloom:$('sBloom').value,sGlow:$('sGlow').value,sWarp:$('sWarp').value,sKal:$('sKal').value})); toast('Saved your look as Custom ★'); }catch(e){ toast('Could not save'); } };
+$('bCustom').onclick=()=>{ try{ const o=JSON.parse(localStorage.getItem(CUSTOM_KEY)||'null'); if(!o){ toast('Nothing saved yet — tap “Save my look”'); return; }
+  setTheme(o.theme,true); palIdx=o.palIdx; realIdx=o.realIdx; hue=o.hue; ['sBloom','sGlow','sWarp','sKal'].forEach(k=>$(k).value=o[k]); toast('Custom ★ look loaded'); save(); }catch(e){} };
 
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT' && e.target.type!=='checkbox') return;
@@ -819,17 +986,25 @@ addEventListener('keydown',e=>{
   else if(k==='h') { $('ui').classList.toggle('hidden'); }
   else if(k==='f') toggleFull();
   else if(k==='p') shot=true;
-  else if(k==='c') setPal(palIdx+1);
+  else if(k==='c') setPal((theme===0?palIdx:realIdx)+1);
+  else if(k==='t') setTheme(1-theme);
   else if(k==='r') randomize();
   else if(k==='k'){ const s=$('sKal'); s.value = +s.value<2? 6 : (+s.value>=12? 0 : +s.value+2); save(); }
   else if(k===' '){ e.preventDefault(); const c=$('cCycle'); c.checked=!c.checked; toast('Auto-cycle '+(c.checked?'on':'off')); save(); }
 });
 function toggleFull(){ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
 $('bFull').onclick=toggleFull; let shot=false; $('bShot').onclick=()=>shot=true;
-let drag=null;
-canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY}; canvas.setPointerCapture(e.pointerId);});
-canvas.addEventListener('pointermove',e=>{ if(!drag) return; az-=(e.clientX-drag.x)*0.006; el=clamp(el+(e.clientY-drag.y)*0.006,-1.5,1.5); drag={x:e.clientX,y:e.clientY}; });
-canvas.addEventListener('pointerup',()=>drag=null);
+let drag=null; const ptrs=new Map(); let pinch0=0;
+const pdist=()=>{ const v=[...ptrs.values()]; return Math.hypot(v[0].x-v[1].x,v[0].y-v[1].y); };
+canvas.addEventListener('pointerdown',e=>{ ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); drag=true; try{canvas.setPointerCapture(e.pointerId);}catch(_){} if(ptrs.size===2) pinch0=pdist(); });
+canvas.addEventListener('pointermove',e=>{
+  const p=ptrs.get(e.pointerId); if(!p) return;
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY;
+  if(ptrs.size>=2){ const d=pdist(); if(pinch0>0) zoomMul=clamp(zoomMul*pinch0/d,0.08,4); pinch0=d; }
+  else { az-=dx*0.006; el=clamp(el+dy*0.006,-1.5,1.5); }
+});
+const pend=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) drag=null; pinch0=ptrs.size===2?pdist():0; };
+canvas.addEventListener('pointerup',pend); canvas.addEventListener('pointercancel',pend);
 canvas.addEventListener('wheel',e=>{e.preventDefault(); zoomMul=clamp(zoomMul*Math.exp(e.deltaY*0.001),0.08,4);},{passive:false});
 canvas.addEventListener('dblclick',()=>$('ui').classList.toggle('hidden'));
 
@@ -868,6 +1043,7 @@ function director(dt){
 }
 
 // ───────────────────────── frame loop ─────────────────────────
+const QUAL=[{steps:90,sh:10,refl:24},{steps:125,sh:16,refl:40},{steps:150,sh:22,refl:64}];
 let resScale=+$('sRes').value, last=performance.now()/1000, ema=16.7, frame=0, lastDown=-99, ceilS=9;
 function frameFn(nowMs){
   const now=nowMs/1000, rawDt=now-last, dt=Math.min(0.1,rawDt); last=now;
@@ -899,6 +1075,7 @@ function frameFn(nowMs){
 
   const cfg=TYPES[type], P=params();
   // palette crossfade
+  lerpObj(realCur,LOOKS[realIdx],Math.min(1,dt*2.5));
   const tp=PALS[palIdx]; for(const k of ['a','b','c','d']) for(let i=0;i<3;i++) palCur[k][i]+=(tp[k][i]-palCur[k][i])*Math.min(1,dt*2.5);
 
   // warp: twist + bend, scaled to the fractal and limited by a step safety factor
@@ -910,22 +1087,27 @@ function frameFn(nowMs){
   if(camMode===1) zoomAuto=0.45+0.55*(0.5+0.5*Math.cos(camT*0.22));
   let dist=cfg.cam*zoomMul*zoomAuto*(1-0.035*A.beat-0.06*A.drop+0.03*Math.sin(T*0.17));
   if(type===8||type===11) dist=Math.max(0.25,dist);
+  const floorOn = theme===1 && !cfg.expo, floorY=-(cfg.fl||cfg.bound*0.85);
   const cam=[dist*Math.cos(el)*Math.sin(az), dist*Math.sin(el), dist*Math.cos(el)*Math.cos(az)];
+  if(floorOn) cam[1]=Math.max(cam[1], floorY*0.55);
+  const th=THEMES[theme], Q=QUAL[+$('sQual').value|0];
+  const sunA=0.9+T*0.035+0.5*A.mid, sunE=realCur.sunEl+0.06*Math.sin(T*0.1), sunDir=[Math.cos(sunE)*Math.sin(sunA),Math.sin(sunE),Math.cos(sunE)*Math.cos(sunA)];
 
   // targets
-  const dpr=Math.min(devicePixelRatio||1,1.5), cw=Math.max(64,Math.floor(innerWidth*dpr)), ch=Math.max(64,Math.floor(innerHeight*dpr));
+  const dpr=Math.min(devicePixelRatio||1,isMobile?1:1.5), cw=Math.max(64,Math.floor(innerWidth*dpr)), ch=Math.max(64,Math.floor(innerHeight*dpr));
   const sw=Math.max(48,Math.floor(cw*resScale)), sh=Math.max(48,Math.floor(ch*resScale));
   if(canvas.width!==cw||canvas.height!==ch){ canvas.width=cw; canvas.height=ch; }
   ensureTargets(sw,sh,cw,ch);
-  const hw=innerWidth, hh=90; if(hudC.width!==hw||hudC.height!==hh){ hudC.width=hw; hudC.height=hh; }
+  const hw=innerWidth, hh=isMobile?56:90; if(hudC.width!==hw||hudC.height!==hh){ hudC.width=hw; hudC.height=hh; hudC.style.height=hh+'px'; }
 
   // pass 1 — fractal → HDR scene buffer
   gl.bindFramebuffer(gl.FRAMEBUFFER,scenes[cur].fbo); gl.viewport(0,0,sw,sh);
   bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
-  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uFocal:1.5+0.12*A.beat+0.25*A.drop,uType:type,uSteps:150,uAng:ang,
+  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uSteps:Q.steps,uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uHue:hue,uGlow:+$('sGlow').value,
     uSlice:$('cSlice').checked?1:0,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
+    uMatA:realCur.matA,uMatB:realCur.matB,uMetal:realCur.metal,uRough:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uFloorOn:floorOn?1:0,uFloorY:floorY,
     uPA:palCur.a,uPB:palCur.b,uPC:palCur.c,uPD:palCur.d,uLDR:useFloat?0:1,uFFT:3});
   gl.drawArrays(gl.TRIANGLES,0,3);
 
@@ -933,20 +1115,20 @@ function frameFn(nowMs){
   const bw=bloomA.w, bh=bloomA.h;
   gl.viewport(0,0,bw,bh);
   const blur=(src,dst,dx,dy,th)=>{ gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fbo); bindTex(0,src.tex); progBlur.set({uTex:0,uRes:[bw,bh],uDir:[dx,dy],uThresh:th}); gl.drawArrays(gl.TRIANGLES,0,3); };
-  blur(scenes[cur],bloomA,1.5,0,0.9); blur(bloomA,bloomB,0,1.5,-1); blur(bloomB,bloomA,3,0,-1); blur(bloomA,bloomB,0,3,-1);
+  blur(scenes[cur],bloomA,1.5,0,th.thresh); blur(bloomA,bloomB,0,1.5,-1); blur(bloomB,bloomA,3,0,-1); blur(bloomA,bloomB,0,3,-1);
 
   // pass 3 — composite to screen (kaleidoscope, CA, dissolve, tonemap)
   transT=Math.max(0,transT-Math.min(rawDt,0.5)/1.1);
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,cw,ch);
   bindTex(0,scenes[cur].tex); bindTex(1,scenes[1-cur].tex); bindTex(2,bloomB.tex);
   const kv=+$('sKal').value, kal=kv>=2?kv:dirKal;
-  progComp.set({uScene:0,uPrev:1,uBloom:2,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uBloomI:0.55*+$('sBloom').value,
-    uCA:1.0*(+$('sBloom').value>0?1:0.4),uTrans:transT*transT*(3-2*transT)*1.0,uKal:kal,uKalRot:kalRot,uHue:hue});
+  progComp.set({uScene:0,uPrev:1,uBloom:2,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uBloomI:th.bloomI*+$('sBloom').value,uExp:th.exp,uPunch:th.punch,uVig:th.vig,uGrain:th.grain,
+    uCA:th.ca*(+$('sBloom').value>0?1:0.4),uTrans:transT*transT*(3-2*transT)*1.0,uKal:kal,uKalRot:kalRot,uHue:hue});
   gl.drawArrays(gl.TRIANGLES,0,3);
   if(shot){ shot=false; const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='fractal-pulse.png'; a.click(); }
 
   drawHud();
-  if(frame%15===0) $('stat').textContent=`${(1000/ema).toFixed(0)} fps · scene ${sw}×${sh} · ${hasAudio?'audio':'ambient'}${A.bpm?` · ${A.bpm.toFixed(0)} bpm`:''} · ${useFloat?'HDR':'LDR'}`;
+  if(frame%15===0) $('stat').textContent=`${(1000/ema).toFixed(0)} fps · scene ${sw}×${sh} · ${hasAudio?'audio':'ambient'}${A.bpm?` · ${A.bpm.toFixed(0)} bpm`:''} · ${useFloat?'HDR':'LDR'} · ${th.name}`;
   frame++;
   requestAnimationFrame(frameFn);
 }
@@ -960,6 +1142,14 @@ function drawHud(){
   }
   if(A.drop>0.05){ hud.fillStyle=`rgba(255,255,255,${A.drop*0.12})`; hud.fillRect(0,0,W,H); }
 }
+// ───────────────────────── mobile / device plumbing ─────────────────────────
+$('menuBtn').onclick=()=>$('ui').classList.toggle('hidden');
+if(isMobile) $('ui').classList.add('hidden');
+if(isMobile || !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) ['bTab','bTab2'].forEach(i=>$(i).style.display='none');
+if(!document.documentElement.requestFullscreen) $('bFull').style.display='none';
+let wake=null; async function keepAwake(){ try{ if(navigator.wakeLock && !wake) wake=await navigator.wakeLock.request('screen'); if(wake) wake.addEventListener('release',()=>wake=null); }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && hasAudio) keepAwake(); });
+$('start').addEventListener('click',()=>keepAwake());
 requestAnimationFrame(frameFn);
 </script>
 </body>

@@ -34,6 +34,17 @@ Track `min(|z|²)` over the iterations (`gTrap`). It is a smooth scalar that fol
 5. **Audio-driven space warp.** The whole space is twisted about y and bent by a travelling sine before the fractal is evaluated. The step size is divided by an estimated Lipschitz bound, `1 + |twist|·size + 2.1·|bend|`, so the DE stays safe.
 6. **Spectrum painting.** A 64-bin log-FFT texture is sampled with the orbit-trap value, so different surface regions light up with different frequencies.
 
+## 1c. Themes and the realistic shader (v3)
+
+The realistic shading path:
+- **Microfacet BRDF:** GGX distribution, Smith–Schlick geometry, Schlick Fresnel, metal and dielectric `F0` mix. Material A or B is chosen from the orbit trap, and roughness varies with it.
+- **Lighting:** a sun (direction slowly orbiting, intensity flickering with the beat), a hemispherical sky/ground ambient term, and a procedural sky (horizon-to-zenith gradient plus a sun disk) used as the environment reflection.
+- **Occlusion and shadows:** a 5-tap distance-field AO blended with step-count AO, and a soft shadow march.
+- **Mirror floor:** an analytic plane the camera ray tests against, with a real reflection march of the fractal (`uReflSteps`). Reflected hits are shaded without shadows or AO. The floor is off for the "inside" fractals (Apollonian, Kleinian).
+- **Post:** a higher bloom threshold, tiny aberration, low punch-in exposure and a gentle vignette. The theme table is `THEMES` in the code.
+
+Quality tiers (Low / Medium / High) set the march steps, shadow steps and reflection steps. Phones default to Low.
+
 ## 2. The fractals
 
 | # | Fractal | Map | Notes |
