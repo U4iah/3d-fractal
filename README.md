@@ -19,6 +19,18 @@ Or serve the folder: `python3 -m http.server`, then open http://localhost:8000.
 - **Custom ★**: "Save my look" stores your current theme, palette, hue and sliders, and Custom ★ restores them.
 - **T** switches theme and **C** cycles the palette or look.
 
+## Sculpt mode (no music needed)
+Without audio the fractal **holds perfectly still** and you drive it.
+- **One finger:** orbit. Flick and release and it keeps spinning with inertia.
+- **Pinch:** zoom. **Two fingers twisting:** spin the fractal itself.
+- **Hold a finger down, then drag:** sculpt. ↔ is **Shape** (the bass-driven parameter: bulb power, Mandelbox scale, fold offset) and ↕ is **Detail** (the mid-driven twist, Julia constant, fold angle). It uses the same controls the music normally drives, so every fractal responds in its own way.
+- **Double-tap:** fire a pulse (kick plus spin impulse).
+- The menu has matching sliders (Shape, Detail, Sparkle, Hue), **Pulse**, **Reset view** and **Random shape**. The sliders also add on top of music, so you can co-pilot a track.
+- **Idle motion** (off by default) brings back gentle drift when silent.
+
+## Controlling it from outside (for Quinn or any host page)
+`window.FractalPulse` exposes `state`, `apply({...})`, `setType(i)`, `setTheme(0|1)` and `pulse()`. The page also listens for `postMessage({fractalPulse:{type, theme, palette, look, shape, detail, sparkle, hue, zoom, az, el, pulse}}, '*')`. All values are clamped. This makes it easy to drive the visualizer from a coordinator, a dashboard, or a controller page.
+
 ## Morphing between fractals
 Switching fractal now **morphs** by default. The two distance fields are cross-faded while space itself mirror-folds and twists, peaking mid-transition, so the first fractal folds in on itself and unfolds into the next. It lasts about four beats (derived from the detected BPM). Every fractal is rendered in one shared normalised frame so the blend lines up, and each keeps its own live audio parameters during the blend. The "Transition" menu also offers Dissolve (noise dissolve between frames) and Cut. Auto-cycle and the drop detector both use whichever mode is selected.
 

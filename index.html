@@ -78,12 +78,13 @@
     <button id="bMic">🎤 Microphone</button>
     <button id="bTab">🖥 Tab / system audio</button>
   </div>
-  <p style="margin:16px 0 0;font-size:11px"><a href="#" id="bSilent" style="color:var(--dim)">continue without audio (ambient drift)</a> · drag &amp; drop a file anytime</p>
+  <button id="bSilent" style="width:100%;margin-top:6px;text-align:center;padding:12px">✋ Sculpt by touch (no music)</button>
+  <p style="margin:14px 0 0;font-size:11px;color:var(--dim)">drag &amp; drop an audio file anytime</p>
 </div></div>
 
 <div id="ui">
   <h1>Fractal Pulse</h1>
-  <div class="sub">drag = orbit · pinch / wheel = zoom · ☰ = menu · H hides · ←/→ next fractal · T theme</div>
+  <div class="sub">drag orbit · flick to spin · pinch zoom · twist rotate · hold+drag sculpt · double-tap pulse</div>
   <h2>Fractal</h2>
   <div class="grid" id="types"></div>
   <h2>Theme</h2>
@@ -101,6 +102,16 @@
     <button id="bTab2">Tab audio</button>
   </div>
   <audio id="player" controls style="display:none"></audio>
+  <h2>Sculpt · no music needed</h2>
+  <div class="row"><span>Shape</span><input id="sMB" type="range" min="0" max="1.2" step="0.005" value="0"></div>
+  <div class="row"><span>Detail</span><input id="sMM" type="range" min="0" max="1.2" step="0.005" value="0"></div>
+  <div class="row"><span>Sparkle</span><input id="sMH" type="range" min="0" max="1.2" step="0.005" value="0"></div>
+  <div class="row"><span>Hue</span><input id="sHue" type="range" min="0" max="1" step="0.005" value="0"></div>
+  <div class="row"><span>Idle motion</span><input id="cIdle" type="checkbox"><small style="color:var(--dim)">drift when silent</small></div>
+  <div class="grid">
+    <button id="bPulse">Pulse</button><button id="bResetView">Reset view</button>
+    <button id="bRandShape">Random shape</button>
+  </div>
   <h2>Look</h2>
   <div class="grid">
     <button id="bPal">Palette <kbd>C</kbd></button>
@@ -742,7 +753,7 @@ const SCHEMA = 3;     // bump to discard stale perf settings saved by older vers
 const canvas = $('gl'), hudC = $('hud'), hud = hudC.getContext('2d');
 const gl = canvas.getContext('webgl2', {antialias:false, alpha:false, powerPreference:'high-performance'});
 function showErr(m){ const e=$('err'); e.style.display='block'; e.textContent=m; console.error(m); }
-let toastT; function toast(m){ const t=$('toast'); t.textContent=m; t.style.opacity=1; clearTimeout(toastT); toastT=setTimeout(()=>t.style.opacity=0,1600); }
+let toastT; function toast(m,ms){ const t=$('toast'); t.textContent=m; t.style.opacity=1; clearTimeout(toastT); toastT=setTimeout(()=>t.style.opacity=0,ms||1600); }
 if(!gl){ showErr('WebGL2 is required.'); throw new Error('no webgl2'); }
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault(); showErr('GPU context lost — reloading…'); setTimeout(()=>location.reload(),800);});
 
@@ -900,7 +911,7 @@ async function useTab(){
 ['bMic','bMic2'].forEach(i=>$(i).onclick=useMic);
 ['bTab','bTab2'].forEach(i=>$(i).onclick=useTab);
 ['fFile','fFile2'].forEach(i=>$(i).onchange=e=>useFile(e.target.files[0]));
-$('bSilent').onclick=e=>{e.preventDefault(); $('start').classList.add('gone');};
+$('bSilent').onclick=e=>{e.preventDefault(); $('start').classList.add('gone'); toast('Drag to orbit · flick to spin · pinch to zoom · twist to rotate · hold + drag to sculpt · double-tap to pulse',6500);};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault(); useFile(e.dataTransfer.files[0]);});
 
@@ -912,10 +923,14 @@ function bandAvg(f0,f1){
 }
 const FB=64, fftBytes=new Uint8Array(FB), fftSmooth=new Float32Array(FB);
 const agc=[0.2,0.2,0.2], A={bass:0,mid:0,high:0,energy:0,beat:0,drop:0,pulse:0,onset:false,bpm:0};
+const E={bass:0,mid:0,high:0};
 let bAvg=0, lastBeat=-9, beatCount=0, phase=0, eShort=0, eLong=0.2, lastDrop=-99, quietSince=-99;
 const ibis=[];
 function analyse(dt,now){
   const sens=+$('sSens').value, live = hasAudio && analyser && actx.state==='running';
+  const man={bass:+$('sMB').value, mid:+$('sMM').value, high:+$('sMH').value};
+  const idle=!live && $('cIdle').checked;
+  A.live=live; A.idle=idle; A.animating=live||idle;
   let raw;
   if(live){
     analyser.getByteFrequencyData(freq);
@@ -923,16 +938,20 @@ function analyse(dt,now){
     for(let i=0;i<FB;i++){ const f0=30*Math.pow(10000/30,i/FB), f1=30*Math.pow(10000/30,(i+1)/FB);
       const v=Math.min(1,bandAvg(f0,f1)*1.6*sens); fftSmooth[i]= v>fftSmooth[i]? v : fftSmooth[i]*Math.exp(-dt*6); fftBytes[i]=fftSmooth[i]*255; }
   } else {
-    raw=[0.25+0.15*Math.sin(now*1.3), 0.25+0.15*Math.sin(now*0.9+1), 0.2+0.12*Math.sin(now*2.1+2)];
-    for(let i=0;i<FB;i++) fftBytes[i]=255*(0.25+0.2*Math.sin(now*1.7+i*0.35));
+    raw = idle ? [0.25+0.15*Math.sin(now*1.3), 0.25+0.15*Math.sin(now*0.9+1), 0.2+0.12*Math.sin(now*2.1+2)] : [0,0,0];
+    for(let i=0;i<FB;i++){
+      if(idle) fftBytes[i]=255*(0.25+0.2*Math.sin(now*1.7+i*0.35));
+      else { const g=i<FB*0.3?man.bass:i<FB*0.65?man.mid:man.high; fftBytes[i]=255*(0.05+0.6*g*(0.65+0.35*Math.sin(i*1.3))); }
+    }
   }
   const k=['bass','mid','high'], nrm=[0,0,0];
   for(let i=0;i<3;i++){
     agc[i]=Math.max(agc[i]*Math.pow(0.5,dt/6), raw[i], 0.1);
     nrm[i]=Math.min(1.4, Math.pow(raw[i]/agc[i],1.3)*sens);
-    const e=A[k[i]];
-    A[k[i]] = nrm[i]>e ? e+(nrm[i]-e)*Math.min(1,dt*28) : e+(nrm[i]-e)*Math.min(1,dt*5);
+    const e=E[k[i]];
+    E[k[i]] = nrm[i]>e ? e+(nrm[i]-e)*Math.min(1,dt*28) : e+(nrm[i]-e)*Math.min(1,dt*5);
   }
+  A.bass=Math.min(1.5,E.bass+man.bass); A.mid=Math.min(1.5,E.mid+man.mid); A.high=Math.min(1.5,E.high+man.high);
   A.energy = (A.bass+A.mid+A.high)/3;
   A.beat *= Math.exp(-dt*5.5); A.drop *= Math.exp(-dt*1.4); A.onset=false;
 
@@ -944,7 +963,7 @@ function analyse(dt,now){
       const s=[...ibis].sort((a,b)=>a-b); let bpm=60/s[s.length>>1]; while(bpm<75) bpm*=2; while(bpm>165) bpm/=2; A.bpm=A.bpm? A.bpm*0.8+bpm*0.2 : bpm; }
     const err=phase-Math.round(phase); phase-=err*0.35;       // soft phase-lock to the beat grid
   }
-  if(!live && Math.sin(now*3.1)>0.995) A.beat=1;
+  if(idle && Math.sin(now*3.1)>0.995) A.beat=1;
   phase += dt*(A.bpm||110)/60;
   A.pulse = Math.pow(0.5+0.5*Math.cos(6.2831853*phase),3);
 
@@ -1044,19 +1063,47 @@ addEventListener('keydown',e=>{
 });
 function toggleFull(){ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
 $('bFull').onclick=toggleFull; let shot=false; $('bShot').onclick=()=>shot=true;
-let drag=null; const ptrs=new Map(); let pinch0=0;
+let drag=null; const ptrs=new Map(); let pinch0=0, ang0=0, azV=0, elV=0, lastMoveT=0, sculpt=null, pressT=null, lastTap=0;
 const pdist=()=>{ const v=[...ptrs.values()]; return Math.hypot(v[0].x-v[1].x,v[0].y-v[1].y); };
-canvas.addEventListener('pointerdown',e=>{ ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); drag=true; try{canvas.setPointerCapture(e.pointerId);}catch(_){} if(ptrs.size===2) pinch0=pdist(); });
+const pang=()=>{ const v=[...ptrs.values()]; return Math.atan2(v[1].y-v[0].y,v[1].x-v[0].x); };
+function pulse(){ A.beat=1; A.drop=Math.max(A.drop,0.3); for(let i=0;i<3;i++) kick[i]+=(Math.random()-0.5)*2.2; hue+=0.02; }
+canvas.addEventListener('pointerdown',e=>{
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t0:performance.now(),moved:false});
+  drag=true; azV=elV=0; try{canvas.setPointerCapture(e.pointerId);}catch(_){}
+  clearTimeout(pressT);
+  if(ptrs.size===2){ pinch0=pdist(); ang0=pang(); }
+  else if(ptrs.size===1){                                   // press-and-hold → sculpt
+    pressT=setTimeout(()=>{ const p=ptrs.get(e.pointerId); if(p && !p.moved && ptrs.size===1){
+      sculpt={id:e.pointerId,x0:p.x,y0:p.y,b0:+$('sMB').value,m0:+$('sMM').value}; toast('Sculpting: drag ↔ shape · ↕ detail'); } },320);
+  }
+});
 canvas.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId); if(!p) return;
   const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY;
-  if(ptrs.size>=2){ const d=pdist(); if(pinch0>0) zoomMul=clamp(zoomMul*pinch0/d,0.08,4); pinch0=d; }
-  else { az-=dx*0.006; el=clamp(el+dy*0.006,-1.5,1.5); }
+  if(Math.hypot(p.x-p.x0,p.y-p.y0)>8) p.moved=true;
+  if(sculpt && sculpt.id===e.pointerId){
+    $('sMB').value=clamp(sculpt.b0+(p.x-sculpt.x0)/(innerWidth*0.55),0,1.2).toFixed(3);
+    $('sMM').value=clamp(sculpt.m0-(p.y-sculpt.y0)/(innerHeight*0.45),0,1.2).toFixed(3); return;
+  }
+  if(ptrs.size>=2){
+    const d=pdist(); if(pinch0>0) zoomMul=clamp(zoomMul*pinch0/d,0.08,4); pinch0=d;
+    const a=pang(); let da=a-ang0; if(da>Math.PI) da-=2*Math.PI; if(da<-Math.PI) da+=2*Math.PI; ang[2]+=da; ang0=a;   // twist spins the fractal itself
+  } else if(p.moved){
+    const nt=performance.now(), dtm=Math.max(8,nt-lastMoveT); lastMoveT=nt;
+    const ddx=-dx*0.006, ddy=dy*0.006; az+=ddx; el=clamp(el+ddy,-1.5,1.5);
+    azV=clamp(azV*0.5+(ddx/dtm*1000)*0.5,-8,8); elV=clamp(elV*0.5+(ddy/dtm*1000)*0.5,-8,8);   // flick inertia
+  }
 });
-const pend=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) drag=null; pinch0=ptrs.size===2?pdist():0; };
+const pend=e=>{
+  const p=ptrs.get(e.pointerId); clearTimeout(pressT);
+  if(p && !p.moved && !sculpt && ptrs.size===1 && performance.now()-p.t0<300){      // double-tap → pulse
+    const n=performance.now(); if(n-lastTap<320){ pulse(); lastTap=0; } else lastTap=n; }
+  if(sculpt && sculpt.id===e.pointerId) sculpt=null;
+  ptrs.delete(e.pointerId); if(!ptrs.size) drag=null;
+  pinch0=ptrs.size===2?pdist():0; if(ptrs.size===2) ang0=pang();
+};
 canvas.addEventListener('pointerup',pend); canvas.addEventListener('pointercancel',pend);
 canvas.addEventListener('wheel',e=>{e.preventDefault(); zoomMul=clamp(zoomMul*Math.exp(e.deltaY*0.001),0.08,4);},{passive:false});
-canvas.addEventListener('dblclick',()=>$('ui').classList.toggle('hidden'));
 
 // ───────────────────────── per-fractal music mapping ─────────────────────────
 function params(ty){
@@ -1115,18 +1162,19 @@ function frameFn(nowMs){
   analyse(dt,now);
   director(dt);
   const motion=+$('sMotion').value, warp=+$('sWarp').value;
-  T+=dt*(0.6+0.8*motion);
-  if(A.onset||(!hasAudio&&A.beat>0.99)){
+  if(A.animating) T+=dt*(0.6+0.8*motion);
+  if(A.onset||(A.idle&&A.beat>0.99)){
     const amt=(A.drop>0.9?3.5:1.4)*motion; for(let i=0;i<3;i++) kick[i]+=(Math.random()-0.5)*amt; hue+=0.012+0.05*A.drop;
     if($('cCycle').checked && T-lastSwitch>(A.drop>0.9?4:26) && (A.drop>0.9 || beatCount%8===0)) setType(shown+1);
   }
   for(let i=0;i<3;i++) kick[i]*=Math.exp(-dt*2.2);
   const base=[0.11,0.16,0.07];
-  for(let i=0;i<3;i++) ang[i]+=(base[i]*(0.5+2.2*A.energy)*motion+kick[i])*dt;
-  hue+=dt*(0.01+0.06*A.high);
-  if($('cOrbit').checked && !drag) az+=dt*(0.08+0.25*A.mid)*(camMode===2?2.2:1)*motion;
+  for(let i=0;i<3;i++) ang[i]+=(A.animating?base[i]*(0.5+2.2*A.energy)*motion:0)*dt+kick[i]*dt;
+  if(A.animating) hue+=dt*(0.01+0.06*A.high);
+  if($('cOrbit').checked && !drag && A.animating) az+=dt*(0.08+0.25*A.mid)*(camMode===2?2.2:1)*motion;
   if(camMode===2 && !drag) el+= (0.6*Math.sin(camT*0.23)-el)*dt*0.5;
-  kalRot+=dt*(0.1+0.4*A.mid);
+  if(A.animating) kalRot+=dt*(0.1+0.4*A.mid);
+  if(!drag){ az+=azV*dt; el=clamp(el+elV*dt,-1.5,1.5); const dmp=Math.exp(-dt*2.4); azV*=dmp; elV*=dmp; }
 
   if(morphTo>=0){ const dur=A.bpm?clamp(4*60/A.bpm,1.4,3.2):2.4; morphT=Math.min(1,morphT+Math.min(rawDt,0.2)/dur); if(morphT>=1){ type=morphTo; morphTo=-1; morphT=0; } }
   const morphing=morphTo>=0, mS=morphing?morphT*morphT*(3-2*morphT):0;
@@ -1166,7 +1214,7 @@ function frameFn(nowMs){
   bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
   progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uType2:morphing?morphTo:type,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
-    uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue,uGlow:+$('sGlow').value,
+    uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:+$('sGlow').value,
     uSlice:$('cSlice').checked?1:0,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
     uMatA:realCur.matA,uMatB:realCur.matB,uMetal:realCur.metal,uRough:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uFloorOn:floorOn?1:0,uFloorY:floorY,
     uPA:palCur.a,uPB:palCur.b,uPC:palCur.c,uPD:palCur.d,uLDR:useFloat?0:1,uFFT:3});
@@ -1190,7 +1238,7 @@ function frameFn(nowMs){
   if(shot){ shot=false; const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='fractal-pulse.png'; a.click(); }
 
   drawHud();
-  if(frame%15===0) $('stat').textContent=`${(1000/ema).toFixed(0)} fps · scene ${sw}×${sh} · ${hasAudio?'audio':'ambient'}${A.bpm?` · ${A.bpm.toFixed(0)} bpm`:''} · ${useFloat?'HDR':'LDR'} · ${th.name}`;
+  if(frame%15===0) $('stat').textContent=`${(1000/ema).toFixed(0)} fps · scene ${sw}×${sh} · ${A.live?'audio':(A.idle?'idle':'sculpt')}${A.bpm?` · ${A.bpm.toFixed(0)} bpm`:''} · ${useFloat?'HDR':'LDR'} · ${th.name}`;
   frame++;
   requestAnimationFrame(frameFn);
 }
@@ -1204,6 +1252,28 @@ function drawHud(){
   }
   if(A.drop>0.05){ hud.fillStyle=`rgba(255,255,255,${A.drop*0.12})`; hud.fillRect(0,0,W,H); }
 }
+// ───────────────────────── sculpt buttons + external control API ─────────────────────────
+$('bPulse').onclick=pulse;
+$('bResetView').onclick=()=>{ az=0.6; el=theme===1?0.14:0.35; zoomMul=1; azV=elV=0; ang[0]=0.3; ang[1]=0.5; ang[2]=0.1; kick[0]=kick[1]=kick[2]=0; ['sMB','sMM','sMH','sHue'].forEach(i=>$(i).value=0); toast('View reset'); };
+$('bRandShape').onclick=()=>{ $('sMB').value=(0.1+Math.random()*0.8).toFixed(3); $('sMM').value=(0.1+Math.random()*0.8).toFixed(3); $('sMH').value=(Math.random()*0.7).toFixed(3); $('sHue').value=Math.random().toFixed(3); pulse(); };
+// Programmatic control: window.FractalPulse.* from the console / a host page, or window.postMessage({fractalPulse:{...}}, '*')
+const FP = {
+  get state(){ return {type:shown,theme,palette:palIdx,look:realIdx,hue:+$('sHue').value,az,el,zoom:zoomMul,
+    shape:+$('sMB').value,detail:+$('sMM').value,sparkle:+$('sMH').value,live:!!A.live,bpm:A.bpm||0}; },
+  apply(o){ if(!o||typeof o!=='object') return; const n=(v,a,b)=>clamp(+v||0,a,b);
+    if('theme' in o) setTheme(n(o.theme,0,1)|0);
+    if('type' in o) setType(n(o.type,0,TYPES.length-1)|0);
+    if('palette' in o){ palIdx=n(o.palette,0,PALS.length-1)|0; }
+    if('look' in o){ realIdx=n(o.look,0,LOOKS.length-1)|0; }
+    if('shape' in o) $('sMB').value=n(o.shape,0,1.2); if('detail' in o) $('sMM').value=n(o.detail,0,1.2);
+    if('sparkle' in o) $('sMH').value=n(o.sparkle,0,1.2); if('hue' in o) $('sHue').value=n(o.hue,0,1);
+    if('zoom' in o) zoomMul=n(o.zoom,0.08,4); if('az' in o) az=+o.az||0; if('el' in o) el=n(o.el,-1.5,1.5);
+    if(o.pulse) pulse(); save(); },
+  setType, setTheme, pulse
+};
+window.FractalPulse = FP;
+addEventListener('message',e=>{ const d=e.data; if(d && typeof d==='object' && d.fractalPulse) FP.apply(d.fractalPulse); });
+
 // ───────────────────────── mobile / device plumbing ─────────────────────────
 $('menuBtn').onclick=()=>$('ui').classList.toggle('hidden');
 if(isMobile) $('ui').classList.add('hidden');

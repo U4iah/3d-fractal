@@ -60,6 +60,10 @@ d  = mix(dA(pf·kA)/kA, dB(pf·kB)/kB, smoothstep(t))
 - **Cost.** Two distance evaluations per step for the duration of the morph (about 4 beats). Auto-res absorbs the dip.
 - **Timing.** The duration is four beats, derived from the detected BPM and clamped to 1.4–3.2 s.
 
+## 1e. Sculpt mode (v5)
+
+Audio features are split into an *envelope* (from the analyser) and a *manual offset* (from the Shape / Detail / Sparkle sliders). `A.bass = E.bass + man.bass`, and likewise for mid and high. With no audio the envelopes decay to zero and all time-based animation (the master clock, auto-orbit, hue drift, spin) is gated off, so the picture is deterministic and still. The touch gestures write straight into the same sliders.
+
 ## 2. The fractals
 
 | # | Fractal | Map | Notes |
