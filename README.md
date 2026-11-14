@@ -19,17 +19,31 @@ Or serve the folder: `python3 -m http.server`, then open http://localhost:8000.
 - **Custom ★**: "Save my look" stores your current theme, palette, hue and sliders, and Custom ★ restores them.
 - **T** switches theme and **C** cycles the palette or look.
 
-## Sculpt mode (no music needed)
-Without audio the fractal **holds perfectly still** and you drive it.
-- **One finger:** orbit. Flick and release and it keeps spinning with inertia.
-- **Pinch:** zoom. **Two fingers twisting:** spin the fractal itself.
-- **Hold a finger down, then drag:** sculpt. ↔ is **Shape** (the bass-driven parameter: bulb power, Mandelbox scale, fold offset) and ↕ is **Detail** (the mid-driven twist, Julia constant, fold angle). It uses the same controls the music normally drives, so every fractal responds in its own way.
-- **Double-tap:** fire a pulse (kick plus spin impulse).
-- The menu has matching sliders (Shape, Detail, Sparkle, Hue), **Pulse**, **Reset view** and **Random shape**. The sliders also add on top of music, so you can co-pilot a track.
-- **Idle motion** (off by default) brings back gentle drift when silent.
+## Touch controls
+- **One finger:** spin. It has inertia, so a flick keeps going.
+- **Two fingers:** pinch to zoom and twist to roll the fractal.
+- **Three or more fingers: CHAOS.** The more fingers, and the harder you wiggle, the wilder it gets. It ramps up smoothly (a bar across the top shows the level) and calms when you lift off. Chaos injects audio-like energy into the shape, fires rapid spin kicks, multiplies the space warp, spins the hue, flips on a kaleidoscope, shakes the camera and, if you hold it, morphs into a different fractal every few seconds.
+- **Double-tap:** fire a pulse.
+- **Sculpt pad:** a thumb XY pad (on by default on phones; toggle in the menu). Shape on X, Detail on Y. It has its own touch, so one thumb can sculpt while the other hand spins.
+- **Without music** the fractal holds perfectly still. Shape, Detail, Sparkle and Hue sliders also add on top of music. **Idle motion** brings back gentle drift.
+- **Tilt control** (button in the menu): tilt the phone to look around, and shake to pulse. It needs a motion-permission prompt, so it only works when the page is hosted on its own address (see "Hosting" below).
+
+## Morph timeline
+A beat-synced journey through fractals. Add steps (fractal + length in beats), then **Play journey**. Each step change is a geometric morph. Options: loop, new palette per step, **All fractals**, **Shuffle**. A detected drop advances the journey early (after at least 4 beats). Your timeline is saved on the device.
+
+## Record clips
+**● Record clip** captures the canvas at full resolution together with whatever audio is playing (demo, file, mic or tab), as MP4 where the browser supports it and WebM otherwise. Then **Save clip** opens the iOS share sheet (Save Video, AirDrop, Messages) or downloads the file. Needs the standalone page (see "Hosting").
+
+## Hosting on GitHub Pages (unlocks tilt, recording, mic, installing to the home screen)
+1. On GitHub: repo → **Settings → Pages**.
+2. **Build and deployment → Source: Deploy from a branch.** Pick the branch (this work is on `claude/vibrant-ramanujan-duq5yk`, or `main` after you merge) and folder **/ (root)**. Save.
+3. After about a minute the site is at `https://<your-username>.github.io/3d-fractal/`.
+4. On iPhone: open that URL in Safari, then **Share → Add to Home Screen** for a fullscreen app icon. It works offline after the first load.
+
+The repo includes `manifest.webmanifest`, `sw.js`, icons and `.nojekyll` for this.
 
 ## Controlling it from outside (for Quinn or any host page)
-`window.FractalPulse` exposes `state`, `apply({...})`, `setType(i)`, `setTheme(0|1)` and `pulse()`. The page also listens for `postMessage({fractalPulse:{type, theme, palette, look, shape, detail, sparkle, hue, zoom, az, el, pulse}}, '*')`. All values are clamped. This makes it easy to drive the visualizer from a coordinator, a dashboard, or a controller page.
+`window.FractalPulse` exposes `state`, `apply({...})`, `setType(i)`, `setTheme(0|1)` and `pulse()`. `apply` also takes `chaos` (0–1) and `view:{yaw,pitch}` in radians (set `view:null` to release), so a face/hand/eye tracker can drive the camera and the chaos level directly. For a tracker running as a separate program, open the page with `#ws=ws://localhost:8765` and send JSON `{"fractalPulse":{...}}` over a WebSocket. Safari blocks `ws://` from HTTPS pages, so for that case use `postMessage` from a host page, or run the tracker's bridge page over HTTPS. The page also listens for `postMessage({fractalPulse:{type, theme, palette, look, shape, detail, sparkle, hue, zoom, az, el, pulse}}, '*')`. All values are clamped. This makes it easy to drive the visualizer from a coordinator, a dashboard, or a controller page.
 
 ## Morphing between fractals
 Switching fractal now **morphs** by default. The two distance fields are cross-faded while space itself mirror-folds and twists, peaking mid-transition, so the first fractal folds in on itself and unfolds into the next. It lasts about four beats (derived from the detected BPM). Every fractal is rendered in one shared normalised frame so the blend lines up, and each keeps its own live audio parameters during the blend. The "Transition" menu also offers Dissolve (noise dissolve between frames) and Cut. Auto-cycle and the drop detector both use whichever mode is selected.
@@ -51,7 +65,7 @@ Detected automatically (iPhone/iPad with a 2× or 3× screen). Compared with gen
 - On iOS, Web Audio follows the ringer switch, so unmute if you hear nothing.
 
 ## Fractals
-Mandelbulb · Juliabulb · Tricorn bulb · Burning-ship bulb · Quaternion Julia · Mandelbox · Menger sponge · Sierpinski tetrahedron · Apollonian packing · Box-folded bulb · Octahedron KIFS · Pseudo-Kleinian · Quaternion Mandelbrot · Menger×Tetra hybrid.
+Mandelbulb · Juliabulb · Tricorn bulb · Burning-ship bulb · Quaternion Julia · Mandelbox · Menger sponge · Sierpinski tetrahedron · Apollonian packing · Box-folded bulb · Octahedron KIFS · Pseudo-Kleinian · Quaternion Mandelbrot · Menger×Tetra hybrid · Icosahedral IFS · Negative-scale Mandelbox · Julibox · Bristorbrot.
 
 See **RESEARCH.md** for the math, the audio mapping, and notes on what was and wasn't tested.
 

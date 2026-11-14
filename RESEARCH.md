@@ -64,6 +64,21 @@ d  = mix(dA(pf·kA)/kA, dB(pf·kB)/kB, smoothstep(t))
 
 Audio features are split into an *envelope* (from the analyser) and a *manual offset* (from the Shape / Detail / Sparkle sliders). `A.bass = E.bass + man.bass`, and likewise for mid and high. With no audio the envelopes decay to zero and all time-based animation (the master clock, auto-orbit, hue drift, spin) is gated off, so the picture is deterministic and still. The touch gestures write straight into the same sliders.
 
+## 1f. Audio features (v6)
+
+On top of the three bands and the kick detector:
+- **Spectral flux** (positive frame-to-frame change in the spectrum) over 1.5–6 kHz fires a *snare* event, and over 7–14 kHz a *hat* event. Snares add a soft pulse, a fold-twist and bulb-power bump, and a spin kick. Hats drive the sparkle band.
+- **Spectral centroid** (the "brightness" of the sound, 100 Hz–8 kHz, log-scaled) gently shifts the hue.
+- **Pitch follower:** the strongest spectral peak between 150 Hz and 1.8 kHz (when it clears a magnitude gate) is smoothed and mapped log-scale to 0–1. It nudges the fold angle and the Julia constants, so melodic lines bend the shapes.
+- **Feel presets** change attack and release speed and how strongly snares and pitch act: Balanced, Punchy, Smooth, Melodic.
+- These are heuristics tuned on the synthetic demo track, not on a corpus of real music. Expect to retune thresholds.
+
+## 1g. Chaos, timeline, recording
+
+- **Chaos** is a smoothed scalar `C` (0..1), set by the number of fingers (3+) and finger speed, or by `apply({chaos})`. It adds `C`-scaled sine-modulated energy to bass, mid and high, bumps the drop envelope (flash, bloom, aberration), fires spin kicks at a rate rising with `C`, multiplies the warp by `1 + 3C`, spins the hue, enables a kaleidoscope above `C = 0.6`, and above `C = 0.85` triggers a morph every ~3.4 s.
+- **Timeline:** a list of `(fractal, beats)` steps. A beat counter advances at the detected BPM (110 if none) and each step ends when its beat count is reached.
+- **Recording:** `canvas.captureStream(60)` plus an audio tap taken from the shared analyser node (every source passes through it), fed to `MediaRecorder` at 10 Mbit/s.
+
 ## 2. The fractals
 
 | # | Fractal | Map | Notes |
@@ -80,6 +95,10 @@ Audio features are split into an *envelope* (from the analyser) and a *manual of
 | 10 | **Octahedron KIFS** | abs + sort, `×2`, translate to the vertex `(s,0,0)` | Octahedral analogue of the gasket. |
 | 11 | **Pseudo-Kleinian** (Knighty-style) | box fold + sphere inversion `p·max(1/\|p\|²,1)` | DE is `0.3·\|z\|/dr` on the folded plane. Exposure is lowered because the camera sits inside the foam. |
 | 12 | **Quaternion Mandelbrot** | `q → q² + (p, w)`, `z₀ = 0` | The 4th coordinate `w` is the slice plane, and it scrolls with the music. `dz → 2·z·dz + 1`. |
+| 14 | **Icosahedral IFS** | fold across the three non-coordinate mirror planes of the icosahedral group (normals from the golden ratio), `×2`, translate toward a vertex | Gives five-fold symmetry. This is the least polished entry: the end primitive is a sphere, and the form is dust-like. |
+| 15 | **Negative-scale Mandelbox** | Mandelbox with `s ≈ −1.5 … −2.8` | Same code as the Mandelbox. The DE already uses `\|s\|`. |
+| 16 | **Julibox** | Mandelbox with a fixed constant `c` instead of the point `p` | Julia-style variant. Its bounding radius is guessed from renders. |
+| 17 | **Bristorbrot-style quadratic** | `(x²−y²−z², y(2x−z), z(2x+y)) + p` | The map is from memory of the community formula. The DE is the generic power-2 estimate, so it is approximate. |
 | 13 | **Menger × Sierpinski hybrid** | alternate Menger (×3) and Sierpinski (×2) folds | The DE is approximate (box SDF scaled to the mixed shape). |
 | 8 | **Apollonian packing** | `p → −1 + 2·fract(0.5p + 0.5)`, then inversion `p·s/\|p\|²` | Sphere-inversion IFS in a periodic cell. The camera sits inside the foam. |
 
