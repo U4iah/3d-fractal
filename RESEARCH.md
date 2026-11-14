@@ -25,6 +25,15 @@ DE ≈ 0.5 · |z| · ln|z| / |dz/dp|
 ### Orbit traps for colour
 Track `min(|z|²)` over the iterations (`gTrap`). It is a smooth scalar that follows the fractal's structure, so we map `log(1 + trap)` through a cosine palette. Hue also rotates with time and treble.
 
+## 1b. Render pipeline (v2)
+
+1. **Scene pass:** the raymarcher writes linear HDR (RGBA16F) at a scalable internal resolution.
+2. **Bloom:** bright-pass, then two separable 9-tap Gaussian rounds at ¼ screen resolution.
+3. **Composite at full resolution:** kaleidoscope mirror, beat-driven chromatic aberration, noise dissolve to the previous fractal, bloom add, ACES tone map, vignette, dithered grain.
+4. **LOD inside the shader:** fold fractals stop iterating once their scale passes the pixel footprint (`sc·ε > 1`). Far or small pixels get far fewer iterations.
+5. **Audio-driven space warp.** The whole space is twisted about y and bent by a travelling sine before the fractal is evaluated. The step size is divided by an estimated Lipschitz bound, `1 + |twist|·size + 2.1·|bend|`, so the DE stays safe.
+6. **Spectrum painting.** A 64-bin log-FFT texture is sampled with the orbit-trap value, so different surface regions light up with different frequencies.
+
 ## 2. The fractals
 
 | # | Fractal | Map | Notes |
@@ -37,6 +46,11 @@ Track `min(|z|²)` over the iterations (`gTrap`). It is a smooth scalar that fol
 | 5 | **Mandelbox** (Tom Lowe, 2010) | box fold → sphere fold → `z = s·z + p` | Scale `s` of about 2 gives the classic form. Its bounding radius grows as `s` falls, so the bound is generous. |
 | 6 | **Menger sponge** (Menger, 1926) | KIFS: `abs`, axis sort, `×3`, translate | Volume → 0 and surface area → ∞. Hausdorff dimension ln 20 / ln 3 ≈ 2.727. |
 | 7 | **Sierpinski tetrahedron** | 3 mirror folds, `×2`, translate to the vertex | Dimension 2, with zero volume. |
+| 9 | **Box-folded bulb** (hybrid) | box fold on every other iteration, then the triplex power | Fold limit pulses with the bass. The escape test runs *before* the fold. Folding first lets escaping points fold back in, which makes the set solid. |
+| 10 | **Octahedron KIFS** | abs + sort, `×2`, translate to the vertex `(s,0,0)` | Octahedral analogue of the gasket. |
+| 11 | **Pseudo-Kleinian** (Knighty-style) | box fold + sphere inversion `p·max(1/\|p\|²,1)` | DE is `0.3·\|z\|/dr` on the folded plane. Exposure is lowered because the camera sits inside the foam. |
+| 12 | **Quaternion Mandelbrot** | `q → q² + (p, w)`, `z₀ = 0` | The 4th coordinate `w` is the slice plane, and it scrolls with the music. `dz → 2·z·dz + 1`. |
+| 13 | **Menger × Sierpinski hybrid** | alternate Menger (×3) and Sierpinski (×2) folds | The DE is approximate (box SDF scaled to the mixed shape). |
 | 8 | **Apollonian packing** | `p → −1 + 2·fract(0.5p + 0.5)`, then inversion `p·s/\|p\|²` | Sphere-inversion IFS in a periodic cell. The camera sits inside the foam. |
 
 ### Other candidates (not built)
@@ -57,6 +71,12 @@ Alternatives to the 3D Mandelbrot exist because **no true 3D analogue of the com
 - **Auto gain.** Each band is divided by its own slow-decaying peak (6 s half-life), then multiplied by the Sensitivity slider. Quiet and loud tracks both fill the range.
 - **Envelope followers.** Fast attack (~35 ms) and slow release (~200 ms). Visuals punch on hits and fall smoothly.
 - **Beat detection.** A bass onset fires when the bass level exceeds its running mean × 1.25 + 0.12, with a 200 ms refractory period.
+
+### Beat intelligence (v2)
+- **BPM estimate:** median of recent inter-onset intervals, folded into 75–165 bpm.
+- **Beat phase-lock:** a soft phase-locked loop keeps a continuous beat phase `uPulse` that stays in time between detected hits.
+- **Drop detector:** a fast energy envelope compared with a slow one. A quiet passage (short < 0.55 × long) followed within a second by a surge (> 1.25 × long) fires a drop. A drop flashes, boosts bloom and aberration, kicks the spin hard, and can force an auto-cycle switch. The demo track has a breakdown every 8 bars to exercise this.
+- **Director mode:** on a beat, at most every 14 s, it picks a camera move (orbit, dive in and out, low sweep), a kaleidoscope setting, a palette, and sometimes a new fractal.
 
 ### Mapping: every fractal parameter has a musical driver
 | Musical feature | Visual effect |
@@ -82,8 +102,10 @@ Built-in generative demo (128 bpm kick, clap, hats, acid bass, arp, delay), file
 
 ## 5. What was verified, and what wasn't
 
-- Verified: the shader compiles, and all 9 fractals render with live audio-driven uniforms. Tested in headless Chromium with software WebGL, using the built-in demo audio and screenshots.
+- Verified: the shader compiles, and all 14 fractals render with live audio-driven uniforms. Tested in headless Chromium with software WebGL, using the built-in demo audio and screenshots.
 - **Not verified on real hardware.** Frame rate is untested on a real GPU, and so are mic input and tab capture, since they need a browser prompt.
+- - **Not verified:** the drop detector on real music. It is tuned by reasoning and the demo track only.
+- Both new hybrids (Folded bulb, Menger×Tetra) use approximate DEs.
 - The Menger and Sierpinski folds include an audio twist. At twist = 0 they are the exact sponge and gasket, and with twist they become warped hybrids. The DE is then only approximately conservative, which is why the step factor is 0.85.
 
 ## 6. References

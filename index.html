@@ -5,16 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fractal Pulse — music-reactive 3D fractals</title>
 <style>
-  :root{--fg:#e8ecff;--dim:#8a93b8;--accent:#7cf0ff;--panel:rgba(10,12,24,.72)}
+  :root{--fg:#e8ecff;--dim:#8a93b8;--accent:#7cf0ff;--panel:rgba(10,12,24,.74)}
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:#000;color:var(--fg);font:13px/1.4 system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden}
   canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
-  canvas#hud{position:fixed;left:0;right:0;bottom:0;width:100%;height:90px;pointer-events:none}
-  #ui{position:fixed;top:12px;right:12px;width:272px;max-height:calc(100% - 24px);overflow:auto;background:var(--panel);
+  canvas#hud{position:fixed;left:0;right:0;bottom:0;width:100%;height:90px;pointer-events:none;transition:opacity .3s}
+  #ui{position:fixed;top:12px;right:12px;width:284px;max-height:calc(100% - 24px);overflow:auto;background:var(--panel);
       backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;transition:opacity .25s}
   #ui.hidden{opacity:0;pointer-events:none}
   h1{font-size:14px;margin:0 0 2px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
-  .sub{color:var(--dim);font-size:11px;margin-bottom:10px}
+  .sub{color:var(--dim);font-size:11px;margin-bottom:6px}
   h2{font-size:11px;margin:12px 0 6px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
   button,label.btn{font:inherit;color:var(--fg);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
@@ -28,13 +28,14 @@
   #info{margin-top:10px;padding:8px;border-radius:8px;background:rgba(255,255,255,.05);font-size:11.5px;color:#c9d0f2}
   #info b{color:var(--accent)} #info code{color:#ffd88a}
   #stat{position:fixed;left:12px;top:10px;color:var(--dim);font-size:11px;text-shadow:0 0 6px #000;pointer-events:none}
-  #title{position:fixed;left:12px;bottom:96px;font-size:22px;font-weight:600;text-shadow:0 0 12px #000;pointer-events:none;letter-spacing:.02em}
+  #title{position:fixed;left:12px;bottom:96px;font-size:22px;font-weight:600;text-shadow:0 0 12px #000;pointer-events:none;letter-spacing:.02em;transition:opacity .6s}
+  #toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);padding:6px 14px;border-radius:99px;background:rgba(0,0,0,.55);
+      color:#fff;font-size:12px;opacity:0;transition:opacity .4s;pointer-events:none}
   #start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(8,10,30,.55),rgba(0,0,0,.92));z-index:5;transition:opacity .5s}
   #start.gone{opacity:0;pointer-events:none}
-  .card{max-width:430px;padding:26px;text-align:center}
+  .card{max-width:440px;padding:26px;text-align:center}
   .card h1{font-size:28px;margin-bottom:6px;color:#fff}
   .card p{color:var(--dim);margin:0 0 18px}
-  .card .grid{grid-template-columns:1fr 1fr}
   .card button,.card label.btn{text-align:center;padding:12px}
   #err{position:fixed;left:12px;right:12px;bottom:100px;background:#400;color:#fcc;padding:10px;border-radius:8px;white-space:pre-wrap;font:11px monospace;display:none;z-index:9;max-height:40%;overflow:auto}
   audio{width:100%;height:32px;margin-top:6px}
@@ -45,11 +46,12 @@
 <canvas id="hud"></canvas>
 <div id="stat"></div>
 <div id="title"></div>
+<div id="toast"></div>
 <div id="err"></div>
 
 <div id="start"><div class="card">
   <h1>Fractal Pulse</h1>
-  <p>Real distance-estimated 3D fractals — Mandelbulb, Julia, Tricorn, Burning Ship, quaternion Julia, Mandelbox, Menger sponge, Sierpinski tetrahedron, Apollonian — folding, warping and spinning to your music in real time.</p>
+  <p>Fourteen real distance-estimated 3D fractals — bulbs, quaternions, boxes, sponges, kleinian foam — folding, warping and spinning to your music in real time.</p>
   <div class="grid">
     <button id="bDemo">▶ Built-in demo beat</button>
     <label class="btn">♪ Load audio file<input id="fFile" type="file" accept="audio/*" hidden></label>
@@ -61,7 +63,7 @@
 
 <div id="ui">
   <h1>Fractal Pulse</h1>
-  <div class="sub">H hides panel · drag = orbit · wheel = zoom</div>
+  <div class="sub">H hides panel · drag = orbit · wheel = zoom · ←/→ = next fractal</div>
   <h2>Fractal</h2>
   <div class="grid" id="types"></div>
   <h2>Audio</h2>
@@ -72,15 +74,25 @@
     <button id="bTab2">Tab audio</button>
   </div>
   <audio id="player" controls style="display:none"></audio>
-  <h2>Tuning</h2>
+  <h2>Look</h2>
+  <div class="grid">
+    <button id="bPal">Palette <kbd>C</kbd></button>
+    <button id="bRand">Randomize <kbd>R</kbd></button>
+  </div>
+  <div class="row" style="margin-top:8px"><span>Warp</span><input id="sWarp" type="range" min="0" max="2" step="0.01" value="0.6"></div>
+  <div class="row"><span>Kaleidoscope</span><input id="sKal" type="range" min="0" max="12" step="1" value="0"></div>
+  <div class="row"><span>Bloom</span><input id="sBloom" type="range" min="0" max="2" step="0.01" value="1"></div>
+  <div class="row"><span>Glow</span><input id="sGlow" type="range" min="0" max="2" step="0.01" value="1"></div>
+  <h2>Reactivity</h2>
   <div class="row"><span>Sensitivity</span><input id="sSens" type="range" min="0.3" max="2.5" step="0.01" value="1.2"></div>
   <div class="row"><span>Motion</span><input id="sMotion" type="range" min="0" max="2.5" step="0.01" value="1"></div>
-  <div class="row"><span>Glow</span><input id="sGlow" type="range" min="0" max="2" step="0.01" value="1"></div>
+  <div class="row"><span>Director</span><input id="cDirector" type="checkbox"><small style="color:var(--dim)">auto camera / look / kaleido</small></div>
+  <div class="row"><span>Auto-cycle</span><input id="cCycle" type="checkbox"><small style="color:var(--dim)">swap fractal on beat</small></div>
+  <div class="row"><span>Auto-orbit</span><input id="cOrbit" type="checkbox" checked></div>
+  <div class="row"><span>Cut-away</span><input id="cSlice" type="checkbox"></div>
+  <h2>Performance</h2>
   <div class="row"><span>Resolution</span><input id="sRes" type="range" min="0.3" max="1.5" step="0.01" value="0.7"></div>
   <div class="row"><span>Auto-res</span><input id="cAuto" type="checkbox" checked></div>
-  <div class="row"><span>Auto-cycle</span><input id="cCycle" type="checkbox"></div>
-  <div class="row"><span>Cut-away</span><input id="cSlice" type="checkbox"></div>
-  <div class="row"><span>Auto-orbit</span><input id="cOrbit" type="checkbox" checked></div>
   <div class="grid" style="margin-top:8px">
     <button id="bFull">Fullscreen <kbd>F</kbd></button>
     <button id="bShot">Screenshot <kbd>P</kbd></button>
@@ -88,6 +100,7 @@
   <div id="info"></div>
 </div>
 
+<!-- ═════════════════════ scene shader (HDR, linear) ═════════════════════ -->
 <script id="fs" type="x-shader/x-fragment">#version 300 es
 precision highp float;
 precision highp int;
@@ -98,22 +111,28 @@ uniform float uTime;
 uniform vec3  uCam;
 uniform float uFocal;
 uniform int   uType;
-uniform vec3  uAng;      // fractal-space Euler rotation (driven by music)
-uniform float uBass, uMid, uHigh, uBeat, uEnergy;
-uniform float uPower;    // bulb power
-uniform vec3  uJC;       // Julia constant (xyz)
-uniform float uQW;       // quaternion w of Julia constant
-uniform float uScale;    // type specific scale / offset
-uniform float uFoldA;    // per-iteration fold twist
+uniform int   uSteps;
+uniform vec3  uAng;
+uniform float uBass, uMid, uHigh, uBeat, uEnergy, uPulse, uDrop;
+uniform float uPower;
+uniform vec3  uJC;
+uniform float uQW;
+uniform float uScale;
+uniform float uFoldA;
 uniform float uHue;
 uniform float uGlow;
 uniform float uSlice;
 uniform float uBound;
 uniform float uSize;
+uniform float uTwist, uBend, uStep, uExpo;
+uniform vec3  uPA, uPB, uPC, uPD;
+uniform float uLDR;
+uniform sampler2D uFFT;
 
-#define MAXS 150
+#define MAXS 160
 
 float gTrap = 1e9;
+float gEps  = 0.0;                 // pixel footprint at the current ray depth (LOD)
 mat3  gRot;
 
 mat3 rotM(vec3 a){
@@ -125,11 +144,8 @@ mat3 rotM(vec3 a){
 }
 mat2 rot2(float a){ float c=cos(a), s=sin(a); return mat2(c,s,-s,c); }
 
-// ---------- 0..3 : triplex "bulb" family (White/Nylander) -----------------
-// mode 0 Mandelbulb  z -> z^n + p
-// mode 1 Juliabulb   z -> z^n + c
-// mode 2 Tricorn     z -> conj(z)^n + p   (azimuth reflected before the power)
-// mode 3 Burning ship z -> (|x|,|y|,|z|)^n + p
+// Bulb family (White/Nylander triplex power)
+// mode 0 Mandelbulb · 1 Juliabulb · 2 Tricorn · 3 Burning ship · 4 box-folded bulb
 float deBulb(vec3 pos, int mode){
   vec3 z = pos;
   vec3 c = (mode==1) ? uJC : pos;
@@ -138,6 +154,7 @@ float deBulb(vec3 pos, int mode){
   for(int i=0;i<12;i++){
     r = max(length(z), 1e-4);
     if(r>2.0) break;
+    if(mode==4 && (i&1)==1){ z = clamp(z,-uScale,uScale)*2.0 - z; r = max(length(z),1e-4); }   // box fold sculpts the bulb
     if(mode==3) z = abs(z);
     float th = acos(clamp(z.z/r,-1.0,1.0));
     float ph = atan(z.y,z.x);
@@ -152,11 +169,11 @@ float deBulb(vec3 pos, int mode){
   return 0.5*log(r)*r/dr;
 }
 
-// ---------- 4 : quaternion Julia, 3D slice (Norton 1982) -------------------
-vec4 qmul(vec4 a, vec4 b){
-  return vec4(a.x*b.x - dot(a.yzw,b.yzw), a.x*b.yzw + b.x*a.yzw + cross(a.yzw,b.yzw));
-}
+// quaternion helpers
+vec4 qmul(vec4 a, vec4 b){ return vec4(a.x*b.x - dot(a.yzw,b.yzw), a.x*b.yzw + b.x*a.yzw + cross(a.yzw,b.yzw)); }
 vec4 qsq(vec4 a){ return vec4(a.x*a.x - dot(a.yzw,a.yzw), 2.0*a.x*a.yzw); }
+
+// 4 : quaternion Julia, w = 0 slice, c wanders in 4D
 float deQJ(vec3 p){
   vec4 z = vec4(p,0.0), c = vec4(uJC,uQW), dz = vec4(1,0,0,0);
   float tr = 1e9;
@@ -172,63 +189,87 @@ float deQJ(vec3 p){
   return 0.5*r*log(r)/max(length(dz),1e-6);
 }
 
-// ---------- 5 : Mandelbox (Tom Lowe 2010) ----------------------------------
+// 12 : quaternion Mandelbrot, the slice plane scrolls through the 4th dimension
+float deQM(vec3 p){
+  vec4 c = vec4(p,uQW), z = vec4(0.0), dz = vec4(0.0);
+  float tr = 1e9;
+  for(int i=0;i<14;i++){
+    dz = 2.0*qmul(z,dz) + vec4(1,0,0,0);
+    z  = qsq(z) + c;
+    float m = dot(z,z);
+    tr = min(tr,m);
+    if(m>16.0) break;
+  }
+  gTrap = tr;
+  float r = max(length(z),1e-4);
+  return 0.5*r*log(r)/max(length(dz),1e-6);
+}
+
+// 5 : Mandelbox (Lowe)
 float deBox(vec3 p){
   vec3 z = p;
   float dr = 1.0, s = uScale, tr = 1e9;
   for(int i=0;i<14;i++){
-    z = clamp(z,-1.0,1.0)*2.0 - z;              // box fold
+    z = clamp(z,-1.0,1.0)*2.0 - z;
     float r2 = dot(z,z);
-    if(r2<0.25){ z*=4.0; dr*=4.0; }             // sphere fold (inner)
-    else if(r2<1.0){ z/=r2; dr/=r2; }           // sphere fold (outer)
+    if(r2<0.25){ z*=4.0; dr*=4.0; }
+    else if(r2<1.0){ z/=r2; dr/=r2; }
     z = s*z + p; dr = dr*abs(s) + 1.0;
     tr = min(tr,r2);
+    if(dr*gEps*0.3 > 1.0) break;               // LOD: detail below a pixel
   }
   gTrap = tr;
   return length(z)/abs(dr);
 }
 
-// ---------- 6 : Menger sponge, KIFS form (Menger 1926) ---------------------
+// KIFS fold steps shared by the sponge / gasket / hybrid
+void mengerStep(inout vec3 p, inout float sc, vec3 O, mat2 R){
+  p = abs(p);
+  if(p.x<p.y) p.xy = p.yx;
+  if(p.x<p.z) p.xz = p.zx;
+  if(p.y<p.z) p.yz = p.zy;
+  p = p*3.0 - O*2.0;
+  if(p.z < -O.z) p.z += O.z*2.0;
+  p.xy = R*p.xy;
+  sc *= 3.0;
+}
+void sierStep(inout vec3 p, inout float sc, float o, mat2 R){
+  if(p.x+p.y<0.0) p.xy = -p.yx;
+  if(p.x+p.z<0.0) p.xz = -p.zx;
+  if(p.y+p.z<0.0) p.yz = -p.zy;
+  p = p*2.0 - vec3(o);
+  p.xy = R*p.xy;
+  sc *= 2.0;
+}
+float sdBox1(vec3 p){ vec3 q=abs(p)-vec3(1.0); return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0); }
+
+// 6 : Menger sponge
 float deMenger(vec3 p){
-  const float S = 3.0;
-  vec3 O = vec3(uScale);
-  mat2 R = rot2(uFoldA);
+  vec3 O = vec3(uScale); mat2 R = rot2(uFoldA);
   float sc = 1.0, tr = 1e9;
   for(int i=0;i<6;i++){
-    p = abs(p);
-    if(p.x<p.y) p.xy = p.yx;
-    if(p.x<p.z) p.xz = p.zx;
-    if(p.y<p.z) p.yz = p.zy;
-    p = p*S - O*(S-1.0);
-    if(p.z < -0.5*O.z*(S-1.0)) p.z += O.z*(S-1.0);
-    p.xy = R*p.xy;                              // audio twist between folds
-    sc *= S;
+    mengerStep(p, sc, O, R);
     tr = min(tr, dot(p,p));
+    if(sc*gEps*0.3 > 1.0) break;
   }
   gTrap = tr;
-  vec3 q = abs(p) - vec3(1.0);
-  return (length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0))/sc;
+  return sdBox1(p)/sc;
 }
 
-// ---------- 7 : Sierpinski tetrahedron (KIFS) ------------------------------
+// 7 : Sierpinski tetrahedron
 float deSier(vec3 p){
   mat2 R = rot2(uFoldA);
   float sc = 1.0, tr = 1e9;
   for(int i=0;i<9;i++){
-    if(p.x+p.y<0.0) p.xy = -p.yx;
-    if(p.x+p.z<0.0) p.xz = -p.zx;
-    if(p.y+p.z<0.0) p.yz = -p.zy;
-    p = p*2.0 - vec3(uScale);
-    p.xy = R*p.xy;
-    sc *= 2.0;
+    sierStep(p, sc, uScale, R);
     tr = min(tr, dot(p,p));
+    if(sc*gEps*0.3 > 1.0) break;
   }
   gTrap = tr;
-  float d = (max(abs(p.x+p.y)-p.z, abs(p.x-p.y)+p.z) - 1.0)/1.7320508;
-  return d/sc;
+  return ((max(abs(p.x+p.y)-p.z, abs(p.x-p.y)+p.z) - 1.0)/1.7320508)/sc;
 }
 
-// ---------- 8 : Apollonian gasket (inversion fractal) ----------------------
+// 8 : Apollonian packing
 float deApol(vec3 p){
   float sc = 1.0, tr = 1e9;
   for(int i=0;i<8;i++){
@@ -237,26 +278,86 @@ float deApol(vec3 p){
     tr = min(tr, r2);
     float k = uScale/r2;
     p *= k; sc *= k;
+    if(sc*gEps*0.3 > 1.0) break;
   }
   gTrap = tr;
   return 0.25*abs(p.y)/sc;
 }
 
+// 10 : octahedron KIFS
+float deOcta(vec3 p){
+  mat2 R = rot2(uFoldA);
+  vec3 O = vec3(uScale,0.0,0.0);
+  float sc = 1.0, tr = 1e9;
+  for(int i=0;i<12;i++){
+    p = abs(p);
+    if(p.x<p.y) p.xy = p.yx;
+    if(p.x<p.z) p.xz = p.zx;
+    p = p*2.0 - O;
+    p.yz = R*p.yz;
+    sc *= 2.0;
+    tr = min(tr, dot(p,p));
+    if(sc*gEps*0.3 > 1.0) break;
+  }
+  gTrap = tr;
+  return ((abs(p.x)+abs(p.y)+abs(p.z) - 1.0)*0.57735)/sc;
+}
+
+// 11 : pseudo-Kleinian (box fold + sphere inversion, Knighty style)
+float deKlein(vec3 p){
+  vec3 cs = vec3(0.92436,0.90756,0.92436)*uScale;
+  mat2 R = rot2(uFoldA);
+  float dr = 1.0, tr = 1e9;
+  for(int i=0;i<10;i++){
+    p = 2.0*clamp(p,-cs,cs) - p;
+    float r2 = dot(p,p);
+    float k = max(1.0/r2, 1.0);
+    p *= k; dr *= k;
+    p.xy = R*p.xy;
+    tr = min(tr, r2);
+    if(dr*gEps*0.3 > 1.0) break;
+  }
+  gTrap = tr;
+  return 0.3*abs(p.z)/dr;
+}
+
+// 13 : Menger × Sierpinski hybrid (alternating fold steps)
+float deMT(vec3 p){
+  vec3 O = vec3(uScale); mat2 R = rot2(uFoldA);
+  float sc = 1.0, tr = 1e9;
+  for(int i=0;i<8;i++){
+    if((i&1)==0) mengerStep(p, sc, O, R); else sierStep(p, sc, uScale, R);
+    tr = min(tr, dot(p,p));
+    if(sc*gEps*0.3 > 1.0) break;
+  }
+  gTrap = tr;
+  return sdBox1(p*0.8)*1.25/sc;
+}
+
 float map(vec3 p){
   vec3 q = p;
+  // audio-driven space warp: twist about y + travelling bend
+  p.xz = rot2(uTwist*p.y)*p.xz;
+  p.x += uBend*sin(p.y*2.1 + uTime*0.9);
+  p.z += uBend*cos(p.y*1.6 + uTime*0.7);
   p = gRot*p;
   float d;
-  if(uType<4)       d = deBulb(p,uType);
-  else if(uType==4) d = deQJ(p);
-  else if(uType==5) d = deBox(p);
-  else if(uType==6) d = deMenger(p);
-  else if(uType==7) d = deSier(p);
-  else              d = deApol(p);
+  if(uType<4)        d = deBulb(p,uType);
+  else if(uType==4)  d = deQJ(p);
+  else if(uType==5)  d = deBox(p);
+  else if(uType==6)  d = deMenger(p);
+  else if(uType==7)  d = deSier(p);
+  else if(uType==8)  d = deApol(p);
+  else if(uType==9)  d = deBulb(p,4);
+  else if(uType==10) d = deOcta(p);
+  else if(uType==11) d = deKlein(p);
+  else if(uType==12) d = deQM(p);
+  else               d = deMT(p);
   if(uSlice>0.5) d = max(d, q.x);
   return d;
 }
 
-vec3 pal(float t){ return 0.5 + 0.5*cos(6.2831853*(t + uHue + vec3(0.0,0.33,0.67))); }
+vec3 pal(float t){ return uPA + uPB*cos(6.2831853*(uPC*t + uPD + uHue)); }
 
 vec3 calcN(vec3 p, float e){
   const vec2 k = vec2(1,-1);
@@ -265,7 +366,7 @@ vec3 calcN(vec3 p, float e){
 
 float shadow(vec3 ro, vec3 rd){
   float res = 1.0, t = 0.02*uSize;
-  for(int i=0;i<24;i++){
+  for(int i=0;i<22;i++){
     float h = map(ro+rd*t);
     res = min(res, 10.0*h/t);
     t += clamp(h, 0.004*uSize, 0.35*uSize);
@@ -276,8 +377,8 @@ float shadow(vec3 ro, vec3 rd){
 
 vec3 background(vec3 rd){
   float g = 0.5+0.5*rd.y;
-  vec3 b = mix(vec3(0.004,0.005,0.02), pal(0.55)*0.11, g*g);
-  b += pal(0.2)*0.05*uBeat*(1.0-g);
+  vec3 b = mix(vec3(0.004,0.005,0.02), pal(0.55)*0.10, g*g);
+  b += pal(0.2)*0.05*(uBeat+uDrop)*(1.0-g);
   return b;
 }
 
@@ -290,7 +391,6 @@ void main(){
   vec3 up = cross(rt, fw);
   vec3 rd = normalize(uv.x*rt + uv.y*up + uFocal*fw);
 
-  // bounding sphere
   float t0 = 0.0, t1 = 1e4;
   bool miss = false;
   {
@@ -305,21 +405,23 @@ void main(){
   if(!miss){
     float t = t0; bool hit = false; int steps = 0;
     for(int i=0;i<MAXS;i++){
+      if(i>=uSteps) break;
+      gEps = px*t;
       float d = map(ro+rd*t);
       steps = i;
       halo += exp(-max(d,0.0)*12.0/uSize);
-      if(d < px*t*0.6){ hit = true; break; }
-      t += d*0.85;
+      if(d < gEps*0.6){ hit = true; break; }
+      t += d*uStep;
       if(t>t1) break;
     }
     if(hit){
       vec3 p = ro + rd*t;
       float e = px*t*0.8;
       vec3 n = calcN(p, e);
-      map(p);                                    // refresh gTrap at hit point
+      map(p);
       float tc = log(1.0+gTrap);
       vec3 base = pal(0.28*tc + 0.12*dot(n,vec3(0.3,0.5,0.2)));
-      float ao = clamp(1.0 - float(steps)/float(MAXS)*1.6, 0.0, 1.0);
+      float ao = clamp(1.0 - float(steps)/float(uSteps)*1.6, 0.0, 1.0);
       ao = ao*ao*(3.0-2.0*ao)*0.85 + 0.15;
       vec3 l = normalize(vec3(cos(uTime*0.25), 0.75, sin(uTime*0.25)));
       float diff = max(dot(n,l),0.0);
@@ -329,73 +431,207 @@ void main(){
       vec3 lit = base*(0.12 + 0.95*diff*sh)*ao*(1.0+0.7*uBass);
       lit += vec3(0.8,0.9,1.0)*spec*0.45*sh;
       lit += pal(0.5*tc+0.5)*rim*(0.35+1.2*uBeat+0.4*uHigh);
-      lit += base*base*(1.0-ao)*uBeat*2.5;      // creases flash on the kick
+      lit += base*base*(1.0-ao)*(uBeat+uDrop)*2.5;
+      // the spectrum paints the surface: orbit-trap value picks an FFT bin
+      float fv = texture(uFFT, vec2(clamp(0.04+0.9*fract(tc*0.35),0.0,1.0), 0.5)).r;
+      lit += pal(tc*0.4+0.15)*fv*fv*(1.6 + 2.0*uBeat);
+      lit *= uExpo;
       float fog = 1.0 - exp(-t*t*0.004/(uSize*uSize));
       col = mix(lit, col, fog);
     }
   }
-  col += pal(0.15)*halo*0.011*uGlow*(0.55 + 0.8*uBeat + 0.5*uEnergy);
-
-  // tone map + gamma + vignette + dither
-  col = 1.0 - exp(-col*1.35);
-  col = pow(col, vec3(0.4545));
-  col *= 1.0 - 0.35*dot(uv,uv);
-  col += (fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453)-0.5)/255.0;
+  col += pal(0.15)*halo*0.011*uGlow*uExpo*(0.55 + 0.8*uBeat + 0.5*uEnergy + 0.3*uPulse + 1.2*uDrop);
+  col = min(col, vec3(12.0));
+  if(uLDR>0.5) col = col/(1.0+col);
   outCol = vec4(col,1.0);
+}
+</script>
+
+<!-- ═════════════════════ post: blur / bloom, composite ═════════════════════ -->
+<script id="vs" type="x-shader/x-vertex">#version 300 es
+void main(){ vec2 p=vec2(float((gl_VertexID<<1)&2), float(gl_VertexID&2)); gl_Position=vec4(p*2.0-1.0,0.0,1.0); }
+</script>
+<script id="fsBlur2" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+out vec4 o;
+uniform sampler2D uTex;
+uniform vec2 uRes;      // target size
+uniform vec2 uDir;      // blur step in target pixels
+uniform float uThresh;  // >=0 : bright-pass
+void main(){
+  vec2 uv = gl_FragCoord.xy/uRes;
+  vec2 st = uDir/uRes;
+  vec3 c = vec3(0.0);
+  float w[5] = float[5](0.2270270,0.1945946,0.1216216,0.0540541,0.0162162);
+  for(int i=-4;i<=4;i++){
+    vec3 s = texture(uTex, uv + st*float(i)).rgb;
+    if(uThresh>=0.0) s = max(s - uThresh, 0.0);
+    c += s*w[abs(i)];
+  }
+  o = vec4(c,1.0);
+}
+</script>
+<script id="fsComp" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+out vec4 o;
+uniform sampler2D uScene, uPrev, uBloom;
+uniform vec2  uRes;
+uniform float uTime, uBeat, uDrop, uBloomI, uCA, uTrans, uKal, uKalRot, uHue;
+
+float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x), mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x), f.y); }
+float fbm(vec2 p){ return 0.5*vn(p)+0.25*vn(p*2.03)+0.125*vn(p*4.1)+0.0625*vn(p*8.3); }
+
+vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0); }
+
+vec3 grab(sampler2D tex, vec2 q, vec2 off){
+  vec2 asp = vec2(uRes.y/uRes.x, 1.0);
+  vec2 uv = q*asp + 0.5;
+  return vec3(texture(tex, uv+off*asp).r, texture(tex, uv).g, texture(tex, uv-off*asp).b);
+}
+
+void main(){
+  vec2 p = (gl_FragCoord.xy - 0.5*uRes)/uRes.y;
+  vec2 q = p;
+  if(uKal>1.5){                                    // kaleidoscope mirror
+    float a = atan(p.y,p.x) + uKalRot, r = length(p);
+    float seg = 6.2831853/uKal;
+    a = abs(mod(a,seg) - seg*0.5);
+    q = r*vec2(cos(a),sin(a));
+  }
+  float ca = uCA*(0.35 + 1.5*uBeat + 1.5*uDrop);
+  vec2 off = normalize(q+1e-4)*ca*(0.0015 + 0.006*length(q));
+  vec3 cur = grab(uScene,q,off);
+  if(uTrans>0.001){                                // noise dissolve from previous fractal
+    vec3 prev = grab(uPrev,q,off);
+    float n = fbm(p*5.0 + uTime*0.3);
+    float prog = 1.0-uTrans;
+    float m = smoothstep(prog*1.3-0.25, prog*1.3-0.05, n);   // 1 where prev still shows
+    float edge = smoothstep(0.0,0.12,m)*(1.0-smoothstep(0.12,0.3,m));
+    cur = mix(cur, prev, m) + edge*vec3(1.4,1.0,0.7)*0.7;
+  }
+  vec2 buv = (q*vec2(uRes.y/uRes.x,1.0)) + 0.5;
+  vec3 bl = texture(uBloom, buv).rgb;
+  vec3 col = cur + bl*uBloomI*(0.9 + 1.2*uBeat + 1.5*uDrop);
+  col *= 1.05 + 0.25*uBeat + 0.5*uDrop;
+  col = aces(col);
+  col = pow(col, vec3(0.4545));
+  col *= 1.0 - 0.38*dot(p,p);
+  col += (h21(gl_FragCoord.xy+fract(uTime)*100.0)-0.5)*(1.5/255.0);
+  o = vec4(col,1.0);
 }
 </script>
 
 <script>
 'use strict';
-// ───────────────────────── fractal catalogue ─────────────────────────
+// ───────────────────────── catalogue ─────────────────────────
+// size = characteristic scale · cam = base camera distance · bound = bounding-sphere radius
 const TYPES = [
-  {name:'Mandelbulb',      size:1.2, cam:3.8,  bound:1.55, info:'<b>Mandelbulb</b> — z → zⁿ + p in <i>triplex</i> (spherical) coordinates. Power n breathes with the bass; distance estimate <code>½·r·ln r / |dr|</code>.'},
-  {name:'Julia bulb',      size:1.2, cam:4.0,  bound:1.7,  info:'<b>Juliabulb</b> — same map, but the constant <code>c</code> is fixed per frame instead of the pixel. <code>c</code> wanders with mids and bass, melting the shape between connected and dust.'},
-  {name:'Tricorn bulb',    size:1.2, cam:4.0,  bound:1.7,  info:'<b>Tricorn / Mandelbar bulb</b> — conjugate before the power: the azimuth is reflected (φ → −φ) each iteration, giving the 3-fold-style “tricorn” symmetry in 3D.'},
-  {name:'Burning ship',    size:1.3, cam:4.3,  bound:1.9,  info:'<b>Burning-ship bulb</b> — |x|,|y|,|z| taken before every power step, which carves the sharp, jagged hulls and masts of the 2D Burning Ship into 3D.'},
-  {name:'Quaternion Julia',size:1.2, cam:4.3,  bound:1.75, info:'<b>Quaternion Julia</b> — q → q² + c with c ∈ ℍ. We render the 3D slice w = 0 while c drifts through 4D (the 4th component follows the treble).'},
-  {name:'Mandelbox',       size:4.0, cam:20.0, bound:9.0,  info:'<b>Mandelbox</b> — box fold, sphere fold, scale &amp; translate. The scale breathes around 2 with the bass; the box-fold planes visibly slide.'},
-  {name:'Menger sponge',   size:1.0, cam:5.4,  bound:1.85, info:'<b>Menger sponge</b> — KIFS folds (abs + axis sort), ×3 scale, translate. Offset swells on bass and a twist is inserted between folds on mids: a sponge that wrings itself out.'},
-  {name:'Sierpinski tet.', size:1.0, cam:6.0,  bound:2.6,  info:'<b>Sierpinski tetrahedron</b> — three mirror folds, ×2 scale, translate to vertex. Fold-twist (mids) turns the gasket into a spiralling crystal.'},
-  {name:'Apollonian',      size:2.5, cam:1.5,  bound:1000, info:'<b>Apollonian packing</b> — repeated sphere inversion <code>p → p·s/|p|²</code> in a periodic cell. <code>s</code> pulses with the kick; you sit inside the bubble foam.'},
+  {name:'Mandelbulb',        size:1.2, cam:3.8,  bound:1.55, info:'<b>Mandelbulb</b> — z → zⁿ + p in <i>triplex</i> (spherical) coordinates. Power n breathes with the bass; distance estimate <code>½·r·ln r / |dr|</code>.'},
+  {name:'Julia bulb',        size:1.2, cam:4.0,  bound:1.7,  info:'<b>Juliabulb</b> — same map with a fixed <code>c</code> per frame. <code>c</code> wanders with mids and bass, melting the shape between connected and dust.'},
+  {name:'Tricorn bulb',      size:1.2, cam:4.0,  bound:1.7,  info:'<b>Tricorn / Mandelbar bulb</b> — conjugate before the power: azimuth is reflected (φ → −φ) every iteration.'},
+  {name:'Burning ship',      size:1.3, cam:4.3,  bound:1.9,  info:'<b>Burning-ship bulb</b> — |x|,|y|,|z| before every power step carves jagged hulls and masts.'},
+  {name:'Quaternion Julia',  size:1.2, cam:4.3,  bound:1.75, info:'<b>Quaternion Julia</b> — q → q² + c, c ∈ ℍ. A 3D slice (w = 0) while c drifts through 4D; its 4th component follows the treble.'},
+  {name:'Mandelbox',         size:4.0, cam:20.0, bound:9.0,  info:'<b>Mandelbox</b> — box fold, sphere fold, scale &amp; translate. The scale breathes around 2 with the bass.'},
+  {name:'Menger sponge',     size:1.0, cam:5.4,  bound:1.85, info:'<b>Menger sponge</b> — KIFS: abs + axis sort, ×3, translate. Offset swells on bass; mids twist between folds.'},
+  {name:'Sierpinski tet.',   size:1.0, cam:6.0,  bound:2.6,  info:'<b>Sierpinski tetrahedron</b> — three mirror folds, ×2, translate to a vertex. Fold-twist spirals the gasket into a crystal.'},
+  {name:'Apollonian',        expo:0.45, size:2.5, cam:1.5,  bound:1000, info:'<b>Apollonian packing</b> — repeated sphere inversion <code>p → p·s/|p|²</code> in a periodic cell. You sit inside the bubble foam.'},
+  {name:'Folded bulb',       size:1.3, cam:4.6,  bound:2.1,  info:'<b>Box-folded Mandelbulb</b> — a Mandelbox-style box fold before every triplex power step. The fold limit pulses with the bass, carving planes into the bulb.'},
+  {name:'Octahedron KIFS',   size:0.9, cam:4.2,  bound:1.5,  info:'<b>Octahedral IFS</b> — fold into one octant, ×2, translate to the octahedron vertex. Self-similar crystal of octahedra with audio twist.'},
+  {name:'Pseudo-Kleinian',   expo:0.35, size:2.0, cam:1.6,  bound:1000, info:'<b>Pseudo-Kleinian</b> — box fold + sphere inversion (limit set of a Möbius-like group, Knighty-style). Lace-like infinite foam.'},
+  {name:'Quaternion Mandelbrot', size:1.5, cam:5.6, bound:2.4, info:'<b>Quaternion Mandelbrot</b> — q → q² + p with the 4th coordinate of p as a slice plane that scrolls through the 4th dimension with the music.'},
+  {name:'Menger×Tetra',      size:1.0, cam:5.6,  bound:2.2,  info:'<b>Hybrid IFS</b> — alternates Menger (×3) and Sierpinski (×2) folds every iteration. Hybrids like this are how most “impossible” fractals are made.'},
+];
+// cosine palettes: a + b·cos(2π(c·t + d))
+const PALS = [
+  {n:'Rainbow', a:[.5,.5,.5], b:[.5,.5,.5], c:[1,1,1],    d:[0,.33,.67]},
+  {n:'Sunset',  a:[.5,.5,.5], b:[.5,.5,.5], c:[1,1,.5],   d:[.8,.9,.3]},
+  {n:'Ocean',   a:[.5,.5,.5], b:[.5,.5,.5], c:[1,.7,.4],  d:[0,.15,.2]},
+  {n:'Ember',   a:[.5,.5,.5], b:[.5,.5,.5], c:[2,1,0],    d:[.5,.2,.25]},
+  {n:'Vapor',   a:[.5,.5,.5], b:[.5,.5,.5], c:[1,1,1],    d:[.3,.2,.2]},
+  {n:'Toxic',   a:[.4,.5,.3], b:[.5,.5,.5], c:[1,1,.7],   d:[.1,.4,.7]},
 ];
 
 // ───────────────────────── GL setup ─────────────────────────
 const $ = id => document.getElementById(id);
 const canvas = $('gl'), hudC = $('hud'), hud = hudC.getContext('2d');
-const gl = canvas.getContext('webgl2', {antialias:false, alpha:false, powerPreference:'high-performance', preserveDrawingBuffer:false});
+const gl = canvas.getContext('webgl2', {antialias:false, alpha:false, powerPreference:'high-performance'});
 function showErr(m){ const e=$('err'); e.style.display='block'; e.textContent=m; console.error(m); }
+let toastT; function toast(m){ const t=$('toast'); t.textContent=m; t.style.opacity=1; clearTimeout(toastT); toastT=setTimeout(()=>t.style.opacity=0,1600); }
 if(!gl){ showErr('WebGL2 is required.'); throw new Error('no webgl2'); }
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault(); showErr('GPU context lost — reloading…'); setTimeout(()=>location.reload(),800);});
 
-function mk(type, src){
-  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
-  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) showErr('Shader compile error:\n'+gl.getShaderInfoLog(s));
+const hdr = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+gl.getExtension('OES_texture_float_linear');
+
+function compile(type, src, label){
+  const s = gl.createShader(type); gl.shaderSource(s, src.replace(/^\s+/,'')); gl.compileShader(s);
+  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) showErr(label+' shader error:\n'+gl.getShaderInfoLog(s));
   return s;
 }
-const prog = gl.createProgram();
-gl.attachShader(prog, mk(gl.VERTEX_SHADER, `#version 300 es
-void main(){ vec2 p=vec2(float((gl_VertexID<<1)&2), float(gl_VertexID&2)); gl_Position=vec4(p*2.0-1.0,0.0,1.0); }`));
-gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, $('fs').textContent.replace(/^\s+/,'')));
-gl.linkProgram(prog);
-if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) showErr('Link error:\n'+gl.getProgramInfoLog(prog));
-gl.useProgram(prog);
-const U = {};
-['uRes','uTime','uCam','uFocal','uType','uAng','uBass','uMid','uHigh','uBeat','uEnergy','uPower','uJC','uQW','uScale','uFoldA','uHue','uGlow','uSlice','uBound','uSize']
-  .forEach(n => U[n] = gl.getUniformLocation(prog, n));
+function makeProg(fsId, label){
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, $('vs').textContent, 'vertex'));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, $(fsId).textContent, label));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p, gl.LINK_STATUS)) showErr(label+' link error:\n'+gl.getProgramInfoLog(p));
+  const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for(let i=0;i<n;i++){ const info=gl.getActiveUniform(p,i); u[info.name.replace(/\[0\]$/,'')]={loc:gl.getUniformLocation(p,info.name),type:info.type}; }
+  return { p, u, set(o){
+    gl.useProgram(p);
+    for(const k in o){ const e=u[k]; if(!e) continue; const v=o[k];
+      if(Array.isArray(v)||ArrayBuffer.isView(v)) ({2:()=>gl.uniform2fv(e.loc,v),3:()=>gl.uniform3fv(e.loc,v),4:()=>gl.uniform4fv(e.loc,v)})[v.length]();
+      else if(e.type===gl.INT||e.type===gl.SAMPLER_2D) gl.uniform1i(e.loc,v|0);
+      else gl.uniform1f(e.loc,v);
+    }
+  }};
+}
+const progScene = makeProg('fs','scene'), progBlur = makeProg('fsBlur2','blur'), progComp = makeProg('fsComp','composite');
 gl.bindVertexArray(gl.createVertexArray());
 
-// ───────────────────────── audio ─────────────────────────
-let actx=null, analyser=null, freq=null, wave=null, srcNode=null, demoTimer=null, mediaStream=null;
+function makeTarget(w,h,float){
+  const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  if(float) gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,w,h,0,gl.RGBA,gl.HALF_FLOAT,null);
+  else      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const fbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
+  const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
+  return {tex,fbo,w,h,ok};
+}
+let useFloat = hdr;
+let scenes=[null,null], cur=0, bloomA=null, bloomB=null, tSize='';
+const free = t => { if(t){ gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fbo); } };
+function ensureTargets(sw,sh,cw,ch){
+  const key=[sw,sh,cw,ch,useFloat].join();
+  if(key===tSize) return; tSize=key;
+  scenes.forEach(free); free(bloomA); free(bloomB);
+  const bw=Math.max(32,cw>>2), bh=Math.max(32,ch>>2);
+  scenes=[makeTarget(sw,sh,useFloat),makeTarget(sw,sh,useFloat)];
+  bloomA=makeTarget(bw,bh,useFloat); bloomB=makeTarget(bw,bh,useFloat);
+  if(useFloat && !(scenes[0].ok&&bloomA.ok)){ useFloat=false; tSize=''; return ensureTargets(sw,sh,cw,ch); }
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+}
+const fftTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D,fftTex);
+gl.texImage2D(gl.TEXTURE_2D,0,gl.R8,64,1,0,gl.RED,gl.UNSIGNED_BYTE,new Uint8Array(64));
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+const bindTex=(unit,tex)=>{ gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(gl.TEXTURE_2D,tex); };
+
+// ───────────────────────── audio sources ─────────────────────────
+let actx=null, analyser=null, freq=null, srcNode=null, demoTimer=null, mediaStream=null, demoMaster=null;
 const player = $('player');
 let hasAudio = false;
-
 function ensureCtx(){
   if(!actx){
     actx = new (window.AudioContext||window.webkitAudioContext)();
     analyser = actx.createAnalyser();
     analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0.5;
     freq = new Uint8Array(analyser.frequencyBinCount);
-    wave = new Uint8Array(analyser.fftSize);
   }
   if(actx.state==='suspended') actx.resume();
 }
@@ -408,8 +644,7 @@ function stopSources(){
 }
 function done(){ hasAudio=true; $('start').classList.add('gone'); }
 
-// ---- built-in generative demo: 128 bpm kick / clap / hats / acid bass / arp
-let demoMaster=null;
+// built-in generative demo: 128 bpm kick / clap / hats / acid bass / arp / pad, with a breakdown every 8 bars so drops can be detected
 function startDemo(){
   ensureCtx(); stopSources();
   demoMaster = actx.createGain(); demoMaster.gain.value = 0.8;
@@ -424,27 +659,29 @@ function startDemo(){
   const pent=[0,3,5,7,10,12,15,17,19,22];
   const bassPat=[0,-1,0,12,-1,0,7,-1, 0,-1,0,10,-1,5,-1,3];
   const env=(g,t,a,d,peak)=>{ g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+a); g.gain.exponentialRampToValueAtTime(0.0001,t+a+d); };
-  function noise(t,hp,dur,peak,dest){
+  function noise(t,hp,dur,peak){
     const s=actx.createBufferSource(); s.buffer=nb; const f=actx.createBiquadFilter(); f.type='highpass'; f.frequency.value=hp;
-    const g=actx.createGain(); env(g,t,0.002,dur,peak); s.connect(f); f.connect(g); g.connect(dest||demoMaster); s.start(t,Math.random()*0.5,dur+0.05);
+    const g=actx.createGain(); env(g,t,0.002,dur,peak); s.connect(f); f.connect(g); g.connect(demoMaster); s.start(t,Math.random()*0.5,dur+0.05);
   }
   function play(i,t){
-    const s16=i%16, bar=Math.floor(i/16);
-    if(s16%4===0){ const o=actx.createOscillator(), g=actx.createGain(); o.frequency.setValueAtTime(160,t); o.frequency.exponentialRampToValueAtTime(42,t+0.13);
-      env(g,t,0.002,0.4,1.0); o.connect(g); g.connect(demoMaster); o.start(t); o.stop(t+0.5); }
-    if(s16===4||s16===12) noise(t,1200,0.16,0.5);
-    if(s16%2===1) noise(t,7000,0.04,0.22); if(s16%4===2) noise(t,6000,0.14,0.2);
-    const bn=bassPat[s16];
-    if(bn>=0){ const o=actx.createOscillator(), f=actx.createBiquadFilter(), g=actx.createGain();
-      o.type='sawtooth'; o.frequency.value=41.2*Math.pow(2,(bn+(bar%4===3?-2:0))/12);
-      f.type='lowpass'; f.Q.value=9; f.frequency.setValueAtTime(900,t); f.frequency.exponentialRampToValueAtTime(120,t+step*1.8);
-      env(g,t,0.004,step*1.7,0.42); o.connect(f); f.connect(g); g.connect(demoMaster); o.start(t); o.stop(t+step*2); }
-    if(Math.random()<0.62){ const o=actx.createOscillator(), f=actx.createBiquadFilter(), g=actx.createGain();
+    const s16=i%16, bar=Math.floor(i/16), phrase=bar%8, breakdown = phrase>=6;   // bars 6-7 of every 8: no drums/bass
+    if(!breakdown){
+      if(s16%4===0){ const o=actx.createOscillator(), g=actx.createGain(); o.frequency.setValueAtTime(160,t); o.frequency.exponentialRampToValueAtTime(42,t+0.13);
+        env(g,t,0.002,0.4,1.0); o.connect(g); g.connect(demoMaster); o.start(t); o.stop(t+0.5); }
+      if(s16===4||s16===12) noise(t,1200,0.16,0.5);
+      const bn=bassPat[s16];
+      if(bn>=0){ const o=actx.createOscillator(), f=actx.createBiquadFilter(), g=actx.createGain();
+        o.type='sawtooth'; o.frequency.value=41.2*Math.pow(2,(bn+(bar%4===3?-2:0))/12);
+        f.type='lowpass'; f.Q.value=9; f.frequency.setValueAtTime(900,t); f.frequency.exponentialRampToValueAtTime(120,t+step*1.8);
+        env(g,t,0.004,step*1.7,0.42); o.connect(f); f.connect(g); g.connect(demoMaster); o.start(t); o.stop(t+step*2); }
+    } else if(phrase===7 && s16>=8 && s16%2===0){ noise(t,2000+s16*300,0.08,0.25); }                // snare-roll build
+    if(s16%2===1) noise(t,7000,0.04,breakdown?0.1:0.22); if(s16%4===2 && !breakdown) noise(t,6000,0.14,0.2);
+    if(Math.random()<(breakdown?0.35:0.62)){ const o=actx.createOscillator(), f=actx.createBiquadFilter(), g=actx.createGain();
       o.type='square'; o.frequency.value=164.8*Math.pow(2,pent[(Math.random()*pent.length)|0]/12);
       f.type='lowpass'; f.frequency.value=1800+Math.random()*2500; env(g,t,0.003,step*0.9,0.07);
       o.connect(f); f.connect(g); g.connect(demoMaster); g.connect(delay); o.start(t); o.stop(t+step); }
     if(s16===0){ [0,7,12,15].forEach(k=>{ const o=actx.createOscillator(), g=actx.createGain(); o.type='sawtooth';
-      o.frequency.value=82.4*Math.pow(2,(k+(bar%4===3?-2:0))/12); env(g,t,0.25,step*15,0.05);
+      o.frequency.value=82.4*Math.pow(2,(k+(bar%4===3?-2:0))/12); env(g,t,0.25,step*15,breakdown?0.09:0.05);
       const f=actx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900; o.connect(f); f.connect(g); g.connect(demoMaster); o.start(t); o.stop(t+step*16.5); }); }
   }
   demoTimer = setInterval(()=>{ while(next < actx.currentTime+0.18){ play(n,next); next+=step; n++; } }, 25);
@@ -489,17 +726,21 @@ function bandAvg(f0,f1){
   const a=Math.max(0,Math.floor(f0/nyq*n)), b=Math.min(n-1,Math.max(a+1,Math.ceil(f1/nyq*n)));
   let s=0; for(let i=a;i<=b;i++) s+=freq[i]; return s/((b-a+1)*255);
 }
-const agc=[0.2,0.2,0.2];
-const A={bass:0,mid:0,high:0,energy:0,beat:0,rawBass:0};
-let bAvg=0, lastBeat=0, beatCount=0;
+const FB=64, fftBytes=new Uint8Array(FB), fftSmooth=new Float32Array(FB);
+const agc=[0.2,0.2,0.2], A={bass:0,mid:0,high:0,energy:0,beat:0,drop:0,pulse:0,onset:false,bpm:0};
+let bAvg=0, lastBeat=-9, beatCount=0, phase=0, eShort=0, eLong=0.2, lastDrop=-99, quietSince=-99;
+const ibis=[];
 function analyse(dt,now){
-  const sens=+$('sSens').value;
-  let raw=[0,0,0];
-  if(hasAudio && analyser && actx.state==='running'){
+  const sens=+$('sSens').value, live = hasAudio && analyser && actx.state==='running';
+  let raw;
+  if(live){
     analyser.getByteFrequencyData(freq);
     raw=[bandAvg(30,150), bandAvg(150,2000), bandAvg(2000,10000)];
-  } else {                                    // ambient drift when silent
+    for(let i=0;i<FB;i++){ const f0=30*Math.pow(10000/30,i/FB), f1=30*Math.pow(10000/30,(i+1)/FB);
+      const v=Math.min(1,bandAvg(f0,f1)*1.6*sens); fftSmooth[i]= v>fftSmooth[i]? v : fftSmooth[i]*Math.exp(-dt*6); fftBytes[i]=fftSmooth[i]*255; }
+  } else {
     raw=[0.25+0.15*Math.sin(now*1.3), 0.25+0.15*Math.sin(now*0.9+1), 0.2+0.12*Math.sin(now*2.1+2)];
+    for(let i=0;i<FB;i++) fftBytes[i]=255*(0.25+0.2*Math.sin(now*1.7+i*0.35));
   }
   const k=['bass','mid','high'], nrm=[0,0,0];
   for(let i=0;i<3;i++){
@@ -509,54 +750,90 @@ function analyse(dt,now){
     A[k[i]] = nrm[i]>e ? e+(nrm[i]-e)*Math.min(1,dt*28) : e+(nrm[i]-e)*Math.min(1,dt*5);
   }
   A.energy = (A.bass+A.mid+A.high)/3;
-  // beat = bass onset above its slow average
+  A.beat *= Math.exp(-dt*5.5); A.drop *= Math.exp(-dt*1.4); A.onset=false;
+
+  // beat = bass onset above its slow mean
   const bn=nrm[0]; bAvg += (bn-bAvg)*Math.min(1,dt*1.6);
-  A.beat *= Math.exp(-dt*5.5);
-  A.onset=false;
-  if(hasAudio && bn>bAvg*1.25+0.12 && bn>0.4 && now-lastBeat>0.2){ A.beat=1; A.onset=true; lastBeat=now; beatCount++; }
-  if(!hasAudio && Math.sin(now*3.1)>0.995) A.beat=1;
+  if(live && bn>bAvg*1.25+0.12 && bn>0.4 && now-lastBeat>0.2){
+    const ibi=now-lastBeat; lastBeat=now; beatCount++; A.beat=1; A.onset=true;
+    if(ibi>0.28&&ibi<1.6){ ibis.push(ibi); if(ibis.length>14) ibis.shift();
+      const s=[...ibis].sort((a,b)=>a-b); let bpm=60/s[s.length>>1]; while(bpm<75) bpm*=2; while(bpm>165) bpm/=2; A.bpm=A.bpm? A.bpm*0.8+bpm*0.2 : bpm; }
+    const err=phase-Math.round(phase); phase-=err*0.35;       // soft phase-lock to the beat grid
+  }
+  if(!live && Math.sin(now*3.1)>0.995) A.beat=1;
+  phase += dt*(A.bpm||110)/60;
+  A.pulse = Math.pow(0.5+0.5*Math.cos(6.2831853*phase),3);
+
+  // drop = energy surge after a quiet passage (breakdown → drop)
+  eShort += (A.energy-eShort)*Math.min(1,dt*3); eLong += (A.energy-eLong)*Math.min(1,dt*0.25);
+  if(eShort<eLong*0.55 && quietSince<0) quietSince=now;
+  if(live && quietSince>0 && now-quietSince>0.9 && eShort>eLong*1.25 && now-lastDrop>8){ A.drop=1; A.onset=true; lastDrop=now; quietSince=-99; toast('DROP'); }
+  if(eShort>eLong*0.9) quietSince=-99;
 }
 
 // ───────────────────────── state & controls ─────────────────────────
-let type = 0, T = 0, hue = 0.05, lastSwitch = 0;
+let type=0, T=0, hue=0.05, lastSwitch=0, palIdx=0, palCur=null, dirKal=0, dirTimer=0, camMode=0, camT=0;
 const ang=[0.3,0.5,0.1], kick=[0,0,0];
-let az=0.6, el=0.35, zoomMul=1, dolly=0;
+let az=0.6, el=0.35, zoomMul=1, transT=0, kalRot=0;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const menu=$('types');
-TYPES.forEach((t,i)=>{ const b=document.createElement('button'); b.innerHTML=t.name+'<kbd>'+(i+1)+'</kbd>'; b.onclick=()=>setType(i); menu.appendChild(b); });
-function setType(i){
-  type=((i%TYPES.length)+TYPES.length)%TYPES.length; lastSwitch=T;
+TYPES.forEach((t,i)=>{ const b=document.createElement('button'); b.innerHTML=t.name+'<kbd>'+((i<9)?i+1:(i===9?0:''))+'</kbd>'; b.onclick=()=>setType(i); menu.appendChild(b); });
+function setType(i, quiet){
+  const nt=((i%TYPES.length)+TYPES.length)%TYPES.length;
+  if(nt!==type && scenes[0]){ cur=1-cur; transT=1; }        // freeze last frame → dissolve into the new fractal
+  type=nt; lastSwitch=T;
   [...menu.children].forEach((b,j)=>b.classList.toggle('on',j===type));
   $('info').innerHTML=TYPES[type].info;
   const t=$('title'); t.textContent=TYPES[type].name; t.style.opacity=1; clearTimeout(t._h); t._h=setTimeout(()=>t.style.opacity=.35,2500);
-  A.beat=1;
+  A.beat=1; save();
 }
+function setPal(i){ palIdx=((i%PALS.length)+PALS.length)%PALS.length; toast('Palette: '+PALS[palIdx].n); save(); }
+function randomize(){
+  palIdx=(Math.random()*PALS.length)|0; hue=Math.random(); az=Math.random()*6.28; el=(Math.random()-0.5)*1.2;
+  $('sWarp').value=(0.2+Math.random()*1.2).toFixed(2);
+  toast('Randomized look · '+PALS[palIdx].n); save();
+}
+$('bPal').onclick=()=>setPal(palIdx+1); $('bRand').onclick=randomize;
+
+// persistence
+const PERSIST=['sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
+function save(){ try{ const o={type,palIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
+try{ const o=JSON.parse(localStorage.getItem('fractalPulse')||'null'); if(o){ PERSIST.forEach(id=>{ if(id in o){const e=$(id); if(e.type==='checkbox') e.checked=o[id]; else e.value=o[id];}}); type=o.type|0; palIdx=o.palIdx|0; } }catch(e){}
+PERSIST.forEach(id=>$(id).addEventListener('input',save));
 const hashP=new URLSearchParams(location.hash.slice(1));
 if(hashP.has('scale')) $('sRes').value=hashP.get('scale');
 if(hashP.get('orbit')==='0') $('cOrbit').checked=false;
-setType(+hashP.get('type')||0);
+if(hashP.get('auto')==='0') $('cAuto').checked=false;
+if(hashP.has('pal')) palIdx=+hashP.get('pal');
+if(hashP.has('kal')) $('sKal').value=hashP.get('kal');
+if(hashP.get('director')==='1') $('cDirector').checked=true;
+setType(hashP.has('type')? +hashP.get('type') : type);
+palCur=JSON.parse(JSON.stringify(PALS[((palIdx%PALS.length)+PALS.length)%PALS.length]));
 
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT' && e.target.type!=='checkbox') return;
   const k=e.key.toLowerCase();
   if(k>='1'&&k<='9') setType(+k-1);
+  else if(k==='0') setType(9);
   else if(k==='arrowright') setType(type+1); else if(k==='arrowleft') setType(type-1);
-  else if(k==='h') $('ui').classList.toggle('hidden');
+  else if(k==='h') { $('ui').classList.toggle('hidden'); }
   else if(k==='f') toggleFull();
   else if(k==='p') shot=true;
-  else if(k===' '){ e.preventDefault(); $('cCycle').checked=!$('cCycle').checked; }
+  else if(k==='c') setPal(palIdx+1);
+  else if(k==='r') randomize();
+  else if(k==='k'){ const s=$('sKal'); s.value = +s.value<2? 6 : (+s.value>=12? 0 : +s.value+2); save(); }
+  else if(k===' '){ e.preventDefault(); const c=$('cCycle'); c.checked=!c.checked; toast('Auto-cycle '+(c.checked?'on':'off')); save(); }
 });
 function toggleFull(){ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
 $('bFull').onclick=toggleFull; let shot=false; $('bShot').onclick=()=>shot=true;
 let drag=null;
 canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY}; canvas.setPointerCapture(e.pointerId);});
-canvas.addEventListener('pointermove',e=>{ if(!drag) return; az-=(e.clientX-drag.x)*0.006; el=Math.max(-1.5,Math.min(1.5,el+(e.clientY-drag.y)*0.006)); drag={x:e.clientX,y:e.clientY}; });
+canvas.addEventListener('pointermove',e=>{ if(!drag) return; az-=(e.clientX-drag.x)*0.006; el=clamp(el+(e.clientY-drag.y)*0.006,-1.5,1.5); drag={x:e.clientX,y:e.clientY}; });
 canvas.addEventListener('pointerup',()=>drag=null);
-canvas.addEventListener('wheel',e=>{e.preventDefault(); zoomMul=Math.max(0.15,Math.min(4,zoomMul*Math.exp(e.deltaY*0.001)));},{passive:false});
+canvas.addEventListener('wheel',e=>{e.preventDefault(); zoomMul=clamp(zoomMul*Math.exp(e.deltaY*0.001),0.08,4);},{passive:false});
 canvas.addEventListener('dblclick',()=>$('ui').classList.toggle('hidden'));
 
-// ───────────────────────── frame loop ─────────────────────────
-let resScale=+$('sRes').value, last=performance.now()/1000, ema=16, frame=0;
-const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+// ───────────────────────── per-fractal music mapping ─────────────────────────
 function params(){
   const {bass:b,mid:m,high:h}=A, t=T, P={power:8,jc:[0,0,0],qw:0,scale:1,fold:0};
   switch(type){
@@ -569,62 +846,119 @@ function params(){
     case 6: P.scale=1+0.09*b+0.04*Math.sin(t*0.4); P.fold=0.16*Math.sin(t*0.2)+0.28*m+0.05*h; break;
     case 7: P.scale=1+0.12*Math.sin(t*0.3)+0.22*b; P.fold=0.22*Math.sin(t*0.17)+0.4*m; break;
     case 8: P.scale=1.0+0.07*Math.sin(t*0.2)+0.2*b; break;
+    case 9: P.power=clamp(7+1.5*Math.sin(t*0.12)+2.5*b,4,12); P.scale=clamp(1.25-0.3*b+0.15*Math.sin(t*0.21)-0.1*m,0.85,1.6); break;
+    case 10: P.scale=1+0.08*Math.sin(t*0.25)+0.18*b; P.fold=0.2*Math.sin(t*0.15)+0.35*m; break;
+    case 11: P.scale=1+0.04*Math.sin(t*0.2)+0.06*b; P.fold=0.12*Math.sin(t*0.13)+0.2*m; break;
+    case 12: P.qw=0.55*Math.sin(t*0.17)+0.35*b-0.1*h; break;
+    case 13: P.scale=1+0.06*b+0.03*Math.sin(t*0.4); P.fold=0.15*Math.sin(t*0.19)+0.3*m; break;
   }
   return P;
 }
+
+// ───────────────────────── director (auto camera / look) ─────────────────────────
+function director(dt){
+  dirTimer+=dt; camT+=dt;
+  if($('cDirector').checked && A.onset && dirTimer>14){
+    dirTimer=0; camMode=(Math.random()*3)|0;
+    dirKal=[0,0,4,6,8,12][(Math.random()*6)|0];
+    if(Math.random()<0.5) setPal((Math.random()*PALS.length)|0);
+    if(Math.random()<0.4 && !$('cCycle').checked) setType(Math.random()*TYPES.length|0);
+  }
+  if(!$('cDirector').checked){ camMode=0; dirKal=0; }
+}
+
+// ───────────────────────── frame loop ─────────────────────────
+let resScale=+$('sRes').value, last=performance.now()/1000, ema=16.7, frame=0, lastDown=-99, ceilS=9;
 function frameFn(nowMs){
-  const now=nowMs/1000, dt=Math.min(0.1,now-last); last=now;
+  const now=nowMs/1000, rawDt=now-last, dt=Math.min(0.1,rawDt); last=now;
   ema+= (dt*1000-ema)*0.05;
-  if($('cAuto').checked && frame>20 && frame%12===0){
-    const manual=+$('sRes').value;
-    if(ema>26 && resScale>0.3) resScale*=0.93; else if(ema<14 && resScale<manual) resScale=Math.min(manual,resScale*1.04);
-  } else if(!$('cAuto').checked) resScale=+$('sRes').value;
+  const manual=+$('sRes').value;
+  if($('cAuto').checked){
+    if(frame>30 && frame%10===0){
+      if(ema>24 && resScale>0.3){ resScale*=0.93; lastDown=now; ceilS=resScale*1.05; }
+      else if(ema<18.5 && resScale<manual && now-lastDown>4 ) resScale=Math.min(manual,ceilS,resScale*1.03);
+      if(now-lastDown>25) ceilS=9;
+    }
+    resScale=Math.min(resScale,manual);
+  } else resScale=manual;
   analyse(dt,now);
-  const motion=+$('sMotion').value;
+  director(dt);
+  const motion=+$('sMotion').value, warp=+$('sWarp').value;
   T+=dt*(0.6+0.8*motion);
-  if(A.onset||(!hasAudio&&A.beat>0.99)){ for(let i=0;i<3;i++) kick[i]+=(Math.random()-0.5)*1.4*motion; hue+=0.012; }
-  for(let i=0;i<3;i++){ kick[i]*=Math.exp(-dt*2.2); }
+  if(A.onset||(!hasAudio&&A.beat>0.99)){
+    const amt=(A.drop>0.9?3.5:1.4)*motion; for(let i=0;i<3;i++) kick[i]+=(Math.random()-0.5)*amt; hue+=0.012+0.05*A.drop;
+    if($('cCycle').checked && T-lastSwitch>(A.drop>0.9?4:26) && (A.drop>0.9 || beatCount%8===0)) setType(type+1);
+  }
+  for(let i=0;i<3;i++) kick[i]*=Math.exp(-dt*2.2);
   const base=[0.11,0.16,0.07];
   for(let i=0;i<3;i++) ang[i]+=(base[i]*(0.5+2.2*A.energy)*motion+kick[i])*dt;
   hue+=dt*(0.01+0.06*A.high);
-  if($('cOrbit').checked && !drag) az+=dt*(0.08+0.25*A.mid)*motion;
-  if($('cCycle').checked && T-lastSwitch>28 && A.onset) setType(type+1);
+  if($('cOrbit').checked && !drag) az+=dt*(0.08+0.25*A.mid)*(camMode===2?2.2:1)*motion;
+  if(camMode===2 && !drag) el+= (0.6*Math.sin(camT*0.23)-el)*dt*0.5;
+  kalRot+=dt*(0.1+0.4*A.mid);
 
   const cfg=TYPES[type], P=params();
-  let dist=cfg.cam*zoomMul*(1-0.035*A.beat+0.03*Math.sin(T*0.17));
-  if(type===8) dist=Math.max(0.35,dist);
+  // palette crossfade
+  const tp=PALS[palIdx]; for(const k of ['a','b','c','d']) for(let i=0;i<3;i++) palCur[k][i]+=(tp[k][i]-palCur[k][i])*Math.min(1,dt*2.5);
+
+  // warp: twist + bend, scaled to the fractal and limited by a step safety factor
+  const twist=warp*(0.22*Math.sin(T*0.31)+0.85*A.mid-0.15)/cfg.size*0.5;
+  const bend =warp*cfg.size*0.05*(1.0*A.bass+0.3*Math.sin(T*0.2));
+  const stepF=0.85/(1+Math.abs(twist)*cfg.size*1.0+Math.abs(bend)*2.1);
+
+  let zoomAuto=1;
+  if(camMode===1) zoomAuto=0.45+0.55*(0.5+0.5*Math.cos(camT*0.22));
+  let dist=cfg.cam*zoomMul*zoomAuto*(1-0.035*A.beat-0.06*A.drop+0.03*Math.sin(T*0.17));
+  if(type===8||type===11) dist=Math.max(0.25,dist);
   const cam=[dist*Math.cos(el)*Math.sin(az), dist*Math.sin(el), dist*Math.cos(el)*Math.cos(az)];
 
-  // resolution
-  const dpr=Math.min(devicePixelRatio||1,2), w=Math.max(64,Math.floor(innerWidth*dpr*resScale)), h=Math.max(64,Math.floor(innerHeight*dpr*resScale));
-  if(canvas.width!==w||canvas.height!==h){ canvas.width=w; canvas.height=h; }
+  // targets
+  const dpr=Math.min(devicePixelRatio||1,1.5), cw=Math.max(64,Math.floor(innerWidth*dpr)), ch=Math.max(64,Math.floor(innerHeight*dpr));
+  const sw=Math.max(48,Math.floor(cw*resScale)), sh=Math.max(48,Math.floor(ch*resScale));
+  if(canvas.width!==cw||canvas.height!==ch){ canvas.width=cw; canvas.height=ch; }
+  ensureTargets(sw,sh,cw,ch);
   const hw=innerWidth, hh=90; if(hudC.width!==hw||hudC.height!==hh){ hudC.width=hw; hudC.height=hh; }
-  gl.viewport(0,0,w,h);
-  gl.uniform2f(U.uRes,w,h); gl.uniform1f(U.uTime,T); gl.uniform3fv(U.uCam,cam);
-  gl.uniform1f(U.uFocal,1.5+0.12*A.beat); gl.uniform1i(U.uType,type); gl.uniform3fv(U.uAng,ang);
-  gl.uniform1f(U.uBass,A.bass); gl.uniform1f(U.uMid,A.mid); gl.uniform1f(U.uHigh,A.high); gl.uniform1f(U.uBeat,A.beat); gl.uniform1f(U.uEnergy,A.energy);
-  gl.uniform1f(U.uPower,P.power); gl.uniform3fv(U.uJC,P.jc); gl.uniform1f(U.uQW,P.qw); gl.uniform1f(U.uScale,P.scale); gl.uniform1f(U.uFoldA,P.fold);
-  gl.uniform1f(U.uHue,hue); gl.uniform1f(U.uGlow,+$('sGlow').value); gl.uniform1f(U.uSlice,$('cSlice').checked?1:0);
-  gl.uniform1f(U.uBound,cfg.bound); gl.uniform1f(U.uSize,cfg.size);
+
+  // pass 1 — fractal → HDR scene buffer
+  gl.bindFramebuffer(gl.FRAMEBUFFER,scenes[cur].fbo); gl.viewport(0,0,sw,sh);
+  bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
+  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uFocal:1.5+0.12*A.beat+0.25*A.drop,uType:type,uSteps:150,uAng:ang,
+    uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
+    uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uHue:hue,uGlow:+$('sGlow').value,
+    uSlice:$('cSlice').checked?1:0,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
+    uPA:palCur.a,uPB:palCur.b,uPC:palCur.c,uPD:palCur.d,uLDR:useFloat?0:1,uFFT:3});
+  gl.drawArrays(gl.TRIANGLES,0,3);
+
+  // pass 2 — bloom (bright-pass + 2× separable gaussian at ¼ res)
+  const bw=bloomA.w, bh=bloomA.h;
+  gl.viewport(0,0,bw,bh);
+  const blur=(src,dst,dx,dy,th)=>{ gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fbo); bindTex(0,src.tex); progBlur.set({uTex:0,uRes:[bw,bh],uDir:[dx,dy],uThresh:th}); gl.drawArrays(gl.TRIANGLES,0,3); };
+  blur(scenes[cur],bloomA,1.5,0,0.9); blur(bloomA,bloomB,0,1.5,-1); blur(bloomB,bloomA,3,0,-1); blur(bloomA,bloomB,0,3,-1);
+
+  // pass 3 — composite to screen (kaleidoscope, CA, dissolve, tonemap)
+  transT=Math.max(0,transT-Math.min(rawDt,0.5)/1.1);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,cw,ch);
+  bindTex(0,scenes[cur].tex); bindTex(1,scenes[1-cur].tex); bindTex(2,bloomB.tex);
+  const kv=+$('sKal').value, kal=kv>=2?kv:dirKal;
+  progComp.set({uScene:0,uPrev:1,uBloom:2,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uBloomI:0.55*+$('sBloom').value,
+    uCA:1.0*(+$('sBloom').value>0?1:0.4),uTrans:transT*transT*(3-2*transT)*1.0,uKal:kal,uKalRot:kalRot,uHue:hue});
   gl.drawArrays(gl.TRIANGLES,0,3);
   if(shot){ shot=false; const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='fractal-pulse.png'; a.click(); }
 
   drawHud();
-  if(frame%15===0) $('stat').textContent=`${(1000/ema).toFixed(0)} fps · ${w}×${h} · beats ${beatCount} · `+(hasAudio?'audio on':'ambient');
+  if(frame%15===0) $('stat').textContent=`${(1000/ema).toFixed(0)} fps · scene ${sw}×${sh} · ${hasAudio?'audio':'ambient'}${A.bpm?` · ${A.bpm.toFixed(0)} bpm`:''} · ${useFloat?'HDR':'LDR'}`;
   frame++;
   requestAnimationFrame(frameFn);
 }
 function drawHud(){
   const W=hudC.width,H=hudC.height; hud.clearRect(0,0,W,H);
-  const N=72, bw=W/N;
+  const N=FB, bw=W/N;
   for(let i=0;i<N;i++){
-    let v;
-    if(hasAudio && freq){ const f0=30*Math.pow(10000/30,i/N), f1=30*Math.pow(10000/30,(i+1)/N); v=Math.min(1,bandAvg(f0,f1)*1.8); }
-    else v=0.15+0.1*Math.sin(T*2+i*0.3);
-    const hh=Math.pow(v,1.4)*H*0.9;
+    const v=fftBytes[i]/255, hh=Math.pow(v,1.3)*H*0.9;
     hud.fillStyle=`hsla(${(hue*360+i/N*140)%360},90%,62%,.55)`;
     hud.fillRect(i*bw+1,H-hh,bw-2,hh);
   }
+  if(A.drop>0.05){ hud.fillStyle=`rgba(255,255,255,${A.drop*0.12})`; hud.fillRect(0,0,W,H); }
 }
 requestAnimationFrame(frameFn);
 </script>
