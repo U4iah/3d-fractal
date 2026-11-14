@@ -19,6 +19,19 @@ Or serve the folder: `python3 -m http.server`, then open http://localhost:8000.
 - **Custom ★**: "Save my look" stores your current theme, palette, hue and sliders, and Custom ★ restores them.
 - **T** switches theme and **C** cycles the palette or look.
 
+## Morphing between fractals
+Switching fractal now **morphs** by default. The two distance fields are cross-faded while space itself mirror-folds and twists, peaking mid-transition, so the first fractal folds in on itself and unfolds into the next. It lasts about four beats (derived from the detected BPM). Every fractal is rendered in one shared normalised frame so the blend lines up, and each keeps its own live audio parameters during the blend. The "Transition" menu also offers Dissolve (noise dissolve between frames) and Cut. Auto-cycle and the drop detector both use whichever mode is selected.
+
+## iPhone Pro tuning
+Detected automatically (iPhone/iPad with a 2× or 3× screen). Compared with generic phones:
+- Canvas at up to 2× device pixels (was 1×).
+- Fractal pass at 0.62 of that, which is roughly 0.5 megapixels on a Pro-size screen.
+- An unsharp pass in the composite restores edge crispness lost to the lower scene resolution. Its strength follows the current render scale.
+- Quality Medium, with a 60 fps cap, since ProMotion would otherwise try for 120 and double the load. Frame cap is a menu option (30 / 60 / Max).
+- Auto-res adapts the scene scale to hold the frame-rate target. It lowers resolution if frames get slow and creeps it back up if there is headroom.
+- Old low-resolution settings saved by earlier versions are discarded automatically (settings schema version).
+- If it runs smoothly, raise **Resolution** or **Quality** in the menu. The status line shows fps and scene size.
+
 ## Phone / tablet
 - Touch layout with a ☰ menu and bottom sheet. One finger orbits and two fingers pinch-zoom. The screen is kept awake while audio plays.
 - Phones default to Quality = Low and render scale 0.5, and Auto-res keeps the frame rate up. Raise Quality or Resolution in the menu on a fast phone.

@@ -118,6 +118,8 @@
   <div class="row"><span>Auto-orbit</span><input id="cOrbit" type="checkbox" checked></div>
   <div class="row"><span>Cut-away</span><input id="cSlice" type="checkbox"></div>
   <h2>Performance</h2>
+  <div class="row"><span>Transition</span><select id="sTrans"><option value="morph">Morph (fold)</option><option value="dissolve">Dissolve</option><option value="cut">Cut</option></select></div>
+  <div class="row"><span>Frame cap</span><select id="sFps"><option value="30">30 fps</option><option value="60">60 fps</option><option value="0">Max (120)</option></select></div>
   <div class="row"><span>Quality</span><select id="sQual"><option value="0">Low (phones)</option><option value="1">Medium</option><option value="2">High</option></select></div>
   <div class="row"><span>Resolution</span><input id="sRes" type="range" min="0.3" max="1.5" step="0.01" value="0.7"></div>
   <div class="row"><span>Auto-res</span><input id="cAuto" type="checkbox" checked></div>
@@ -147,6 +149,12 @@ uniform vec3  uJC;
 uniform float uQW;
 uniform float uScale;
 uniform float uFoldA;
+uniform float uPower2, uQW2, uScale2, uFoldA2;   // parameter set of the fractal we are morphing INTO
+uniform vec3  uJC2;
+uniform int   uType2;
+uniform float uMorph;                             // 0 = pure uType, 1 = pure uType2
+uniform float uK, uK2;                            // per-fractal normalisation (all fractals share one frame)
+float gPower, gQW, gScale, gFoldA; vec3 gJC;
 uniform float uHue;
 uniform float uGlow;
 uniform float uSlice;
@@ -179,13 +187,13 @@ mat2 rot2(float a){ float c=cos(a), s=sin(a); return mat2(c,s,-s,c); }
 // mode 0 Mandelbulb · 1 Juliabulb · 2 Tricorn · 3 Burning ship · 4 box-folded bulb
 float deBulb(vec3 pos, int mode){
   vec3 z = pos;
-  vec3 c = (mode==1) ? uJC : pos;
+  vec3 c = (mode==1) ? gJC : pos;
   float dr = 1.0, r = 0.0, tr = 1e9;
-  float P = uPower;
+  float P = gPower;
   for(int i=0;i<12;i++){
     r = max(length(z), 1e-4);
     if(r>2.0) break;
-    if(mode==4 && (i&1)==1){ z = clamp(z,-uScale,uScale)*2.0 - z; r = max(length(z),1e-4); }   // box fold sculpts the bulb
+    if(mode==4 && (i&1)==1){ z = clamp(z,-gScale,gScale)*2.0 - z; r = max(length(z),1e-4); }   // box fold sculpts the bulb
     if(mode==3) z = abs(z);
     float th = acos(clamp(z.z/r,-1.0,1.0));
     float ph = atan(z.y,z.x);
@@ -206,7 +214,7 @@ vec4 qsq(vec4 a){ return vec4(a.x*a.x - dot(a.yzw,a.yzw), 2.0*a.x*a.yzw); }
 
 // 4 : quaternion Julia, w = 0 slice, c wanders in 4D
 float deQJ(vec3 p){
-  vec4 z = vec4(p,0.0), c = vec4(uJC,uQW), dz = vec4(1,0,0,0);
+  vec4 z = vec4(p,0.0), c = vec4(gJC,gQW), dz = vec4(1,0,0,0);
   float tr = 1e9;
   for(int i=0;i<14;i++){
     dz = 2.0*qmul(z,dz);
@@ -222,7 +230,7 @@ float deQJ(vec3 p){
 
 // 12 : quaternion Mandelbrot, the slice plane scrolls through the 4th dimension
 float deQM(vec3 p){
-  vec4 c = vec4(p,uQW), z = vec4(0.0), dz = vec4(0.0);
+  vec4 c = vec4(p,gQW), z = vec4(0.0), dz = vec4(0.0);
   float tr = 1e9;
   for(int i=0;i<14;i++){
     dz = 2.0*qmul(z,dz) + vec4(1,0,0,0);
@@ -239,7 +247,7 @@ float deQM(vec3 p){
 // 5 : Mandelbox (Lowe)
 float deBox(vec3 p){
   vec3 z = p;
-  float dr = 1.0, s = uScale, tr = 1e9;
+  float dr = 1.0, s = gScale, tr = 1e9;
   for(int i=0;i<14;i++){
     z = clamp(z,-1.0,1.0)*2.0 - z;
     float r2 = dot(z,z);
@@ -276,7 +284,7 @@ float sdBox1(vec3 p){ vec3 q=abs(p)-vec3(1.0); return length(max(q,0.0)) + min(m
 
 // 6 : Menger sponge
 float deMenger(vec3 p){
-  vec3 O = vec3(uScale); mat2 R = rot2(uFoldA);
+  vec3 O = vec3(gScale); mat2 R = rot2(gFoldA);
   float sc = 1.0, tr = 1e9;
   for(int i=0;i<6;i++){
     mengerStep(p, sc, O, R);
@@ -289,10 +297,10 @@ float deMenger(vec3 p){
 
 // 7 : Sierpinski tetrahedron
 float deSier(vec3 p){
-  mat2 R = rot2(uFoldA);
+  mat2 R = rot2(gFoldA);
   float sc = 1.0, tr = 1e9;
   for(int i=0;i<9;i++){
-    sierStep(p, sc, uScale, R);
+    sierStep(p, sc, gScale, R);
     tr = min(tr, dot(p,p));
     if(sc*gEps*0.3 > 1.0) break;
   }
@@ -307,7 +315,7 @@ float deApol(vec3 p){
     p = -1.0 + 2.0*fract(0.5*p + 0.5);
     float r2 = dot(p,p);
     tr = min(tr, r2);
-    float k = uScale/r2;
+    float k = gScale/r2;
     p *= k; sc *= k;
     if(sc*gEps*0.3 > 1.0) break;
   }
@@ -317,8 +325,8 @@ float deApol(vec3 p){
 
 // 10 : octahedron KIFS
 float deOcta(vec3 p){
-  mat2 R = rot2(uFoldA);
-  vec3 O = vec3(uScale,0.0,0.0);
+  mat2 R = rot2(gFoldA);
+  vec3 O = vec3(gScale,0.0,0.0);
   float sc = 1.0, tr = 1e9;
   for(int i=0;i<12;i++){
     p = abs(p);
@@ -336,8 +344,8 @@ float deOcta(vec3 p){
 
 // 11 : pseudo-Kleinian (box fold + sphere inversion, Knighty style)
 float deKlein(vec3 p){
-  vec3 cs = vec3(0.92436,0.90756,0.92436)*uScale;
-  mat2 R = rot2(uFoldA);
+  vec3 cs = vec3(0.92436,0.90756,0.92436)*gScale;
+  mat2 R = rot2(gFoldA);
   float dr = 1.0, tr = 1e9;
   for(int i=0;i<10;i++){
     p = 2.0*clamp(p,-cs,cs) - p;
@@ -354,10 +362,10 @@ float deKlein(vec3 p){
 
 // 13 : Menger × Sierpinski hybrid (alternating fold steps)
 float deMT(vec3 p){
-  vec3 O = vec3(uScale); mat2 R = rot2(uFoldA);
+  vec3 O = vec3(gScale); mat2 R = rot2(gFoldA);
   float sc = 1.0, tr = 1e9;
   for(int i=0;i<8;i++){
-    if((i&1)==0) mengerStep(p, sc, O, R); else sierStep(p, sc, uScale, R);
+    if((i&1)==0) mengerStep(p, sc, O, R); else sierStep(p, sc, gScale, R);
     tr = min(tr, dot(p,p));
     if(sc*gEps*0.3 > 1.0) break;
   }
@@ -365,6 +373,25 @@ float deMT(vec3 p){
   return sdBox1(p*0.8)*1.25/sc;
 }
 
+void setP(int w){
+  if(w==0){ gPower=uPower;  gJC=uJC;  gQW=uQW;  gScale=uScale;  gFoldA=uFoldA;  }
+  else    { gPower=uPower2; gJC=uJC2; gQW=uQW2; gScale=uScale2; gFoldA=uFoldA2; }
+}
+float evalType(int ty, vec3 p){
+  float d;
+  if(ty<4)        d = deBulb(p,ty);
+  else if(ty==4)  d = deQJ(p);
+  else if(ty==5)  d = deBox(p);
+  else if(ty==6)  d = deMenger(p);
+  else if(ty==7)  d = deSier(p);
+  else if(ty==8)  d = deApol(p);
+  else if(ty==9)  d = deBulb(p,4);
+  else if(ty==10) d = deOcta(p);
+  else if(ty==11) d = deKlein(p);
+  else if(ty==12) d = deQM(p);
+  else            d = deMT(p);
+  return d;
+}
 float map(vec3 p){
   vec3 q = p;
   // audio-driven space warp: twist about y + travelling bend
@@ -372,18 +399,22 @@ float map(vec3 p){
   p.x += uBend*sin(p.y*2.1 + uTime*0.9);
   p.z += uBend*cos(p.y*1.6 + uTime*0.7);
   p = gRot*p;
-  float d;
-  if(uType<4)        d = deBulb(p,uType);
-  else if(uType==4)  d = deQJ(p);
-  else if(uType==5)  d = deBox(p);
-  else if(uType==6)  d = deMenger(p);
-  else if(uType==7)  d = deSier(p);
-  else if(uType==8)  d = deApol(p);
-  else if(uType==9)  d = deBulb(p,4);
-  else if(uType==10) d = deOcta(p);
-  else if(uType==11) d = deKlein(p);
-  else if(uType==12) d = deQM(p);
-  else               d = deMT(p);
+  float ge = gEps, d;
+  if(uMorph<=0.0){
+    setP(0); gEps = ge*uK;
+    d = evalType(uType, p*uK)/uK;
+  } else {
+    // morph: space itself folds in on itself (mirror-fold + twist peaking mid-transition),
+    // and the two distance fields are cross-faded through it
+    float k = sin(3.14159265*uMorph);
+    vec3 pf = mix(p, abs(p) - vec3(0.3), k);
+    pf.xy = rot2(1.4*k)*pf.xy;
+    float m = smoothstep(0.0,1.0,uMorph);
+    setP(0); gEps = ge*uK;  float dA = evalType(uType,  pf*uK )/uK;  float tA = gTrap;
+    setP(1); gEps = ge*uK2; float dB = evalType(uType2, pf*uK2)/uK2; float tB = gTrap;
+    d = mix(dA,dB,m); gTrap = mix(tA,tB,m);
+  }
+  gEps = ge;
   if(uSlice>0.5) d = max(d, q.x);
   return d;
 }
@@ -603,7 +634,7 @@ precision highp float;
 out vec4 o;
 uniform sampler2D uScene, uPrev, uBloom;
 uniform vec2  uRes;
-uniform float uTime, uBeat, uDrop, uBloomI, uCA, uTrans, uKal, uKalRot, uHue, uExp, uPunch, uVig, uGrain;
+uniform float uTime, uBeat, uDrop, uBloomI, uCA, uTrans, uKal, uKalRot, uHue, uExp, uPunch, uVig, uGrain, uSharp;
 
 float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
@@ -630,6 +661,11 @@ void main(){
   float ca = uCA*(0.35 + 1.5*uBeat + 1.5*uDrop);
   vec2 off = normalize(q+1e-4)*ca*(0.0015 + 0.006*length(q));
   vec3 cur = grab(uScene,q,off);
+  {                                                // unsharp mask: recovers crispness when the scene renders below screen res
+    vec2 px = 1.0/vec2(textureSize(uScene,0)); vec2 su = q*vec2(uRes.y/uRes.x,1.0)+0.5;
+    vec3 nb = (texture(uScene,su+vec2(px.x,0.)).rgb + texture(uScene,su-vec2(px.x,0.)).rgb + texture(uScene,su+vec2(0.,px.y)).rgb + texture(uScene,su-vec2(0.,px.y)).rgb)*0.25;
+    cur = max(cur + clamp(cur-nb,-0.6,0.6)*uSharp, 0.0);
+  }
   if(uTrans>0.001){                                // noise dissolve from previous fractal
     vec3 prev = grab(uPrev,q,off);
     float n = fbm(p*5.0 + uTime*0.3);
@@ -699,6 +735,10 @@ const lerpObj=(cur,tgt,k)=>{ for(const key in tgt){ const v=tgt[key]; if(Array.i
 // ───────────────────────── GL setup ─────────────────────────
 const $ = id => document.getElementById(id);
 const isMobile = matchMedia('(pointer:coarse)').matches || Math.min(innerWidth,innerHeight)<600;
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+// "Pro" tier: iPhone 12 Pro-class and newer (tall 3x screens, A14+ GPUs) incl. iPhone 16 Pro, and iPads
+const isPro = isIOS && Math.max(screen.width,screen.height)>=812 && (devicePixelRatio>=2);
+const SCHEMA = 3;     // bump to discard stale perf settings saved by older versions
 const canvas = $('gl'), hudC = $('hud'), hud = hudC.getContext('2d');
 const gl = canvas.getContext('webgl2', {antialias:false, alpha:false, powerPreference:'high-performance'});
 function showErr(m){ const e=$('err'); e.style.display='block'; e.textContent=m; console.error(m); }
@@ -922,13 +962,19 @@ let az=0.6, el=0.35, zoomMul=1, transT=0, kalRot=0;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const menu=$('types');
 TYPES.forEach((t,i)=>{ const b=document.createElement('button'); b.innerHTML=t.name+'<kbd>'+((i<9)?i+1:(i===9?0:''))+'</kbd>'; b.onclick=()=>setType(i); menu.appendChild(b); });
-function setType(i, quiet){
+let morphTo=-1, morphT=0, rendered=false, shown=0;
+function setType(i){
   const nt=((i%TYPES.length)+TYPES.length)%TYPES.length;
-  if(nt!==type && scenes[0]){ cur=1-cur; transT=1; }        // freeze last frame → dissolve into the new fractal
-  type=nt; lastSwitch=T;
-  [...menu.children].forEach((b,j)=>b.classList.toggle('on',j===type));
-  $('info').innerHTML=TYPES[type].info;
-  const t=$('title'); t.textContent=TYPES[type].name; t.style.opacity=1; clearTimeout(t._h); t._h=setTimeout(()=>t.style.opacity=.35,2500);
+  if(morphTo>=0){ type=morphTo; morphTo=-1; morphT=0; }       // finish an in-flight morph instantly
+  const mode=$('sTrans').value;
+  if(nt!==type){
+    if(mode==='morph' && rendered){ morphTo=nt; morphT=0; }    // fold fractal A into fractal B
+    else { if(mode==='dissolve' && scenes[0]){ cur=1-cur; transT=1; } type=nt; }
+  }
+  shown=nt; lastSwitch=T;
+  [...menu.children].forEach((b,j)=>b.classList.toggle('on',j===nt));
+  $('info').innerHTML=TYPES[nt].info;
+  const t=$('title'); t.textContent=TYPES[nt].name; t.style.opacity=1; clearTimeout(t._h); t._h=setTimeout(()=>t.style.opacity=.35,2500);
   A.beat=1; save();
 }
 function setPal(i){
@@ -951,9 +997,13 @@ function randomize(){
 $('bPal').onclick=()=>setPal((theme===0?palIdx:realIdx)+1); $('bRand').onclick=randomize;
 
 // persistence
-const PERSIST=['sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
-function save(){ try{ const o={type,palIdx,theme,realIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
-try{ const o=JSON.parse(localStorage.getItem('fractalPulse')||'null'); if(o){ PERSIST.forEach(id=>{ if(id in o){const e=$(id); if(e.type==='checkbox') e.checked=o[id]; else e.value=o[id];}}); type=o.type|0; palIdx=o.palIdx|0; theme=o.theme|0; realIdx=o.realIdx|0; } else if(isMobile){ $('sRes').value=0.5; $('sQual').value=0; } }catch(e){}
+const PERSIST=['sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
+function save(){ try{ const o={v:SCHEMA,type:shown,palIdx,theme,realIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
+const PERF=['sRes','sQual','cAuto','sFps'];
+if(isPro){ $('sRes').value=0.62; $('sQual').value=1; $('sFps').value=60; }
+else if(isMobile){ $('sRes').value=0.5; $('sQual').value=0; $('sFps').value=60; }
+else $('sFps').value=0;
+try{ const o=JSON.parse(localStorage.getItem('fractalPulse')||'null'); if(o){ PERSIST.forEach(id=>{ if(id in o && (o.v===SCHEMA || !PERF.includes(id))){const e=$(id); if(e.type==='checkbox') e.checked=o[id]; else e.value=o[id];}}); type=o.type|0; palIdx=o.palIdx|0; theme=o.theme|0; realIdx=o.realIdx|0; } }catch(e){}
 PERSIST.forEach(id=>$(id).addEventListener('input',save));
 const hashP=new URLSearchParams(location.hash.slice(1));
 if(hashP.has('scale')) $('sRes').value=hashP.get('scale');
@@ -982,7 +1032,7 @@ addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(k>='1'&&k<='9') setType(+k-1);
   else if(k==='0') setType(9);
-  else if(k==='arrowright') setType(type+1); else if(k==='arrowleft') setType(type-1);
+  else if(k==='arrowright') setType(shown+1); else if(k==='arrowleft') setType(shown-1);
   else if(k==='h') { $('ui').classList.toggle('hidden'); }
   else if(k==='f') toggleFull();
   else if(k==='p') shot=true;
@@ -1009,9 +1059,9 @@ canvas.addEventListener('wheel',e=>{e.preventDefault(); zoomMul=clamp(zoomMul*Ma
 canvas.addEventListener('dblclick',()=>$('ui').classList.toggle('hidden'));
 
 // ───────────────────────── per-fractal music mapping ─────────────────────────
-function params(){
+function params(ty){
   const {bass:b,mid:m,high:h}=A, t=T, P={power:8,jc:[0,0,0],qw:0,scale:1,fold:0};
-  switch(type){
+  switch(ty){
     case 0: case 2: case 3: P.power=clamp(7.6+2.4*Math.sin(t*0.13)+3.6*b-1.2*m,3,15); break;
     case 1: P.power=clamp(7.5+1.5*Math.sin(t*0.11)+2.5*b,4,13);
             P.jc=[-0.28+0.26*Math.cos(t*0.21+m*1.6), 0.45+0.25*Math.sin(t*0.27)+0.15*h, 0.18+0.3*Math.sin(t*0.19+b*1.4)]; break;
@@ -1044,15 +1094,20 @@ function director(dt){
 
 // ───────────────────────── frame loop ─────────────────────────
 const QUAL=[{steps:90,sh:10,refl:24},{steps:125,sh:16,refl:40},{steps:150,sh:22,refl:64}];
+let lastRender=0;
 let resScale=+$('sRes').value, last=performance.now()/1000, ema=16.7, frame=0, lastDown=-99, ceilS=9;
 function frameFn(nowMs){
+  const capHz=+$('sFps').value;
+  if(capHz>0 && nowMs-lastRender < 1000/capHz-2){ requestAnimationFrame(frameFn); return; }   // frame-rate cap (saves battery / heat)
+  lastRender=nowMs;
+  const tgt=1000/(capHz||60);
   const now=nowMs/1000, rawDt=now-last, dt=Math.min(0.1,rawDt); last=now;
   ema+= (dt*1000-ema)*0.05;
   const manual=+$('sRes').value;
   if($('cAuto').checked){
     if(frame>30 && frame%10===0){
-      if(ema>24 && resScale>0.3){ resScale*=0.93; lastDown=now; ceilS=resScale*1.05; }
-      else if(ema<18.5 && resScale<manual && now-lastDown>4 ) resScale=Math.min(manual,ceilS,resScale*1.03);
+      if(ema>tgt*1.42 && resScale>0.3){ resScale*=0.93; lastDown=now; ceilS=resScale*1.05; }
+      else if(ema<tgt*1.1 && resScale<manual && now-lastDown>4 ) resScale=Math.min(manual,ceilS,resScale*1.03);
       if(now-lastDown>25) ceilS=9;
     }
     resScale=Math.min(resScale,manual);
@@ -1063,7 +1118,7 @@ function frameFn(nowMs){
   T+=dt*(0.6+0.8*motion);
   if(A.onset||(!hasAudio&&A.beat>0.99)){
     const amt=(A.drop>0.9?3.5:1.4)*motion; for(let i=0;i<3;i++) kick[i]+=(Math.random()-0.5)*amt; hue+=0.012+0.05*A.drop;
-    if($('cCycle').checked && T-lastSwitch>(A.drop>0.9?4:26) && (A.drop>0.9 || beatCount%8===0)) setType(type+1);
+    if($('cCycle').checked && T-lastSwitch>(A.drop>0.9?4:26) && (A.drop>0.9 || beatCount%8===0)) setType(shown+1);
   }
   for(let i=0;i<3;i++) kick[i]*=Math.exp(-dt*2.2);
   const base=[0.11,0.16,0.07];
@@ -1073,7 +1128,13 @@ function frameFn(nowMs){
   if(camMode===2 && !drag) el+= (0.6*Math.sin(camT*0.23)-el)*dt*0.5;
   kalRot+=dt*(0.1+0.4*A.mid);
 
-  const cfg=TYPES[type], P=params();
+  if(morphTo>=0){ const dur=A.bpm?clamp(4*60/A.bpm,1.4,3.2):2.4; morphT=Math.min(1,morphT+Math.min(rawDt,0.2)/dur); if(morphT>=1){ type=morphTo; morphTo=-1; morphT=0; } }
+  const morphing=morphTo>=0, mS=morphing?morphT*morphT*(3-2*morphT):0;
+  const cfgA=TYPES[type], cfgB=morphing?TYPES[morphTo]:cfgA, P=params(type), P2=morphing?params(morphTo):P;
+  // every fractal is rendered in one shared frame (bounding radius 1.5) so morphs line up; infinite-extent ones keep k=1
+  const effOf=c=>{ const k=c.bound<100?c.bound/1.5:1; return {k,size:c.size/k,cam:c.cam/k,inside:c.bound>=100,expo:c.expo||1}; };
+  const eA=effOf(cfgA), eB=effOf(cfgB), Lm=(a,b)=>a+(b-a)*mS;
+  const cfg={size:Lm(eA.size,eB.size),cam:Lm(eA.cam,eB.cam),expo:Lm(eA.expo,eB.expo),bound:(eA.inside||eB.inside)?1000:1.5,inside:eA.inside||eB.inside};
   // palette crossfade
   lerpObj(realCur,LOOKS[realIdx],Math.min(1,dt*2.5));
   const tp=PALS[palIdx]; for(const k of ['a','b','c','d']) for(let i=0;i<3;i++) palCur[k][i]+=(tp[k][i]-palCur[k][i])*Math.min(1,dt*2.5);
@@ -1081,20 +1142,20 @@ function frameFn(nowMs){
   // warp: twist + bend, scaled to the fractal and limited by a step safety factor
   const twist=warp*(0.22*Math.sin(T*0.31)+0.85*A.mid-0.15)/cfg.size*0.5;
   const bend =warp*cfg.size*0.05*(1.0*A.bass+0.3*Math.sin(T*0.2));
-  const stepF=0.85/(1+Math.abs(twist)*cfg.size*1.0+Math.abs(bend)*2.1);
+  const stepF=0.85/(1+Math.abs(twist)*cfg.size*1.0+Math.abs(bend)*2.1)*(1-0.4*Math.sin(Math.PI*morphT)*(morphing?1:0));
 
   let zoomAuto=1;
   if(camMode===1) zoomAuto=0.45+0.55*(0.5+0.5*Math.cos(camT*0.22));
   let dist=cfg.cam*zoomMul*zoomAuto*(1-0.035*A.beat-0.06*A.drop+0.03*Math.sin(T*0.17));
-  if(type===8||type===11) dist=Math.max(0.25,dist);
-  const floorOn = theme===1 && !cfg.expo, floorY=-(cfg.fl||cfg.bound*0.85);
+  if(cfg.inside) dist=Math.max(0.25,dist);
+  const floorOn = theme===1 && !cfg.inside, floorY=-1.275;
   const cam=[dist*Math.cos(el)*Math.sin(az), dist*Math.sin(el), dist*Math.cos(el)*Math.cos(az)];
   if(floorOn) cam[1]=Math.max(cam[1], floorY*0.55);
   const th=THEMES[theme], Q=QUAL[+$('sQual').value|0];
   const sunA=0.9+T*0.035+0.5*A.mid, sunE=realCur.sunEl+0.06*Math.sin(T*0.1), sunDir=[Math.cos(sunE)*Math.sin(sunA),Math.sin(sunE),Math.cos(sunE)*Math.cos(sunA)];
 
   // targets
-  const dpr=Math.min(devicePixelRatio||1,isMobile?1:1.5), cw=Math.max(64,Math.floor(innerWidth*dpr)), ch=Math.max(64,Math.floor(innerHeight*dpr));
+  const dpr=Math.min(devicePixelRatio||1,isPro?2:1.5), cw=Math.max(64,Math.floor(innerWidth*dpr)), ch=Math.max(64,Math.floor(innerHeight*dpr));
   const sw=Math.max(48,Math.floor(cw*resScale)), sh=Math.max(48,Math.floor(ch*resScale));
   if(canvas.width!==cw||canvas.height!==ch){ canvas.width=cw; canvas.height=ch; }
   ensureTargets(sw,sh,cw,ch);
@@ -1103,13 +1164,14 @@ function frameFn(nowMs){
   // pass 1 — fractal → HDR scene buffer
   gl.bindFramebuffer(gl.FRAMEBUFFER,scenes[cur].fbo); gl.viewport(0,0,sw,sh);
   bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
-  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uSteps:Q.steps,uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
+  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uType2:morphing?morphTo:type,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
-    uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uHue:hue,uGlow:+$('sGlow').value,
+    uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue,uGlow:+$('sGlow').value,
     uSlice:$('cSlice').checked?1:0,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
     uMatA:realCur.matA,uMatB:realCur.matB,uMetal:realCur.metal,uRough:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uFloorOn:floorOn?1:0,uFloorY:floorY,
     uPA:palCur.a,uPB:palCur.b,uPC:palCur.c,uPD:palCur.d,uLDR:useFloat?0:1,uFFT:3});
   gl.drawArrays(gl.TRIANGLES,0,3);
+  rendered=true;
 
   // pass 2 — bloom (bright-pass + 2× separable gaussian at ¼ res)
   const bw=bloomA.w, bh=bloomA.h;
@@ -1122,7 +1184,7 @@ function frameFn(nowMs){
   gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,cw,ch);
   bindTex(0,scenes[cur].tex); bindTex(1,scenes[1-cur].tex); bindTex(2,bloomB.tex);
   const kv=+$('sKal').value, kal=kv>=2?kv:dirKal;
-  progComp.set({uScene:0,uPrev:1,uBloom:2,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uBloomI:th.bloomI*+$('sBloom').value,uExp:th.exp,uPunch:th.punch,uVig:th.vig,uGrain:th.grain,
+  progComp.set({uScene:0,uPrev:1,uBloom:2,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uSharp:clamp((1-resScale)*0.9,0.08,0.55),uBloomI:th.bloomI*+$('sBloom').value,uExp:th.exp,uPunch:th.punch,uVig:th.vig,uGrain:th.grain,
     uCA:th.ca*(+$('sBloom').value>0?1:0.4),uTrans:transT*transT*(3-2*transT)*1.0,uKal:kal,uKalRot:kalRot,uHue:hue});
   gl.drawArrays(gl.TRIANGLES,0,3);
   if(shot){ shot=false; const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='fractal-pulse.png'; a.click(); }

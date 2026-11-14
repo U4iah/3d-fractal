@@ -45,6 +45,21 @@ The realistic shading path:
 
 Quality tiers (Low / Medium / High) set the march steps, shadow steps and reflection steps. Phones default to Low.
 
+## 1d. Geometric morphing (v4)
+
+The map function can evaluate two fractals at once:
+
+```
+pf = mix(p, abs(p) - 0.3, k) then rotate xy by 1.4k      k = sin(π·t)   (peaks mid-morph)
+d  = mix(dA(pf·kA)/kA, dB(pf·kB)/kB, smoothstep(t))
+```
+
+- **Shared frame.** Each fractal is rendered at `p·k` with its distance divided by `k`, where `k = bound/1.5`. Every finite fractal then has bounding radius 1.5 and a similar size, so the cross-fade is meaningful. The cost is that morphs between very different fractals (for example a bulb into an infinite foam) are blends of fields that are only approximately compatible.
+- **Fold wave.** `k = sin(πt)` is zero at both ends, so the pure fractals are untouched. In the middle, the mirror fold plus twist makes the shape visibly fold in on itself.
+- **Safety.** Mixed fields and warped space are not exact distances. The step size is reduced by up to 40% mid-morph.
+- **Cost.** Two distance evaluations per step for the duration of the morph (about 4 beats). Auto-res absorbs the dip.
+- **Timing.** The duration is four beats, derived from the detected BPM and clamped to 1.4–3.2 s.
+
 ## 2. The fractals
 
 | # | Fractal | Map | Notes |
@@ -114,6 +129,7 @@ Built-in generative demo (128 bpm kick, clap, hats, acid bass, arp, delay), file
 ## 5. What was verified, and what wasn't
 
 - Verified: the shader compiles, and all 14 fractals render with live audio-driven uniforms. Tested in headless Chromium with software WebGL, using the built-in demo audio and screenshots.
+- **iPhone 16 Pro:** the device detection and defaults were checked with an emulated iPhone. Actual frame rate and the best resolution/quality settings on the device itself are unmeasured.
 - **Not verified on real hardware.** Frame rate is untested on a real GPU, and so are mic input and tab capture, since they need a browser prompt.
 - - **Not verified:** the drop detector on real music. It is tuned by reasoning and the demo track only.
 - Both new hybrids (Folded bulb, Menger×Tetra) use approximate DEs.
