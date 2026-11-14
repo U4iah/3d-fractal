@@ -87,6 +87,19 @@ On top of the three bands and the kick detector:
 - **Feedback trails:** the composite is rendered to a ping-pong full-resolution buffer, with the previous frame sampled through a small rotation and zoom plus a channel rotation, multiplied by the trail amount, and max-blended. The result is blitted to the screen.
 - **Shader compile time.** The first version inlined `map()` about 40 times, each containing three copies of all 18 fractals, and took 37 s to compile on a software GPU (the context was lost). Restructuring fixed it: (1) one evaluation loop in `map` instead of separate single and morph branches (non-constant loop bound `uNW` so it is not unrolled); (2) `calcN` and `calcAO` as loops with a non-constant bound (`4+uZero`) to prevent unrolling; (3) one normal, orbit-trap and shadow evaluation shared by all three themes; (4) one secondary-ray site shared by the metal and floor mirrors. That gave 3.2 s, roughly 12× faster, and a fraction of the code size. Real phones compile with a different backend, but code size scales the same way.
 
+## 1i. Clay look and the exact Burning Ship (v8)
+
+- **Look:** it reuses the Realistic PBR path, with these changes for clay:
+  - wrap lighting `(N·L + w)/(1 + w)` with w ≈ 0.35–0.45 for soft terminators like a path-traced diffuse surface;
+  - an ambient term from a hemisphere blend of sky and ground colour, scaled by 1.5–2.3, with the occlusion floor lifted by 22% so crevices stay soft;
+  - shadow softness constant 4–5 instead of 10;
+  - a sky gradient that reaches its top colour by about 24° elevation, joined to the ground by a zero-slope blend so there is no visible horizon line;
+  - no sun disk and no floor.
+  The camera sits slightly below the object so the horizon appears in frame, as in the photos.
+- **Formula (from the post):** `θ = atan2(√(x²+z²), y)·n`, `φ = atan2(x, z)·n`, `r = |z|ⁿ`, and `z' = | (sinφ·sinθ·r, cosθ·r, sinθ·cosφ·r) + c |`. The Mandelbrot version starts at 0 with `c = position`, and the Julia version starts at the position with a fixed `c`. The distance estimate is `½·ln r · r/dr`, scaled by 0.7 because the abs fold makes it less conservative. Iteration cap is raised for this fractal so the ridge detail resolves.
+- **Finding:** power 8, the default for the other bulbs, gives a round, nearly symmetric lump. The craggy asymmetric shape needs power around 2.4–3.
+- **Not exact:** the original was rendered in Octane (path tracing). This look approximates global illumination with ambient + wrap lighting + AO. The fine ridge detail depends on render resolution.
+
 ## 2. The fractals
 
 | # | Fractal | Map | Notes |
@@ -108,6 +121,7 @@ On top of the three bands and the kick detector:
 | 16 | **Julibox** | Mandelbox with a fixed constant `c` instead of the point `p` | Julia-style variant. Its bounding radius is guessed from renders. |
 | 17 | **Bristorbrot-style quadratic** | `(x²−y²−z², y(2x−z), z(2x+y)) + p` | The map is from memory of the community formula. The DE is the generic power-2 estimate, so it is approximate. |
 | 18 | **Cubic quaternion Julia** | `q → q³ + c`, `c ∈ ℍ`, 3D slice | `dz → 3·q²·dz`. Gives a nautilus-like shell. |
+| 19 / 20 | **3D Burning Ship / Julia** (reference formula) | see 1i | Abs after the power step, polar axis y, power ≈ 2.6. |
 | 13 | **Menger × Sierpinski hybrid** | alternate Menger (×3) and Sierpinski (×2) folds | The DE is approximate (box SDF scaled to the mixed shape). |
 | 8 | **Apollonian packing** | `p → −1 + 2·fract(0.5p + 0.5)`, then inversion `p·s/\|p\|²` | Sphere-inversion IFS in a periodic cell. The camera sits inside the foam. |
 

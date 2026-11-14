@@ -19,6 +19,11 @@ Or serve the folder: `python3 -m http.server`, then open http://localhost:8000.
 - **Custom ★**: "Save my look" stores your current theme, palette, hue and sliders, and Custom ★ restores them.
 - **T** switches theme and **C** cycles the palette or look.
 
+## Clay theme + the reference scenes
+A fourth theme, **Clay**, recreates the "clay-render" look of the reference photos: a matte diffuse material (sandstone, snow, terracotta, frost) floating over a smooth sky-to-haze gradient with no floor, lit by a low warm sun plus a strong sky-ambient term, with wrap lighting for soft terminators, soft shadows, and crevice occlusion that never goes pitch dark. The four looks (press C) are matched to the palettes in the photos. The **Reference scenes** buttons (Ref 1 sandstone, Ref 2 snow, Ref 3 terracotta) set theme, material, fractal and camera in one tap.
+
+The fractal is the **exact 3D Burning Ship formula** from the reference post (spherical power step with the polar axis along y, then `abs` on every component *after* adding c), plus its Julia variant. At power ≈ 2–3 it gives the asymmetric, craggy wedge shape in the photos. At power 8 it is just a round lump.
+
 ## Performance takes (record the performance, not the pixels)
 **Record take** stores the music analysis, camera, spin, dive, fractal changes, theme/material changes and sculpt moves as data at 30 Hz, plus an observation track for external trackers. **Play take** replays it with no audio needed. Load the same song and it plays in sync. Untick *Take's look* to **re-skin** the same performance in your own theme and materials. You can scrub, jump to or delete events, trim, save as `*.fpx.json`, copy as JSON, load or paste a take, and drop a `.json` onto the page. Format, playback rules and the roadmap (offline 4K render, a multi-track editor, a hand-mapping layer) are in **PERFORMANCE.md**.
 
