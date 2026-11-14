@@ -118,7 +118,8 @@
     <button id="bCustom">Custom ★</button>
     <button id="bSaveCustom">Save my look</button>
   </div>
-  <button id="bFlow" style="width:100%;margin-top:8px">🌀 Dendrite flow (2D) <kbd>G</kbd></button>
+  <button id="bFlow" style="width:100%;margin-top:8px">🌀 2D flow scenes <kbd>G</kbd></button>
+  <div class="row"><span>2D scene</span><select id="sFlowVar"></select></div>
   <div class="sub" style="margin-top:8px">Reference scenes (the clay-render photos)</div>
   <div class="grid" id="refs"></div>
   <h2>Audio</h2>
@@ -231,8 +232,6 @@ uniform float uFoldA;
 uniform float uPower2, uQW2, uScale2, uFoldA2;   // parameter set of the fractal we are morphing INTO
 uniform vec3  uJC2;
 uniform int   uType2;
-uniform int   uMode;                              // 0 = 3D fractal, 1 = 2D dendrite flow
-uniform float uFlowRot, uFlowZoom, uFlowPhase;
 uniform int   uNW, uZero;                         // uNW: number of fractals evaluated (1, or 2 while morphing); uZero: always 0 (defeats loop unrolling)
 uniform float uMorph;                             // 0 = pure uType, 1 = pure uType2
 uniform float uK, uK2;                            // per-fractal normalisation (all fractals share one frame)
@@ -616,22 +615,7 @@ float shadow(vec3 ro, vec3 rd){
 
 float gPx = 0.001;
 
-// ─────────────── 2D DENDRITE FLOW scene (the "feathery tissue" video) ───────────────
-// FLOW-SCENE-BEGIN
-vec3 flowPal(float x, float phase){
-  vec3 ink=vec3(0.04,0.02,0.05), cu=vec3(0.78,0.42,0.18), cr=vec3(0.95,0.90,0.85), bg=vec3(0.55,0.62,0.75), vi=vec3(0.27,0.18,0.62);
-  float ph=fract(phase)*3.0; vec3 c1 = ph<1.0?cu:(ph<2.0?cu*0.55:vi), c2 = ph<1.0?cr:(ph<2.0?cu:bg); c1=mix(c1, ph<1.0?cu*0.55:(ph<2.0?vi:cu), smoothstep(0.8,1.0,fract(ph)));
-  x=clamp(x,0.0,1.0); return x<0.4?mix(ink,c1,x/0.4):mix(c1,c2,(x-0.4)/0.6);
-}
-vec3 flowScene(vec2 uv, float t, float phase){
-  vec2 c0=vec2(-1.7625,-0.0285); float sc=0.035*exp(-fract(t*0.05)*2.0);
-  vec2 c=c0+rot2(0.6+t*0.05)*uv*sc; vec2 z=vec2(0.0); float it=0.0;
-  for(int i=0;i<140;i++){ z=vec2(z.x*z.x-z.y*z.y, 2.0*abs(z.x*z.y))+c; if(dot(z,z)>1e4) break; it+=1.0; }
-  float sm=it-log2(max(log2(dot(z,z)),1.0))+4.0;
-  return (it>=139.0)?vec3(0.02,0.01,0.03):flowPal(fract(sm*0.03),phase);
-}
-// FLOW-SCENE-END
-float hashS(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+
 
 vec3 background(vec3 rd){
   float g = 0.5+0.5*rd.y;
@@ -793,18 +777,6 @@ vec3 floorColor(vec3 rd, float tf, float sh, vec3 rc){
 void main(){
   gRot = rotM(uAng);
   vec2 uv = (gl_FragCoord.xy - 0.5*uRes)/uRes.y;
-  if(uMode==1){
-    vec2 q = rot2(uFlowRot)*uv*uFlowZoom;
-    vec3 fc = flowScene(q, uTime, uFlowPhase);
-    // drifting white sparks (tiny radial streaks), brighter on hats and beats
-    vec2 sp = uv*vec2(46.0,46.0) + vec2(uTime*0.6, -uTime*0.4);
-    vec2 si = floor(sp), sf = fract(sp)-0.5; float hs = hashS(si);
-    float spark = step(0.965,hs) * smoothstep(0.30,0.0,length(sf*vec2(1.0,3.5))) * (0.5+0.5*sin(uTime*3.0+hs*40.0));
-    fc += vec3(1.0,0.95,0.9)*spark*(0.5+1.8*uHigh+1.2*uBeat);
-    fc *= 1.0 + 0.35*uBeat + 0.7*uDrop;
-    outCol = vec4(min(fc,vec3(12.0)), -1.0);
-    return;
-  }
   vec3 ro = uCam;
   vec3 fw = normalize(uTarget-ro);
   vec3 rt = normalize(cross(fw, vec3(0,1,0)));
@@ -865,6 +837,294 @@ void main(){
 }
 </script>
 
+
+<!-- ═════════ 2D SCENES: each is its own small fragment shader (compiled when first selected). Candidate code defines vec3 flowScene(vec2 uv,float t,float phase) and may use the w_* helpers. ═════════ -->
+<script id="flowWrap" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+out vec4 outCol;
+uniform vec2 uRes;
+uniform float uTime, uFlowRot, uFlowZoom, uFlowPhase, uBass, uMid, uHigh, uBeat, uDrop;
+mat2 w_rot(float a){ float c=cos(a), s=sin(a); return mat2(c,s,-s,c); }
+float w_h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+float w_vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(w_h21(i),w_h21(i+vec2(1,0)),f.x), mix(w_h21(i+vec2(0,1)),w_h21(i+vec2(1,1)),f.x), f.y); }
+// copper -> cream -> blue-grey, with ink; phase 0..1 cycles bright copper/white -> dark copper -> indigo
+vec3 w_pal(float x, float phase){
+  vec3 ink=vec3(0.04,0.02,0.05), cu=vec3(0.78,0.42,0.18), cr=vec3(0.95,0.90,0.85), bg=vec3(0.55,0.62,0.75), vi=vec3(0.27,0.18,0.62);
+  float ph=fract(phase)*3.0, k=floor(ph), f=smoothstep(0.0,1.0,fract(ph));
+  vec3 c1a = k<1.0?cu:(k<2.0?cu*0.55:vi), c1b = k<1.0?cu*0.55:(k<2.0?vi:cu);
+  vec3 c2a = k<1.0?cr:(k<2.0?cu:bg),      c2b = k<1.0?cu:(k<2.0?bg:cr);
+  vec3 c1=mix(c1a,c1b,f), c2=mix(c2a,c2b,f);
+  x=clamp(x,0.0,1.0); return x<0.4?mix(ink,c1,x/0.4):mix(c1,c2,(x-0.4)/0.6);
+}
+//@@CANDIDATE@@
+void main(){
+  vec2 uv=(gl_FragCoord.xy-0.5*uRes)/uRes.y;
+  vec2 q=w_rot(uFlowRot)*uv*uFlowZoom;
+  vec3 fc=flowScene(q,uTime,fract(uFlowPhase));
+  // drifting white sparks (tiny radial streaks), brighter on hats and beats
+  vec2 sp=uv*46.0+vec2(uTime*0.6,-uTime*0.4); vec2 si=floor(sp), sf=fract(sp)-0.5; float hs=w_h21(si);
+  float spark=step(0.965,hs)*smoothstep(0.30,0.0,length(sf*vec2(1.0,3.5)))*(0.5+0.5*sin(uTime*3.0+hs*40.0));
+  fc+=vec3(1.0,0.95,0.9)*spark*(0.5+1.8*uHigh+1.2*uBeat);
+  fc*=1.0+0.35*uBeat+0.7*uDrop;
+  outCol=vec4(pow(clamp(fc,0.0,4.0),vec3(2.2)),-1.0);   // scene colours are display-referred: linearise so the shared gamma step restores them
+}
+</script>
+<script id="flowA" data-name="Feather frond · herringbone IFS" type="x-shader/x-fragment">
+float h11(float n){return fract(sin(n*127.1+13.7)*43758.5453);}
+float h21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
+vec3 pal(float x,float ph,float bm){
+  vec3 ink=vec3(.04,.02,.05), cu=vec3(.78,.42,.18), cr=vec3(.95,.90,.85), bg=vec3(.55,.62,.75);
+  vec3 dc=vec3(.42,.2,.15), vi=vec3(.25,.18,.6);
+  vec3 A=mix(cu,dc,smoothstep(.3,.6,ph)), B=mix(cr,bg,.0);
+  A=mix(A,vi*.8,smoothstep(.6,.9,ph)); B=mix(cr,mix(bg,vec3(.45,.4,.85),smoothstep(.6,.9,ph)),bm);
+  x=clamp(x,0.,1.);
+  return x<.5?mix(ink,A,smoothstep(0.,.5,x)):mix(A,B,smoothstep(.5,1.,x));
+}
+// recursive herringbone feather: each level = periodic slanted barbs about the parent's axis
+vec2 feather(float u,float v,float co,float fp){
+  float id=floor(v); float x=fract(v)-.5; float W=1.0;
+  float shade=0., amp=1., tot=0.; float dark=0.;
+  float uu=u; float spine=0.;
+  for(int i=0;i<6;i++){
+    float h=W/3.8;
+    float ax=abs(x);
+    float sl=1.5*(.65+.7*h11(id*2.3+1.));
+    float q=(uu-sl*ax)/h+h11(id)*7.+.6*vn(vec2(uu,ax*3.)/h*.5+id);
+    float n=floor(q); float g=fract(q);
+    float tf=ax/(.5*W);
+    float len=(.5+.8*h11(id*3.1+n))*(i==0?co*.8+.55:1.)*(i==0?1.:co*.6+.75);
+    float m=smoothstep(len,len-.2,tf);
+    if(i==0) spine=(1.-tf);
+    float ramp=pow(g,.8);
+    float vis=smoothstep(.25,1.5,h/fp);   // fade levels finer than a pixel
+    float a=amp*vis;
+    float sh=mix(ramp,1.-tf,.35);
+    shade+=a*sh+(amp-a)*.5; tot+=amp;
+    dark+=a*(1.-m)+(amp-a)*.3;
+    id=h11(id*1.7+n*5.3+float(i))*100.;
+    uu=ax; x=(g-.5)*h; W=h; amp*=.7;
+  }
+  return vec2(shade/tot+.6*spine*spine*(.5+co*.6),dark/tot);
+}
+vec3 flowScene(vec2 uv,float t,float phase){
+  vec2 c=vec2(-.9,-.8);
+  vec2 p=uv-c; float ang=.55+.04*sin(t*.3)+t*.01; float ca=cos(ang),sa=sin(ang); p=mat2(ca,sa,-sa,ca)*p;
+  float r=length(p), a=atan(p.y,p.x);
+  float fp=4.5*fwidth(r)/r*1.0; // footprint in u units
+  float u=log(r)*4.5 - t*.45, v=a*4.2+t*.02;
+  v+=.9*vn(vec2(u*.4,v*.35))+.35*vn(vec2(u*1.1,v*.8)+3.)+.12*vn(vec2(u*3.,v*2.)+9.);
+  float co=vn(vec2(u*.35,v*.45)+7.)*1.5-.05;
+  vec2 f=feather(u,v,co,fp);
+  float s=f.x*.82+(co-.5)*.3-.1;
+  float bm=smoothstep(.35,.65,vn(vec2(u*.3,v*.4)+31.))*.9;
+  vec3 col=pal(s-f.y*.8,phase,bm);
+  // sparks: small radial streaks in voids
+  vec2 sg=vec2(u*25.,v*22.); vec2 si=floor(sg); vec2 sf=fract(sg)-.5;
+  float hh=h21(si);
+  float sp=step(.93,hh)*smoothstep(.5,.0,abs(sf.y+(h21(si+3.)-.5)*.5)*3.)*smoothstep(.5,.1,abs(sf.x));
+  float voidness=smoothstep(.45,.1,s-f.y*.8);
+  col+=sp*voidness*vec3(.9,.9,1.)*.9;
+  return col;
+}
+</script>
+<script id="flowB" data-name="Frond &amp; swirl · noise erosion" type="x-shader/x-fragment">
+// Pinnate (feather) frond field via hierarchical folded barbs on a fan of spines.
+mat2 fnRot(float a){float c=cos(a),s=sin(a);return mat2(c,s,-s,c);}
+float fnH(float n){return fract(sin(n*127.1)*43758.5453);}
+float fnH2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float fnVn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(fnH2(i),fnH2(i+vec2(1,0)),f.x),mix(fnH2(i+vec2(0,1)),fnH2(i+vec2(1,1)),f.x),f.y);}
+
+// p.x along the spine, p.y across (cell width 1). Each level: mirror about spine,
+// barbs lean forward; next level lives inside the barb (barb = child frond).
+float fnFrond(vec2 p){
+  float a=p.x,b=p.y,h=0.,w=1.,tot=0.;
+  for(int i=0;i<7;i++){
+    float cid=floor(b+.5),x=b-cid,ax=abs(x);
+    float r=fnH(cid*1.37+float(i)*7.1);
+    float tent=1.-2.*ax;
+    h+=w*pow(max(tent,0.),.45); tot+=w;
+    float m=a*2.2-ax*3.+r*8.;
+    a=ax*1.8*(1.+.5*r); b=m;
+    w*=.92*pow(max(tent,0.),.35);
+  }
+  return h/tot;
+}
+vec3 fnPal(float x,float ph){
+  float s=ph*3.; int i=int(floor(s)); float f=smoothstep(.2,.8,fract(s)); i=i-3*(i/3);
+  vec3 I0,D0,C0,R0,B0,I1,D1,C1,R1,B1;
+  if(i==0){I0=vec3(.04,.02,.05);D0=vec3(.50,.25,.10);C0=vec3(.82,.46,.20);R0=vec3(.95,.90,.85);B0=vec3(.62,.68,.80);
+           I1=vec3(.03,.01,.03);D1=vec3(.20,.09,.07);C1=vec3(.58,.28,.20);R1=vec3(.80,.47,.32);B1=vec3(.62,.50,.55);}
+  else if(i==1){I0=vec3(.03,.01,.03);D0=vec3(.20,.09,.07);C0=vec3(.58,.28,.20);R0=vec3(.80,.47,.32);B0=vec3(.62,.50,.55);
+           I1=vec3(.02,.01,.06);D1=vec3(.12,.07,.32);C1=vec3(.30,.20,.66);R1=vec3(.55,.48,.88);B1=vec3(.45,.52,.72);}
+  else {I0=vec3(.02,.01,.06);D0=vec3(.12,.07,.32);C0=vec3(.30,.20,.66);R0=vec3(.55,.48,.88);B0=vec3(.45,.52,.72);
+           I1=vec3(.04,.02,.05);D1=vec3(.50,.25,.10);C1=vec3(.82,.46,.20);R1=vec3(.95,.90,.85);B1=vec3(.62,.68,.80);}
+  vec3 ink=mix(I0,I1,f),dk=mix(D0,D1,f),cop=mix(C0,C1,f),cr=mix(R0,R1,f),bg=mix(B0,B1,f);
+  vec3 col=mix(ink,dk,smoothstep(.18,.3,x));
+  col=mix(col,cop,smoothstep(.3,.45,x));
+  col=mix(col,cr,smoothstep(.62,.8,x));
+  col=mix(col,bg,smoothstep(.95,1.25,x));
+  return col;
+}
+// returns height-like value x
+float fnField(vec2 uv,float t){
+  vec2 p=fnRot(.25)*uv;
+  vec2 q=p+.08*vec2(fnVn(p*3.+t*.05),fnVn(p*3.+7.));
+  vec2 c=q-vec2(-.55,-.75);
+  float r=length(c),ang=atan(c.y,c.x);
+  vec2 fp=vec2(log(r)*3.+t*.12,ang*3.2+t*.03);
+  fp.y+=1.2*(fnVn(q*2.1+1.)-.5)+.5*(fnVn(q*4.3+5.)-.5);
+  fp.x+=.8*(fnVn(q*2.7+9.)-.5);
+  float h=fnFrond(fp);
+  float big=fnVn(q*3.+3.)*.6+fnVn(q*6.7)*.4;
+  return h-.22*(1.-smoothstep(.38,.55,big));
+}
+vec3 flowScene(vec2 uv,float t,float phase){
+  float dk=smoothstep(.2,.5,phase)*(1.-smoothstep(.5,.7,phase));
+  float x=0.;
+  for(int k=0;k<4;k++){ // radial zoom-blur taps
+    float s=1.-float(k)*.012;
+    x+=fnField(uv*s,t);
+  }
+  x*=.25;
+  x=(x-.5)*1.9+.4-.1*dk;
+  vec3 col=fnPal(x,phase);
+  // sparks in voids
+  vec2 g=uv*45.; vec2 id=floor(g); vec2 f=fract(g)-.5;
+  float rn=fnH2(id);
+  vec2 d=normalize(uv+1e-4); f=vec2(dot(f,d),dot(f,vec2(-d.y,d.x)));
+  float sp=step(.9,rn)*smoothstep(.08,.0,abs(f.y))*2.*smoothstep(.3,.0,abs(f.x))*smoothstep(.35,.1,x);
+  col+=sp*vec3(.9,.9,1.)*.8;
+  return col;
+}
+</script>
+<script id="flowC" data-name="Julia dendrite · exact loop" type="x-shader/x-fragment">
+// Escape-time Julia "feather" scene: z -> z^2 + C with C near the dendrite end of the Mandelbrot set,
+// zoomed into a repelling fixed point z0 (exact self-similarity: zoom |2 z0|, rotate arg(2 z0) per loop => seamless).
+// Colour = smooth stripe-average (angular stripes, 3*arg z) -> pinnate strands; interior = ink voids.
+// signature: flowScene(uv centred, y in [-.5,.5]; t seconds; phase 0..1 copper/white -> dark copper -> indigo)
+vec2 fd_cmul(vec2 a, vec2 b){ return vec2(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x); }
+vec2 fd_csqrt(vec2 z){ float r=length(z); return vec2(sqrt(.5*(r+z.x)), sign(z.y+1e-9)*sqrt(max(.5*(r-z.x),0.))); }
+float fd_h(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+
+vec3 fd_pal(float x, float ph){
+  x = clamp(x,0.,1.);
+  vec3 ink = vec3(0.035,0.015,0.045);
+  // palette 0: copper / cream / blue-grey
+  vec3 a1=vec3(0.30,0.12,0.07), a2=vec3(0.80,0.43,0.19), a3=vec3(0.97,0.92,0.86), a4=vec3(0.62,0.68,0.78);
+  // palette 1: dark copper
+  vec3 b1=vec3(0.06,0.025,0.04), b2=vec3(0.30,0.13,0.10), b3=vec3(0.72,0.40,0.22), b4=vec3(0.52,0.36,0.40);
+  // palette 2: indigo / violet
+  vec3 c1=vec3(0.05,0.03,0.14), c2=vec3(0.17,0.12,0.45), c3=vec3(0.36,0.30,0.68), c4=vec3(0.78,0.48,0.28);
+  float p = fract(ph)*3.;
+  float w0=max(0.,1.-min(p,3.-p)), w1=max(0.,1.-abs(p-1.)), w2=max(0.,1.-abs(p-2.));
+  float ws=w0+w1+w2; w0/=ws; w1/=ws; w2/=ws;
+  vec3 k1=a1*w0+b1*w1+c1*w2, k2=a2*w0+b2*w1+c2*w2, k3=a3*w0+b3*w1+c3*w2, k4=a4*w0+b4*w1+c4*w2;
+  vec3 c = x<.25 ? mix(ink,k1,x/.25) : x<.5 ? mix(k1,k2,(x-.25)/.25) : x<.75 ? mix(k2,k3,(x-.5)/.25) : mix(k3,k4,(x-.75)/.25);
+  return c;
+}
+
+vec3 flowScene(vec2 uv, float t, float phase){
+  const float PERIOD = 14.0;                 // seconds per self-similar loop
+  const vec2 C = vec2(-0.10, 0.88);          // near the dendrite: few, thin voids
+  vec2 z0 = 0.5*(vec2(1.,0.) - fd_csqrt(vec2(1.,0.)-4.*C));   // repelling fixed point
+  vec2 m = 2.*z0;
+  float lm = log(length(m)), am = atan(m.y,m.x);
+  float ph = fract(t/PERIOD);
+  float ang = -am*ph + 0.9;
+  vec2 w = uv*1.3*exp(-lm*ph);
+  w = fd_cmul(w, vec2(cos(ang),sin(ang)));
+  vec2 z = z0 + w;
+  const float B = 1e6;
+  float s=0., sp=0., n=0.;
+  bool esc=false;
+  for(int i=0;i<100;i++){
+    z = fd_cmul(z,z)+C;
+    sp = s; s += 0.5+0.5*(0.65*sin(3.*atan(z.y,z.x))+0.35*sin(9.*atan(z.y,z.x)));
+    n += 1.;
+    if(dot(z,z)>B){ esc=true; break; }
+  }
+  vec3 ink = vec3(0.035,0.015,0.045);
+  vec3 col = ink;
+  float f = 1.-log2(log(dot(z,z))/log(B));
+  if(esc){
+    float nn = n + clamp(f,0.,1.) - 1.;
+    float v = mix(sp/(n-1.), s/n, clamp(f,0.,1.));
+    float x = 0.26+(v-0.30)*1.9;
+    x = clamp(x,0.,1.);
+    col = fd_pal(x, phase);
+    // dark halo hugging the voids / deep detail
+    col = mix(col, ink*2., smoothstep(30.,80.,nn)*0.6);
+  }
+  // sparks: tiny streaks in the dark
+  vec2 sp2 = uv*vec2(60.,60.) + vec2(floor(t*0.)*0.);
+  vec2 id = floor(sp2); vec2 fu = fract(sp2)-.5;
+  float hh = fd_h(id);
+  float dotm = step(0.985,hh) * smoothstep(0.12,0.,length(fu*vec2(1.,3.)));
+  float darkness = 1.-smoothstep(0.02,0.2,dot(col,vec3(.33)));
+  col += vec3(.9,.9,1.)*dotm*darkness*0.8;
+  return col;
+}
+</script>
+<script id="flow0" data-name="Burning Ship zoom" type="x-shader/x-fragment">
+vec3 flowScene(vec2 uv,float t,float phase){
+  vec2 c0=vec2(-1.7625,-0.0285); float sc=0.035*exp(-fract(t*0.05)*2.0);
+  vec2 c=c0+w_rot(0.6+t*0.05)*uv*sc; vec2 z=vec2(0.0); float it=0.0;
+  for(int i=0;i<140;i++){ z=vec2(z.x*z.x-z.y*z.y,2.0*abs(z.x*z.y))+c; if(dot(z,z)>1e4) break; it+=1.0; }
+  float sm=it-log2(max(log2(dot(z,z)),1.0))+4.0;
+  return (it>=139.0)?vec3(0.02,0.01,0.03):w_pal(fract(sm*0.03),phase);
+}
+</script>
+<script id="flow1" data-name="Seahorse spiral" type="x-shader/x-fragment">
+vec3 flowScene(vec2 uv,float t,float phase){
+  vec2 c0=vec2(-0.743643887037151,0.131825904205330); float sc=0.004*exp(-fract(t*0.04)*3.0);
+  vec2 c=c0+w_rot(0.3+t*0.05)*uv*sc; vec2 z=vec2(0.0); float it=0.0;
+  for(int i=0;i<260;i++){ z=vec2(z.x*z.x-z.y*z.y,2.0*z.x*z.y)+c; if(dot(z,z)>1e4) break; it+=1.0; }
+  float sm=it-log2(max(log2(dot(z,z)),1.0))+4.0;
+  return (it>=259.0)?vec3(0.02,0.01,0.03):w_pal(fract(sm*0.02),phase);
+}
+</script>
+<script id="flow2" data-name="Julia dendrite" type="x-shader/x-fragment">
+vec3 flowScene(vec2 uv,float t,float phase){
+  vec2 z=w_rot(t*0.05)*uv*2.6; vec2 c=vec2(-0.8,0.156)+0.02*vec2(sin(t*0.3),cos(t*0.23)); float it=0.0;
+  for(int i=0;i<130;i++){ z=vec2(z.x*z.x-z.y*z.y,2.0*z.x*z.y)+c; if(dot(z,z)>1e4) break; it+=1.0; }
+  float sm=it-log2(max(log2(dot(z,z)),1.0))+4.0;
+  return (it>=129.0)?vec3(0.02,0.01,0.03):w_pal(fract(sm*0.05),phase);
+}
+</script>
+<script id="flow3" data-name="Radiant fans" type="x-shader/x-fragment">
+vec3 flowScene(vec2 uv,float t,float phase){
+  vec2 p=w_rot(t*0.08)*uv*2.2; float tr=1e9, acc=0.0;
+  for(int i=0;i<10;i++){ p=abs(p); p=p*1.38-vec2(0.85,0.32); p*=w_rot(0.33); tr=min(tr,abs(p.x*p.y)+0.02*length(p)); acc+=exp(-length(p)*0.6); }
+  return w_pal(clamp(acc*0.18,0.0,1.0),phase)*smoothstep(0.0,0.25,tr+0.15);
+}
+</script>
+<script id="flow4" data-name="Spiral gate" type="x-shader/x-fragment">
+vec3 flowScene(vec2 uv,float t,float phase){
+  vec2 z=uv; float r=length(z)+1e-4, a=atan(z.y,z.x);
+  vec2 w=exp(vec2(log(r)-t*0.25,0.0))*vec2(cos(a*2.0+t*0.1),sin(a*2.0+t*0.1))*1.4;
+  vec2 c=vec2(-0.7453,0.1127)+0.01*vec2(sin(t*0.3),cos(t*0.2)); float it=0.0;
+  for(int i=0;i<64;i++){ w=vec2(w.x*w.x-w.y*w.y,2.0*w.x*w.y)+c; if(dot(w,w)>256.0) break; it+=1.0; }
+  float sm=it-log2(max(log2(dot(w,w)),1.0))+4.0; return w_pal(fract(sm*0.045),phase);
+}
+</script>
+<script id="flow5" data-name="Kali bubbles" type="x-shader/x-fragment">
+vec3 flowScene(vec2 uv,float t,float phase){
+  vec2 p=uv*2.2*w_rot(t*0.12); float acc=0.0, tr=1e9; vec2 c=vec2(0.83+0.06*sin(t*0.2),0.5+0.05*cos(t*0.17));
+  for(int i=0;i<26;i++){ p=abs(p)/(dot(p,p)+1e-6)-c; acc+=exp(-2.0*length(p)); tr=min(tr,abs(p.x)+abs(p.y)); }
+  return w_pal(fract(acc*0.07+t*0.02),phase)*(0.25+0.9*exp(-tr*1.5));
+}
+</script>
+<script id="flow6" data-name="Marble clouds" type="x-shader/x-fragment">
+vec3 flowScene(vec2 uv,float t,float phase){
+  vec2 p=w_rot(t*0.1)*uv*3.0; float a=atan(p.y,p.x), r=length(p);
+  vec2 w=vec2(a*1.5,log(r+0.2)*2.0-t*0.3); float f=0.0, amp=0.5;
+  for(int i=0;i<7;i++){ float n=w_vn(w); f+=amp*(1.0-abs(2.0*n-1.0)); w=w*vec2(2.1,2.0)+vec2(1.3,-0.7*sin(f*3.0+t)); amp*=0.55; }
+  return w_pal(f*0.9-0.1,phase);
+}
+</script>
+
 <!-- ═════════════════════ post: blur / bloom, composite ═════════════════════ -->
 <script id="vs" type="x-shader/x-vertex">#version 300 es
 void main(){ vec2 p=vec2(float((gl_VertexID<<1)&2), float(gl_VertexID&2)); gl_Position=vec4(p*2.0-1.0,0.0,1.0); }
@@ -895,7 +1155,7 @@ out vec4 o;
 uniform sampler2D uScene, uPrev, uBloom, uFB;
 uniform float uTrail;
 uniform vec2  uRes;
-uniform float uTime, uBeat, uDrop, uBloomI, uCA, uTrans, uKal, uKalRot, uHue, uExp, uPunch, uVig, uGrain, uSharp;
+uniform float uTime, uBeat, uDrop, uBloomI, uCA, uTrans, uKal, uKalRot, uHue, uExp, uPunch, uVig, uGrain, uSharp, uFlat;
 
 float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
@@ -939,7 +1199,7 @@ void main(){
   vec3 bl = texture(uBloom, buv).rgb;
   vec3 col = cur + bl*uBloomI*(0.9 + 1.2*uBeat + 1.5*uDrop);
   col *= uExp*(1.0 + uPunch*(0.25*uBeat + 0.5*uDrop));
-  col = aces(col);
+  col = (uFlat>0.5) ? clamp(col,0.0,1.0) : aces(col);        // 2D scenes keep their authored colours (no filmic desaturation)
   col = pow(col, vec3(0.4545));
   col *= 1.0 - uVig*dot(p,p);
   col += (h21(gl_FragCoord.xy+fract(uTime)*100.0)-0.5)*(uGrain/255.0);
@@ -1347,6 +1607,7 @@ if(hashP.has('q')) $('sQual').value=hashP.get('q');
 if(hashP.has('kal')) $('sKal').value=hashP.get('kal');
 if(hashP.get('director')==='1') $('cDirector').checked=true;
 if(hashP.get('flow')==='1') setTimeout(()=>setFlow(true,true),50);
+if(hashP.has('fv')) setTimeout(()=>setFlowVar(+hashP.get('fv'),true),30);
 setType(hashP.has('type')? +hashP.get('type') : type);
 const nrm=(x,n)=>((((x|0)%n)+n)%n);
 palIdx=nrm(palIdx,PALS.length); realIdx=nrm(realIdx,LOOKS.length); theme=nrm(theme,THEMES.length);
@@ -1375,6 +1636,7 @@ addEventListener('keydown',e=>{
   else if(k==='t') setTheme((theme+1)%THEMES.length);
   else if(k==='d') setDive(!diveOn);
   else if(k==='g') setFlow(!flowMode);
+  else if(k==='v'){ setFlowVar(flowVar+1); if(!flowMode) setFlow(true); }
   else if(k==='r') randomize();
   else if(k==='k'){ const s=$('sKal'); s.value = +s.value<2? 6 : (+s.value>=12? 0 : +s.value+2); save(); }
   else if(k===' '){ e.preventDefault(); const c=$('cCycle'); c.checked=!c.checked; toast('Auto-cycle '+(c.checked?'on':'off')); save(); }
@@ -1605,12 +1867,17 @@ function frameBody(nowMs){
   // pass 1 — fractal → HDR scene buffer
   gl.bindFramebuffer(gl.FRAMEBUFFER,scenes[cur].fbo); gl.viewport(0,0,sw,sh);
   bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
-  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uMode:flowMode?1:0,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:12+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
+  if(flowMode){
+    const fp=flowProg(flowVar);
+    fp.set({uRes:[sw,sh],uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uDrop:A.drop});
+  } else {
+  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:12+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:+$('sGlow').value,
     uSlice:$('cSlice').checked?1:0,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
     uMatA:realCur.matA,uMatB:realCur.matB,uMetal:realCur.metal,uRough:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uWrap:realCur.wrap,uShK:realCur.shk,uAmb:realCur.amb,uClay:realCur.clay,uFloorOn:floorOn?1:0,uFloorY:floorY,
     uPA:palCur.a,uPB:palCur.b,uPC:palCur.c,uPD:palCur.d,uLDR:useFloat?0:1,uFFT:3});
+  }
   gl.drawArrays(gl.TRIANGLES,0,3);
   rendered=true;
   if(diving && diveSim && useFloat && (divePh==='in'||divePh==='hold') && frame%6===0){      // read ONE pixel of depth, re-anchor the focus onto the surface
@@ -1641,7 +1908,7 @@ function frameBody(nowMs){
   gl.bindFramebuffer(gl.FRAMEBUFFER,useTrail?trails[tw].fbo:null); gl.viewport(0,0,cw,ch);
   bindTex(0,scenes[cur].tex); bindTex(1,scenes[1-cur].tex); bindTex(2,bloomB.tex); bindTex(3,trails[1-tw].tex);
   const kv=+$('sKal').value, kal=(playing&&playLook)?playKal:(kv>=2?kv:(dirKal||(chaosL>0.6?chaosKal:0)));
-  progComp.set({uScene:0,uPrev:1,uBloom:2,uFB:3,uTrail:useTrail?Math.min(0.96,trailAmt):0,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uSharp:clamp((1-resScale)*0.9,0.08,0.55),uBloomI:th.bloomI*+$('sBloom').value,uExp:th.exp,uPunch:th.punch,uVig:th.vig,uGrain:th.grain,
+  progComp.set({uScene:0,uPrev:1,uBloom:2,uFB:3,uTrail:useTrail?Math.min(0.96,trailAmt):0,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uSharp:clamp((1-resScale)*0.9,0.08,0.55),uBloomI:th.bloomI*+$('sBloom').value,uFlat:flowMode?1:0,uExp:flowMode?1.0:th.exp,uPunch:th.punch,uVig:flowMode?0.16:th.vig,uGrain:th.grain,
     uCA:th.ca*(+$('sBloom').value>0?1:0.4),uTrans:transT*transT*(3-2*transT)*1.0,uKal:kal,uKalRot:kalRot,uHue:hue});
   gl.drawArrays(gl.TRIANGLES,0,3);
   if(useTrail){ gl.bindFramebuffer(gl.READ_FRAMEBUFFER,trails[tw].fbo); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);
@@ -1759,6 +2026,7 @@ function fireEvent(ev){
   else if(k==='dive'){ if(!playCam) setDive(!!v,true); }
   else if(k==='pulse') pulse();
   else if(k==='flow') setFlow(!!v,true);
+  else if(k==='flowvar') setFlowVar(v,true);
   else if(k==='slider'){ const [id,val]=v; if(LOOK_SLIDERS.includes(id) && !playLook) return; const e=$(id); if(!e) return; if(e.type==='checkbox') e.checked=!!val; else e.value=val; if(id==='sMB'||id==='sMM') padSync(); }
 }
 function playSeek(t,now){
@@ -1807,7 +2075,8 @@ function evDesc(ev){
   if(k==='look') return 'material → '+LOOKS[nrm(v,LOOKS.length)].n;
   if(k==='dive') return v?'dive in':'dive out';
   if(k==='pulse') return 'pulse';
-  if(k==='flow') return v?'scene → dendrite flow':'scene → 3D fractals';
+  if(k==='flow') return v?'scene → 2D flow':'scene → 3D fractals';
+  if(k==='flowvar') return '2D scene → '+(FLOWS[nrm(v,FLOWS.length)]||{n:'?'}).n;
   if(k==='slider') return v[0]+' = '+(+v[1]).toFixed(2);
   return k;
 }
@@ -1889,14 +2158,32 @@ $('bRec').onclick=toggleRec; $('bSaveClip').onclick=saveClip;
 if(!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) $('bRec').style.display='none';
 
 // ───────────────────────── 2D dendrite-flow scene ─────────────────────────
+const FLOWS=[...document.querySelectorAll('script[id^="flow"][data-name]')].map(e=>({id:e.id,n:e.dataset.name}));
+let flowVar=0; const flowProgs={};
+function flowProg(i){
+  i=nrm(i,FLOWS.length);
+  if(!flowProgs[i]){
+    const src=$('flowWrap').textContent.replace('//@@CANDIDATE@@',$(FLOWS[i].id).textContent);
+    const p=gl.createProgram(); const vsrc=$('vs').textContent;
+    gl.attachShader(p,compile(gl.VERTEX_SHADER,vsrc,'vertex')); gl.attachShader(p,compile(gl.FRAGMENT_SHADER,src,'flow '+FLOWS[i].n)); gl.linkProgram(p);
+    if(!gl.getProgramParameter(p,gl.LINK_STATUS)) showErr('flow '+FLOWS[i].n+' link error:\n'+gl.getProgramInfoLog(p));
+    const u={}, n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);
+    for(let k=0;k<n;k++){ const info=gl.getActiveUniform(p,k); u[info.name]={loc:gl.getUniformLocation(p,info.name),type:info.type}; }
+    flowProgs[i]={p,u,set(o){ gl.useProgram(p); for(const k in o){ const e=u[k]; if(!e) continue; const v=o[k]; if(Array.isArray(v)) gl.uniform2fv(e.loc,v); else gl.uniform1f(e.loc,v); } }};
+  }
+  return flowProgs[i];
+}
+function setFlowVar(i,quiet){ flowVar=nrm(i,FLOWS.length); const sel=$('sFlowVar'); if(sel) sel.value=flowVar; if(!quiet) toast('Scene: '+FLOWS[flowVar].n,2200); try{ recEv('flowvar',flowVar); }catch(e){} save(); }
 function setFlow(on,quiet){
-  flowMode=!!on; $('bFlow').classList.toggle('on',flowMode);
+  flowMode=!!on; if(flowMode) setTimeout(()=>{ try{ flowProg(flowVar); }catch(e){} },0); $('bFlow').classList.toggle('on',flowMode);
   if(flowMode && divePh!=='idle'){ diveOn=false; divePh='idle'; F[0]=F[1]=F[2]=0; $('bDive').classList.remove('on'); }
   if(!quiet) toast(flowMode?'Dendrite flow: drag = rotate · pinch = zoom · bass drives the zoom':'Back to the 3D fractals',3200);
   try{ recEv('flow',flowMode?1:0); }catch(e){}
   save();
 }
 $('bFlow').onclick=()=>setFlow(!flowMode);
+FLOWS.forEach((f,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=f.n; $('sFlowVar').appendChild(o); });
+$('sFlowVar').onchange=e=>{ setFlowVar(+e.target.value); if(!flowMode) setFlow(true); };
 
 // ───────────────────────── tilt (gyro) control ─────────────────────────
 function onOri(e){ if(e.beta==null) return;
@@ -1931,7 +2218,7 @@ $('bDive').onclick=()=>setDive(!diveOn);
 // ───────────────────────── looks: save slots + shareable state ─────────────────────────
 function exportState(){ return {v:1,type:shown,theme,palIdx,realIdx,hue:+$('sHue').value,az:+az.toFixed(3),el:+el.toFixed(3),zoom:+zoomMul.toFixed(3),
   shape:+$('sMB').value,detail:+$('sMM').value,sparkle:+$('sMH').value,warp:+$('sWarp').value,kal:+$('sKal').value,bloom:+$('sBloom').value,
-  glow:+$('sGlow').value,trail:+$('sTrail').value,react:$('sReact').value,ang:ang.map(v=>+v.toFixed(3)),flow:flowMode?1:0}; }
+  glow:+$('sGlow').value,trail:+$('sTrail').value,react:$('sReact').value,ang:ang.map(v=>+v.toFixed(3)),flow:flowMode?1:0,flowVar}; }
 function applyState(o){
   if(!o||typeof o!=='object') return; const nv=(v,a,b,d)=>Number.isFinite(+v)?clamp(+v,a,b):d;
   setTheme(nrm(o.theme,THEMES.length),true); palIdx=nrm(o.palIdx,PALS.length); realIdx=nrm(o.realIdx,LOOKS.length);
@@ -1940,7 +2227,7 @@ function applyState(o){
   if(o.react in REACT) $('sReact').value=o.react;
   zoomMul=nv(o.zoom,0.08,4,1); az=nv(o.az,-100,100,0.6); el=nv(o.el,-1.5,1.5,0.35);
   if(Array.isArray(o.ang)&&o.ang.length===3) for(let i=0;i<3;i++) ang[i]=nv(o.ang[i],-100,100,ang[i]);
-  setFlow(!!o.flow,true); padSync(); setType(o.type); save();
+  setFlowVar(o.flowVar|0,true); setFlow(!!o.flow,true); padSync(); setType(o.type); save();
 }
 // ── reference scenes: the clay-render look of the reference photos (3D Burning Ship over a sky-to-haze gradient, floating, no floor) ──
 const REFS=[

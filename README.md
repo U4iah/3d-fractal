@@ -19,6 +19,9 @@ Or serve the folder: `python3 -m http.server`, then open http://localhost:8000.
 - **Custom ★**: "Save my look" stores your current theme, palette, hue and sliders, and Custom ★ restores them.
 - **T** switches theme and **C** cycles the palette or look.
 
+## 2D flow scenes (the video)
+🌀 **2D flow scenes** (key **G**) switches the 3D raymarcher for a 2D scene, and **V** cycles scenes. Ten are included. The three best are the feathery ones, found by three independent explorers using different techniques: a herringbone IFS, a barbs-on-barbs noise fan with ink voids, and an exactly-looping Julia dendrite. The rest are other 2D fractals I found along the way and kept. Each scene is its own small shader, compiled the first time it is selected. They all react to the music and use the feedback trails for the radial smear. See **VISUALS.md** for the catalogue, honest notes on how close each is to the video, standalone sources in `shaders/flow/`, and renders in `gallery/`.
+
 ## Clay theme + the reference scenes
 A fourth theme, **Clay**, recreates the "clay-render" look of the reference photos: a matte diffuse material (sandstone, snow, terracotta, frost) floating over a smooth sky-to-haze gradient with no floor, lit by a low warm sun plus a strong sky-ambient term, with wrap lighting for soft terminators, soft shadows, and crevice occlusion that never goes pitch dark. The four looks (press C) are matched to the palettes in the photos. The **Reference scenes** buttons (Ref 1 sandstone, Ref 2 snow, Ref 3 terracotta) set theme, material, fractal and camera in one tap.
 
