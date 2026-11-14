@@ -19,6 +19,9 @@ Or serve the folder: `python3 -m http.server`, then open http://localhost:8000.
 - **Custom ★**: "Save my look" stores your current theme, palette, hue and sliders, and Custom ★ restores them.
 - **T** switches theme and **C** cycles the palette or look.
 
+## Performance takes (record the performance, not the pixels)
+**Record take** stores the music analysis, camera, spin, dive, fractal changes, theme/material changes and sculpt moves as data at 30 Hz, plus an observation track for external trackers. **Play take** replays it with no audio needed. Load the same song and it plays in sync. Untick *Take's look* to **re-skin** the same performance in your own theme and materials. You can scrub, jump to or delete events, trim, save as `*.fpx.json`, copy as JSON, load or paste a take, and drop a `.json` onto the page. Format, playback rules and the roadmap (offline 4K render, a multi-track editor, a hand-mapping layer) are in **PERFORMANCE.md**.
+
 ## Dive mode
 **Dive in** (button, or **D**) flies the camera into the fractal's surface. The shader writes ray depth into the alpha channel of the HDR buffer; the page reads back one pixel of it, re-anchors the focus onto the surface under that pixel, and eases the camera toward it, faster on bass hits. Iteration caps rise as you go deeper, so the Menger sponge keeps revealing holes within holes. It cycles in → hold → out → in at a new spot. The fractal's spin is damped while diving. Pinch adjusts distance. Limit: about 100× magnification, where 32-bit floats run out of precision.
 
