@@ -79,6 +79,14 @@ On top of the three bands and the kick detector:
 - **Timeline:** a list of `(fractal, beats)` steps. A beat counter advances at the detected BPM (110 if none) and each step ends when its beat count is reached.
 - **Recording:** `canvas.captureStream(60)` plus an audio tap taken from the shared analyser node (every source passes through it), fed to `MediaRecorder` at 10 Mbit/s.
 
+## 1h. Dive, Cosmic, feedback and compile-time engineering (v7)
+
+- **Dive:** the scene pass writes `t` (ray depth) or −1 into alpha. Each ~6 frames one pixel is read back with `readPixels` (RGBA/FLOAT from the RGBA16F target). The focus `F` is moved to `P = cam + rd·t`, and the orbit angles and radius are recomputed from `cam − F` so the camera does not jump. The radius then decays exponentially (faster with bass). Orbit-trap and iteration caps rise with the dive depth. A synchronous 1-pixel read can stall tile-based mobile GPUs, so it is rate-limited. A PIXEL_PACK_BUFFER with a fence would be the next step.
+- **Cosmic theme:** an `fbm3` value-noise nebula on the view direction (two layers tinted by the palette), hashed-cell stars, and a thin-film iridescence term `0.5+0.5cos(2π(phase + N·V·1.7 + trap·0.22))` blended with the palette colour. The nebula is also the reflection environment.
+- **Metal self-reflection:** one secondary ray per shaded metal pixel, shaded with a lightweight version of the PBR shader (GLSL forbids recursion). The mirror floor and metal share the same secondary-ray code path.
+- **Feedback trails:** the composite is rendered to a ping-pong full-resolution buffer, with the previous frame sampled through a small rotation and zoom plus a channel rotation, multiplied by the trail amount, and max-blended. The result is blitted to the screen.
+- **Shader compile time.** The first version inlined `map()` about 40 times, each containing three copies of all 18 fractals, and took 37 s to compile on a software GPU (the context was lost). Restructuring fixed it: (1) one evaluation loop in `map` instead of separate single and morph branches (non-constant loop bound `uNW` so it is not unrolled); (2) `calcN` and `calcAO` as loops with a non-constant bound (`4+uZero`) to prevent unrolling; (3) one normal, orbit-trap and shadow evaluation shared by all three themes; (4) one secondary-ray site shared by the metal and floor mirrors. That gave 3.2 s, roughly 12× faster, and a fraction of the code size. Real phones compile with a different backend, but code size scales the same way.
+
 ## 2. The fractals
 
 | # | Fractal | Map | Notes |
@@ -95,10 +103,11 @@ On top of the three bands and the kick detector:
 | 10 | **Octahedron KIFS** | abs + sort, `×2`, translate to the vertex `(s,0,0)` | Octahedral analogue of the gasket. |
 | 11 | **Pseudo-Kleinian** (Knighty-style) | box fold + sphere inversion `p·max(1/\|p\|²,1)` | DE is `0.3·\|z\|/dr` on the folded plane. Exposure is lowered because the camera sits inside the foam. |
 | 12 | **Quaternion Mandelbrot** | `q → q² + (p, w)`, `z₀ = 0` | The 4th coordinate `w` is the slice plane, and it scrolls with the music. `dz → 2·z·dz + 1`. |
-| 14 | **Icosahedral IFS** | fold across the three non-coordinate mirror planes of the icosahedral group (normals from the golden ratio), `×2`, translate toward a vertex | Gives five-fold symmetry. This is the least polished entry: the end primitive is a sphere, and the form is dust-like. |
+| 14 | **Icosahedral IFS** | fold across the three non-coordinate mirror planes of the icosahedral group (normals from the golden ratio), `p·S − O·(S−1)` with `S = φ² ≈ 2.618`, `O ∝ (1,1,1)`, end primitive a small sphere | A dodecahedron built from dodecahedra. The offset and scale were found by rendering variants and choosing by eye. At `S = 2` the copies overlap completely and the result is a plain dodecahedron. |
 | 15 | **Negative-scale Mandelbox** | Mandelbox with `s ≈ −1.5 … −2.8` | Same code as the Mandelbox. The DE already uses `\|s\|`. |
 | 16 | **Julibox** | Mandelbox with a fixed constant `c` instead of the point `p` | Julia-style variant. Its bounding radius is guessed from renders. |
 | 17 | **Bristorbrot-style quadratic** | `(x²−y²−z², y(2x−z), z(2x+y)) + p` | The map is from memory of the community formula. The DE is the generic power-2 estimate, so it is approximate. |
+| 18 | **Cubic quaternion Julia** | `q → q³ + c`, `c ∈ ℍ`, 3D slice | `dz → 3·q²·dz`. Gives a nautilus-like shell. |
 | 13 | **Menger × Sierpinski hybrid** | alternate Menger (×3) and Sierpinski (×2) folds | The DE is approximate (box SDF scaled to the mixed shape). |
 | 8 | **Apollonian packing** | `p → −1 + 2·fract(0.5p + 0.5)`, then inversion `p·s/\|p\|²` | Sphere-inversion IFS in a periodic cell. The camera sits inside the foam. |
 
@@ -152,6 +161,7 @@ Built-in generative demo (128 bpm kick, clap, hats, acid bass, arp, delay), file
 ## 5. What was verified, and what wasn't
 
 - Verified: the shader compiles, and all 14 fractals render with live audio-driven uniforms. Tested in headless Chromium with software WebGL, using the built-in demo audio and screenshots.
+- **Not verified on a device:** Dive's pixel read-back on iOS, Show mode with real music, compile time on Apple GPUs.
 - **iPhone 16 Pro:** the device detection and defaults were checked with an emulated iPhone. Actual frame rate and the best resolution/quality settings on the device itself are unmeasured.
 - **Not verified on real hardware.** Frame rate is untested on a real GPU, and so are mic input and tab capture, since they need a browser prompt.
 - - **Not verified:** the drop detector on real music. It is tuned by reasoning and the demo track only.

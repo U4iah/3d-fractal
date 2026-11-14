@@ -19,6 +19,23 @@ Or serve the folder: `python3 -m http.server`, then open http://localhost:8000.
 - **Custom ★**: "Save my look" stores your current theme, palette, hue and sliders, and Custom ★ restores them.
 - **T** switches theme and **C** cycles the palette or look.
 
+## Dive mode
+**Dive in** (button, or **D**) flies the camera into the fractal's surface. The shader writes ray depth into the alpha channel of the HDR buffer; the page reads back one pixel of it, re-anchors the focus onto the surface under that pixel, and eases the camera toward it, faster on bass hits. Iteration caps rise as you go deeper, so the Menger sponge keeps revealing holes within holes. It cycles in → hold → out → in at a new spot. The fractal's spin is damped while diving. Pinch adjusts distance. Limit: about 100× magnification, where 32-bit floats run out of precision.
+
+## Themes
+Neon, Realistic and **Cosmic** (T cycles). Cosmic is a nebula-and-stars sky with iridescent thin-film surfaces that mirror the nebula. In Realistic, metals now reflect the rest of the fractal (one bounce), not just the sky.
+
+## Trails
+The **Trails** slider adds video feedback: the previous frame zoomed, rotated and hue-rotated, then decayed. Chaos adds trails automatically.
+
+## Slots, sharing and Show mode
+- **Slots 1–6** store a whole look (fractal, theme, palette, sculpt, camera, kaleidoscope, trails…). Tap an empty slot to save and a filled slot to load. Turn on *Store mode* to overwrite.
+- **Copy share link** encodes the current state in the URL hash (`#s=…`) for anyone to open. **Copy state JSON** is for tools.
+- **Show mode** runs an autonomous VJ set: on beats it changes fractal (with morphs), theme, palette, kaleidoscope and trails; starts and ends dives; and fires chaos bursts, which are bigger on detected drops.
+
+## Events out (for Quinn / coordinators)
+The page emits `{fractalPulseEvent:{type,…}}` for `beat`, `drop`, `type` and a `state` snapshot every 0.5 s. It sends them to `window.parent.postMessage`, to any callback registered with `FractalPulse.on(fn)`, and over the WebSocket if `#ws=` is set. `FractalPulse.exportState()` and `applyState(obj)` read and restore a whole look.
+
 ## Touch controls
 - **One finger:** spin. It has inertia, so a flick keeps going.
 - **Two fingers:** pinch to zoom and twist to roll the fractal.
@@ -65,7 +82,7 @@ Detected automatically (iPhone/iPad with a 2× or 3× screen). Compared with gen
 - On iOS, Web Audio follows the ringer switch, so unmute if you hear nothing.
 
 ## Fractals
-Mandelbulb · Juliabulb · Tricorn bulb · Burning-ship bulb · Quaternion Julia · Mandelbox · Menger sponge · Sierpinski tetrahedron · Apollonian packing · Box-folded bulb · Octahedron KIFS · Pseudo-Kleinian · Quaternion Mandelbrot · Menger×Tetra hybrid · Icosahedral IFS · Negative-scale Mandelbox · Julibox · Bristorbrot.
+Mandelbulb · Juliabulb · Tricorn bulb · Burning-ship bulb · Quaternion Julia · Mandelbox · Menger sponge · Sierpinski tetrahedron · Apollonian packing · Box-folded bulb · Octahedron KIFS · Pseudo-Kleinian · Quaternion Mandelbrot · Menger×Tetra hybrid · Icosahedral IFS (dodecahedra at the φ² scale) · Negative-scale Mandelbox · Julibox · Bristorbrot · Cubic Quaternion Julia.
 
 See **RESEARCH.md** for the math, the audio mapping, and notes on what was and wasn't tested.
 
