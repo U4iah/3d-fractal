@@ -166,6 +166,66 @@
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
   @keyframes recpulse{50%{opacity:.55}} #strip button.live{animation:recpulse 1.4s infinite}
 </style>
+<style id="plate">
+  /* ───── PLATE skin: Fractal Pulse as a cabinet of mathematical specimens ─────
+     System faces only (no downloads): serif italic for names, monospace for data, hairlines for structure. */
+  :root{--mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;--serif:ui-serif,"New York","Iowan Old Style",Georgia,"Times New Roman",serif;--hair:rgba(185,168,255,.22);--ink:#0c0b11;--r:3px}
+  body{font-family:var(--mono);font-size:12px;letter-spacing:.01em}
+  #ui{counter-reset:plate;border-radius:var(--r);border-color:var(--hair);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 18px 60px rgba(0,0,0,.55);background:linear-gradient(180deg,rgba(18,16,26,.94),rgba(11,10,16,.94))}
+  #wsTabs{display:none}
+  #ui::before{content:"";position:absolute;left:14px;top:-1px;width:34px;height:2px;background:var(--signal)}
+  #ui h1{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:0;text-transform:none;font-size:21px;color:var(--fg);margin:0 0 4px}
+  #ui h1 span{font-family:var(--mono);font-style:normal;text-transform:uppercase;letter-spacing:.14em;font-size:9px!important}
+  .sub{font-size:10.5px;color:var(--dim)}
+  h2{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.16em;color:var(--dim);border-top:1px solid var(--hair);padding-top:9px;margin-top:16px}
+  h2::before{counter-increment:plate;content:"§" counter(plate,decimal-leading-zero);color:var(--accent);margin-right:9px;letter-spacing:.06em}
+  h2{justify-content:flex-start}h2::after{margin-left:auto}
+  button,label.btn,select{border-radius:var(--r);background:transparent;border:1px solid var(--hair);font-family:var(--mono);font-size:11.5px;letter-spacing:.02em;transition:background .12s,border-color .12s}
+  button:hover,label.btn:hover{background:rgba(185,168,255,.1);border-color:rgba(185,168,255,.45)}
+  button.on{background:rgba(185,168,255,.12);border-color:var(--accent);box-shadow:inset 2px 0 0 var(--accent)}
+  button.rec{box-shadow:inset 2px 0 0 var(--signal)}
+  select{background:rgba(255,255,255,.03);color:var(--fg)}
+  .row span{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  /* sliders: hairline rail, square tick handle, live numeric readout */
+  input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:22px;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{height:1px;background:rgba(185,168,255,.35)}
+  input[type=range]::-moz-range-track{height:1px;background:rgba(185,168,255,.35)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:9px;height:17px;margin-top:-8px;border-radius:1px;background:var(--fg);border:0;box-shadow:0 0 0 1px var(--ink)}
+  input[type=range]::-moz-range-thumb{width:9px;height:17px;border-radius:1px;background:var(--fg);border:0}
+  input[type=range]:active::-webkit-slider-thumb{background:var(--signal)}
+  input[type=range]:focus-visible{outline-offset:4px}
+  .ro{flex:0 0 40px;text-align:right;font-variant-numeric:tabular-nums;font-size:10.5px;color:var(--accent);letter-spacing:0}
+  /* switches */
+  input[type=checkbox]{-webkit-appearance:none;appearance:none;width:30px;height:16px;border:1px solid var(--hair);border-radius:2px;background:transparent;position:relative;cursor:pointer;flex:0 0 auto;margin:0}
+  input[type=checkbox]::after{content:"";position:absolute;left:2px;top:2px;width:10px;height:10px;background:var(--dim);border-radius:1px;transition:transform .14s,background .14s}
+  input[type=checkbox]:checked{border-color:var(--accent);background:rgba(185,168,255,.1)}
+  input[type=checkbox]:checked::after{transform:translateX(14px);background:var(--accent)}
+  /* instrument strip + chips */
+  #strip{border-radius:5px;border-color:var(--hair);background:rgba(12,11,17,.92)}
+  #strip button{border-radius:3px;border-color:transparent;text-transform:uppercase;letter-spacing:.1em;font-size:10.5px}
+  #strip button.on{background:rgba(185,168,255,.14);box-shadow:inset 0 -2px 0 var(--accent);border-color:transparent}
+  #strip button.live{box-shadow:inset 0 -2px 0 var(--signal);border-color:transparent}
+  #strip .ws{font-size:10px}
+  #ctl{border-radius:2px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:none;background:rgba(12,11,17,.8);border-color:var(--hair)}
+  #ctl .dir{color:var(--signal);margin-right:2px}
+  #idchip b{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.2em}
+  #idchip span{font-family:var(--serif);font-style:italic;font-size:13px;color:var(--fg);opacity:.85}
+  #title{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:0}
+  #types.cards button,.spc{border-radius:2px}
+  #types.cards button .tn,.spc .cap{font-family:var(--serif);font-style:italic;font-size:12px;letter-spacing:0}
+  #types.cards button kbd{font-family:var(--mono)}
+  .spc .cap small{font-family:var(--mono);font-style:normal;letter-spacing:.04em}
+  #info{border-radius:2px;background:rgba(255,255,255,.03);border:1px solid var(--hair);font-family:var(--mono);font-size:11px}
+  #spDetail,#takeEvents{border-radius:2px;border:1px solid var(--hair);background:rgba(255,255,255,.025)}
+  .modes span{border-radius:2px;font-family:var(--mono)}
+  .note,#tlInfo,#takeInfo{font-family:var(--mono);font-size:10.5px}
+  #tlCan{border-radius:2px;border-color:var(--hair)}
+  #pad{border-radius:3px;border-color:var(--hair)}
+  #padDot{border-radius:1px;width:12px;height:12px;margin:-6px 0 0 -6px;box-shadow:none;background:var(--signal)}
+  .card h1{font-family:var(--serif);font-style:italic;font-weight:400;text-transform:none;letter-spacing:0;font-size:36px}
+  .card button,.card label.btn{border-radius:var(--r)}
+  @media (max-width:700px),(pointer:coarse){ #ui{border-radius:10px 10px 0 0} #strip{border-radius:10px 10px 0 0} input[type=range]{height:30px} input[type=checkbox]{width:36px;height:20px} input[type=checkbox]::after{width:14px;height:14px} input[type=checkbox]:checked::after{transform:translateX(16px)} }
+</style>
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -2820,7 +2880,7 @@ $('bSpFromTake').onclick=specimenFromTake;
 loadSpecimens(); renderSpecimens();
 
 // ═════════════════════ WORKSPACES: Explore / Sculpt / Perform / Forge ═════════════════════
-const WS_MAP={'Fractal':'explore sculpt','Theme':'explore','Audio':'explore perform','Sculpt · no music needed':'sculpt','Morph timeline':'explore perform','Look':'explore sculpt','Reactivity':'perform',
+const WS_MAP={'Fractal':'explore','Theme':'explore','Audio':'explore perform','Sculpt · no music needed':'sculpt','Morph timeline':'explore perform','Look':'explore sculpt','Reactivity':'perform',
   'Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
 (function groupWorkspaces(){
   const ui=$('ui'); let cur=null;
@@ -2898,8 +2958,8 @@ function setLoadedSpec(sp){ loadedSpec=sp?{id:sp.id,state:JSON.parse(JSON.string
 function controlSummary(){
   const parts=[], amber=!!(takeRec||rec||playing);
   const srcName=demoTimer?'Demo beat':(mediaInfo&&lastFileName?(mediaInfo.kind==='video'?'🎬 ':'♪ ')+lastFileName.replace(/\.[^.]+$/,'').slice(0,22):(mediaStream?'Live input':'Audio'));
-  if(playing){ parts.push('TAKE PLAYBACK '+fmtT(nowS()-pl.t0)+'/'+fmtT(take.duration)+(playLook?'':' · re-skinned')); if($('cShow').checked||$('cDirector').checked) parts.push('Director paused'); if(!$('cTakeCam').checked) parts.push('your camera'); }
-  else{ if(frozen) parts.push('FROZEN'); if(!frozen&&$('cShow').checked) parts.push('Show mode'); else if(!frozen&&$('cDirector').checked) parts.push('Director'); if(A.live&&!frozen) parts.push(srcName); if(extView||chaosExt>0) parts.push('FIELD input');
+  if(playing){ parts.push('TAKE PLAYBACK '+fmtT(nowS()-pl.t0)+'/'+fmtT(take.duration)+(playLook?'':' · re-skinned')); if($('cShow').checked||$('cDirector').checked) parts.push('◈ Director paused'); if(!$('cTakeCam').checked) parts.push('your camera'); }
+  else{ if(frozen) parts.push('FROZEN'); if(!frozen&&$('cShow').checked) parts.push('◈ the Director · show'); else if(!frozen&&$('cDirector').checked) parts.push('◈ the Director'); if(A.live&&!frozen) parts.push(srcName); if(extView||chaosExt>0) parts.push('FIELD input');
     if(+$('sMB').value>0.02||+$('sMM').value>0.02||+$('sMH').value>0.02) parts.push('manual sculpt'); if(!parts.length) parts.push('You (touch)'); }
   if(takeRec) parts.unshift('● REC TAKE '+fmtT(nowS()-takeRec.t0)); if(rec) parts.unshift('● REC VIDEO '+Math.floor((performance.now()-recStart)/1000)+'s');
   return {text:(amber?'':'Controlling · ')+parts.join(' · '),amber}; }
@@ -2918,7 +2978,9 @@ function chromeTick(){
   if(!flowMode&&!frozen){ const now=performance.now(); if(lastThumbWant.i!==shown){ lastThumbWant={i:shown,t:now,done:false}; } else if(!lastThumbWant.done&&now-lastThumbWant.t>1800&&!thumbReq&&!expo.active){ lastThumbWant.done=true; const i=shown; grabThumb(d=>{ if(!d) return; typeThumbs[i]=d; paintTypeCard($('types').children[i],i); try{ localStorage.setItem(TH_KEY,JSON.stringify(typeThumbs)); }catch(e){} }); } }
   drawTimeline();
 }
-setInterval(()=>{ try{ chromeTick(); }catch(e){ console.warn('chrome',e); } },250);
+const roFmt=(el)=>{ const v=+el.value, st=+el.step||1; const d=st>=1?0:(st>=0.1?1:(st>=0.01?2:3)); return v.toFixed(d); };
+const readouts=[]; document.querySelectorAll('#ui input[type=range]').forEach(el=>{ if(el.id==='takeScrub') return; const o=document.createElement('output'); o.className='ro'; el.after(o); readouts.push([el,o]); const up=()=>{ o.textContent=roFmt(el); }; el.addEventListener('input',up); up(); });
+setInterval(()=>{ try{ chromeTick(); readouts.forEach(([el,o])=>{ const t=roFmt(el); if(o.textContent!==t) o.textContent=t; }); }catch(e){ console.warn('chrome',e); } },250);
 // panel + strip behaviour
 const syncPanel=()=>document.body.classList.toggle('panelOpen',!$('ui').classList.contains('hidden'));
 new MutationObserver(syncPanel).observe($('ui'),{attributes:true,attributeFilter:['class']}); syncPanel();
