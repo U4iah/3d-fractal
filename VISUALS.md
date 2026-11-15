@@ -30,7 +30,13 @@ Standalone sources of the explorer scenes: `shaders/flow/`. There are twelve 2D 
 Fatter cream-white frond cores and fewer, more irregular ink cracks with ragged white-edged boundaries. A copper-to-blue-grey rim gradient along void edges. More varied frond direction. Richer dark and indigo phases. The motion-smear is approximated by the feedback trails, not baked into the scene. Idea for the next pass: blend scene 0's barb texture with scene 1's void structure.
 
 ## Kaleidoscopic mirror symmetry (3D)
-The **Mirror (3D)** slider (0–16) folds space into a 1/N wedge about the vertical axis before any fractal is evaluated, so any fractal seen from above becomes an N-fold radially symmetric landscape. It was added for the "Kaleidoscopic candy" reference (u/BlooD2oo1: a path-traced radially symmetric coral/crystal terrain). Recipes found by search are listed below once available.
+The **Mirror (3D)** slider (0–16) folds space into a 1/N wedge about the vertical axis before any fractal is evaluated, so any fractal seen from above becomes an N-fold radially symmetric landscape. It was added for the "Kaleidoscopic candy" reference (u/BlooD2oo1: a path-traced radially symmetric coral/crystal terrain). 
+
+**Found by parallel search (~22 renders):** the Icosahedral IFS (a dodecahedron made of dodecahedra) at **sym 16**, Clay theme, camera looking straight down the axis (`el ≈ 1.5`, zoom 0.6–0.9), shape 0.3 and detail 0.3. It gives a central crater of rounded blobs, concentric terraces and radial scalloped teeth. Three one-tap scenes: **Ref 4 · candy terracotta**, **Ref 5 · candy sandstone**, **Ref 6 · candy frost** (the blue-grey later frames). Exact states are in `REFS` in `index.html`.
+
+Honest assessment: about 60% of the way there. The structure matches (crater, rings, 16-fold scallops), but the surface is lumpier and more cauliflower-like than the video's fine granular crystalline micro-texture. There are no long thin radial needle spikes yet. The grade is more saturated, with harder shadows and bluer ambient than the video's muted dark look. The Folded bulb (type 9) at sym 16 and zoom 0.3 also gives a nice crater, and the Mandelbulb at sym 16 gives a ring of bulbs.
+
+Search notes: sym 16 gives the rosette, while sym 10–12 look more faceted. The shape and detail sliders only modestly change blob density. The Menger, Quaternion Mandelbrot and 3D Burning Ship all looked wrong with symmetry.
 
 ## 3D scenes
 - **Clay theme** (matched to the reference photos): `gallery/clay_ref1_sandstone.png`, `clay_ref2_snow.png`, `clay_ref3_terracotta.png`. These use the exact 3D Burning Ship formula from the post. Use the **Reference scenes** buttons.

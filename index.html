@@ -2446,6 +2446,10 @@ const REFS=[
   {n:'Ref 1 · sandstone',  s:{type:19,theme:3,palIdx:0,realIdx:4,hue:0,shape:0,detail:0,sparkle:0,warp:0.1, kal:0,bloom:0.3,glow:0,trail:0,az:0.5,el:-0.08,zoom:1,ang:[0.3,0.5,0.1]}},
   {n:'Ref 2 · snow',       s:{type:19,theme:3,palIdx:0,realIdx:5,hue:0,shape:0,detail:0,sparkle:0,warp:0.1, kal:0,bloom:0.3,glow:0,trail:0,az:2.2,el:-0.04,zoom:1,ang:[0.3,0.5,0.1]}},
   {n:'Ref 3 · terracotta', s:{type:20,theme:3,palIdx:0,realIdx:6,hue:0,shape:0,detail:0,sparkle:0,warp:0.1, kal:0,bloom:0.3,glow:0,trail:0,az:0.9,el:-0.1, zoom:1,ang:[0.9,0.2,0.4]}},
+  // "Kaleidoscopic candy" (u/BlooD2oo1): dodecahedral IFS seen down a 16-fold mirror axis; recipes found by parallel search
+  {n:'Ref 4 · candy terracotta', s:{type:14,theme:3,palIdx:0,realIdx:6,hue:0,shape:0.3,detail:0.3,sparkle:0,warp:0.05,kal:0,bloom:0.3,glow:0,trail:0,sym:16,az:0.3,el:1.5, zoom:0.75,ang:[0,0,0]}},
+  {n:'Ref 5 · candy sandstone',  s:{type:14,theme:3,palIdx:0,realIdx:4,hue:0,shape:0.3,detail:0.3,sparkle:0,warp:0.05,kal:0,bloom:0.3,glow:0,trail:0,sym:16,az:0.3,el:1.45,zoom:0.9, ang:[0,0,0]}},
+  {n:'Ref 6 · candy frost',      s:{type:14,theme:3,palIdx:0,realIdx:7,hue:0,shape:0.3,detail:0.3,sparkle:0,warp:0.05,kal:0,bloom:0.3,glow:0,trail:0,sym:16,az:0.3,el:1.5, zoom:0.6, ang:[0,0,0]}},
 ];
 const refBox=$('refs'); REFS.forEach(r=>{ const b=document.createElement('button'); b.textContent=r.n; b.onclick=()=>{ applyState(r.s); toast(r.n); }; refBox.appendChild(b); });
 const SLOT_KEY='fractalPulseSlots';
