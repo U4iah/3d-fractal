@@ -14,18 +14,23 @@ The reference was a Reddit post (u/TrippySunny_, "How is it made?"). The method 
 | 0 | **Feather frond · herringbone IFS** | Log-polar fan of strands. Six levels of slanted periodic barbs, where each barb's axis becomes the next level's stem. Pixel-footprint fade for anti-aliasing. | The closest to the reference's fine serrated texture, and cheap. Too regular and chevron-like, with fewer big ink voids. |
 | 1 | **Frond & swirl · noise erosion** | Hierarchical folded barbs on a fan of spines (7 levels), two noise warps, 4 radial zoom-blur taps, noise-masked ink voids. | Has the big ink voids, swirl eddies and fat cream lobes. More posterised and crisper than the reference. |
 | 2 | **Julia dendrite · exact loop** | Julia set of `z² + C`, `C = (−0.10, 0.88)`, zoomed into its repelling fixed point. Stripe-average colouring `0.65·sin(3·arg z) + 0.35·sin(9·arg z)`. | Loops exactly (RMSE 0 over 14 s). Silky strands and fine black dendrites. Smoother and sparser than the reference, with a single visible hub. |
-| 3 | Burning Ship zoom | 2D Burning Ship at (−1.7625, −0.0285) with smooth colouring. | Fishbone and ladder textures. The zoom restarts each cycle. |
-| 4 | Seahorse spiral | Mandelbrot seahorse valley zoom. | Beautiful, but not feathers. |
-| 5 | Julia dendrite | Plain Julia `c = (−0.8, 0.156)`. | |
-| 6 | Radiant fans | 2D folding IFS with a minimum-distance trap. | Radiating barbs. |
-| 7 | Spiral gate | Julia seen through a log-polar map. | |
-| 8 | Kali bubbles | Kali set `\|p\|/dot(p,p) − c`. | Bubbly, not feathers. |
-| 9 | Marble clouds | Ridged fbm in log-polar coordinates. | Marble or cloud texture. |
+| 3 | **Koch ribbons · stepped tubes** | 64 glass tubes sweep from an orbiting hub in curved polar streamlines. Each tube's length comes from a 3-level square-Koch substitution, so the ends are flat-cut and crenellated and the notches drift over time. Cylinder shading, strands showing through, fake depth-of-field. | Matches the reference's palette and stepped ends. Tubes are far sparser than the video's hundreds, and the shape is too arc-like. The Koch part is a 1D digit recursion, not a true Koch-curve distance field. Reference: "Koch line fractal" (u/matigekunst). |
+| 4 | **Koch ribbons · polar fan** | An analytic fan of 25–45 tubes per radian around a drifting hub with a swirl term. Five octaves of time-evolving square steps define the crenellated ends. | Dense and elegant, but the tubes read as pinstripes. No occlusion between tubes. The video is softer and more glassy, with deep bays. |
+| 5 | Burning Ship zoom | 2D Burning Ship at (−1.7625, −0.0285) with smooth colouring. | Fishbone and ladder textures. The zoom restarts each cycle. |
+| 6 | Seahorse spiral | Mandelbrot seahorse valley zoom. | Beautiful, but not feathers. |
+| 7 | Julia dendrite | Plain Julia `c = (−0.8, 0.156)`. | |
+| 8 | Radiant fans | 2D folding IFS with a minimum-distance trap. | Radiating barbs. |
+| 9 | Spiral gate | Julia seen through a log-polar map. | |
+| 10 | Kali bubbles | Kali set `\|p\|/dot(p,p) − c`. | Bubbly, not feathers. |
+| 11 | Marble clouds | Ridged fbm in log-polar coordinates. | Marble or cloud texture. |
 
-Standalone sources of the three explorer scenes: `shaders/flow/`.
+Standalone sources of the explorer scenes: `shaders/flow/`. There are twelve 2D scenes in all.
 
 ### What is still missing versus the video
 Fatter cream-white frond cores and fewer, more irregular ink cracks with ragged white-edged boundaries. A copper-to-blue-grey rim gradient along void edges. More varied frond direction. Richer dark and indigo phases. The motion-smear is approximated by the feedback trails, not baked into the scene. Idea for the next pass: blend scene 0's barb texture with scene 1's void structure.
+
+## Kaleidoscopic mirror symmetry (3D)
+The **Mirror (3D)** slider (0–16) folds space into a 1/N wedge about the vertical axis before any fractal is evaluated, so any fractal seen from above becomes an N-fold radially symmetric landscape. It was added for the "Kaleidoscopic candy" reference (u/BlooD2oo1: a path-traced radially symmetric coral/crystal terrain). Recipes found by search are listed below once available.
 
 ## 3D scenes
 - **Clay theme** (matched to the reference photos): `gallery/clay_ref1_sandstone.png`, `clay_ref2_snow.png`, `clay_ref3_terracotta.png`. These use the exact 3D Burning Ship formula from the post. Use the **Reference scenes** buttons.

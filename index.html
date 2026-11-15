@@ -157,6 +157,7 @@
     <button id="bRand">Randomize <kbd>R</kbd></button>
   </div>
   <div class="row" style="margin-top:8px"><span>Warp</span><input id="sWarp" type="range" min="0" max="2" step="0.01" value="0.6"></div>
+  <div class="row"><span>Mirror (3D)</span><input id="sSym" type="range" min="0" max="16" step="1" value="0"></div>
   <div class="row"><span>Kaleidoscope</span><input id="sKal" type="range" min="0" max="12" step="1" value="0"></div>
   <div class="row"><span>Trails</span><input id="sTrail" type="range" min="0" max="0.95" step="0.01" value="0"></div>
   <div class="row"><span>Bloom</span><input id="sBloom" type="range" min="0" max="2" step="0.01" value="1"></div>
@@ -232,6 +233,7 @@ uniform float uFoldA;
 uniform float uPower2, uQW2, uScale2, uFoldA2;   // parameter set of the fractal we are morphing INTO
 uniform vec3  uJC2;
 uniform int   uType2;
+uniform float uSym;                               // N-fold mirror symmetry about the vertical axis (0 = off)
 uniform int   uNW, uZero;                         // uNW: number of fractals evaluated (1, or 2 while morphing); uZero: always 0 (defeats loop unrolling)
 uniform float uMorph;                             // 0 = pure uType, 1 = pure uType2
 uniform float uK, uK2;                            // per-fractal normalisation (all fractals share one frame)
@@ -569,6 +571,11 @@ float map(vec3 p){
   p.xz = rot2(uTwist*p.y)*p.xz;
   p.x += uBend*sin(p.y*2.1 + uTime*0.9);
   p.z += uBend*cos(p.y*1.6 + uTime*0.7);
+  if(uSym>1.5){                                     // kaleidoscopic mirror fold: a wedge of 1/N of the plane, reflected N times
+    float sa = atan(p.z,p.x), sr = length(p.xz), seg = 6.2831853/uSym;
+    sa = abs(mod(sa,seg) - 0.5*seg);
+    p.xz = sr*vec2(cos(sa),sin(sa));
+  }
   p = gRot*p;
   // morph: space folds in on itself (mirror-fold + twist peaking mid-transition) while the two distance fields cross-fade.
   // k == 0 outside a morph, which leaves p untouched.
@@ -1066,6 +1073,209 @@ vec3 flowScene(vec2 uv, float t, float phase){
   float dotm = step(0.985,hh) * smoothstep(0.12,0.,length(fu*vec2(1.,3.)));
   float darkness = 1.-smoothstep(0.02,0.2,dot(col,vec3(.33)));
   col += vec3(.9,.9,1.)*dotm*darkness*0.8;
+  return col;
+}
+</script>
+<script id="flowD" data-name="Koch ribbons · stepped tubes" type="x-shader/x-fragment">
+// Koch-style flow bundle. Tube index s from hub-polar coords; tube length from a
+// square-Koch (Minkowski-like) digit-substitution height function evaluated per tube.
+float kb_h(float x){return fract(sin(x*127.1+13.7)*43758.5453);}
+mat2 kb_rot(float a){float c=cos(a),s=sin(a);return mat2(c,s,-s,c);}
+// square-Koch generator pattern [0,+1,-1,0] per quarter, 4 levels, ratio 0.42/level
+float kb_koch(float x,float amp){
+  float H=0.,a=amp;
+  for(int i=1;i<=3;i++){
+    float k=floor(x*exp2(float(2*i)));
+    float d=mod(k,4.);
+    H+=a*(d==1.?1.:(d==2.?-1.:0.));
+    a*=0.56;
+  }
+  return H;
+}
+vec3 kb_pal(float g,float ph){
+  vec3 A0=vec3(.45,.20,.80),B0=vec3(.62,.62,.22),C0=vec3(.98,.92,.72);
+  vec3 A1=vec3(.10,.65,.70),B1=vec3(.90,.50,.15),C1=vec3(1.,.85,.6);
+  vec3 A2=vec3(.85,.15,.65),B2=vec3(.25,.80,.90),C2=vec3(.85,.95,1.);
+  float w1=smoothstep(.0,.33,ph)*(1.-smoothstep(.33,.66,ph)),w2=smoothstep(.33,.66,ph)*(1.-smoothstep(.66,1.,ph));
+  float w0=1.-w1-w2; if(ph>.66){w2=1.-smoothstep(.66,1.,ph);w0=1.-w2;w1=0.;}
+  // simple piecewise selection with blends
+  vec3 A,B,C;
+  float a=ph*3.;
+  if(a<1.){A=mix(A0,A1,a);B=mix(B0,B1,a);C=mix(C0,C1,a);}
+  else if(a<2.){A=mix(A1,A2,a-1.);B=mix(B1,B2,a-1.);C=mix(C1,C2,a-1.);}
+  else{A=mix(A2,A0,a-2.);B=mix(B2,B0,a-2.);C=mix(C2,C0,a-2.);}
+  return g<.5?mix(A,B,g*2.):mix(B,C,(g-.5)*2.);
+}
+vec3 flowScene(vec2 uv0,float t,float phase){
+  vec2 uv=uv0*1.3;
+  vec3 bg=mix(vec3(.075,.07,.13),vec3(.03,.03,.06),smoothstep(.1,.8,length(uv)));
+  vec2 hub=vec2(-.33+.05*sin(t*1.05),-.03+.05*cos(t*1.05));
+  vec2 p=uv-hub;
+  float th=.35*sin(t*1.05)+.2*sin(t*2.1+1.);
+  p=kb_rot(-th)*p;
+  float r=length(p),ang=atan(p.y,p.x);
+  float curve=.5*sin(t*1.05+.5)+.45;
+  float a2=ang+curve*r*r*.8-.05/(r+.12);
+  float span=2.3+.4*sin(t*1.05+2.);
+  float s=a2/span+.5;
+  const float N=64.;
+  float sc=s*N; float id=floor(sc), f=fract(sc);
+  float sq=(id+.5)/N;
+  float sh=t*.02; // koch pattern drifts
+  float amp=.22+.05*sin(t*1.05);
+  float L=.5+.1*sin(t*1.05+1.5)+kb_koch(sq+sh,amp)+.025*(kb_h(id)-.5);
+  L+= .15*(1.-abs(2.*sq-1.))*.0; 
+  float inRange=step(0.,s)*step(s,1.);
+  // dof blur: stronger lower-left
+  float blur=.004+.02*smoothstep(.1,-.5,p.y+uv.x*.2)*smoothstep(-.9,.2,-uv.x);
+  float pxw=fwidth(sc);
+  float edgeX=max(blur*N/ max(r,.15)*.5,pxw);
+  float edgeR=max(blur,fwidth(r));
+  // tube cylinder
+  float cx=(f-.5)*2.; // -1..1
+  float tubeM=1.-smoothstep(.93-edgeX,.93+edgeX,abs(cx));
+  float endM=1.-smoothstep(L-edgeR,L+edgeR,r);
+  float startM=smoothstep(.0,.05,r);
+  float m=tubeM*endM*startM*inRange;
+  float nz=sqrt(max(0.,1.-cx*cx/.78));
+  vec3 N3=normalize(vec3(cx*.9,0.,nz));
+  vec3 Ld=normalize(vec3(-.4,.6,.7));
+  float dif=.45+.55*max(dot(N3,Ld),0.);
+  float spec=pow(max(dot(reflect(-Ld,N3),vec3(0,0,1)),0.),24.)*.5;
+  float rim=pow(1.-nz,2.5)*.35;
+  float cap=smoothstep(.03+edgeR,0.,L-r)*.28; // pale cut face at tube end
+  // inner coloured strands
+  float s2=sc*3.+ .35*sin(r*14.+id*.7);
+  float ln=abs(fract(s2)-.5);
+  float lw=.12+edgeX*.5;
+  float strand=(1.-smoothstep(lw*.5,lw,ln))*inRange*step(r,L+.02);
+  float g=clamp(r/(L+.001)*.9+.15*sin(t+id),0.,1.);
+  g=clamp(pow(r/.62,.9)-.1,0.,1.);
+  vec3 sc3=kb_pal(g,phase);
+  float hubGlow=exp(-r*3.5);
+  vec3 tubeBase=vec3(.80,.82,.84)*dif+spec+rim+cap;
+  // translucency: strand colour bleeds through tubes, stronger near hub
+  float tr=mix(.7,.3,smoothstep(.1,.5,r));
+  vec3 inner=sc3*(.55+.7*strand)*(.6+.8*hubGlow);
+  vec3 tube=mix(tubeBase*vec3(.92,.94,1.),inner*(.8+.4*dif),tr*(.5+.5*strand)+.2*hubGlow);
+  vec3 col=bg;
+  // behind tubes: strands visible in gaps
+  float gap=inRange*step(r,L)*(1.-tubeM)*step(.04,r);
+  col=mix(col,sc3*(.35+.6*strand),gap*.8);
+  col=mix(col,tube,m*(.92));
+  col+= .05*sc3*hubGlow*inRange;
+  col*=1.-.35*smoothstep(.3,.9,length(uv0));
+  return clamp(col,0.,1.);
+}
+</script>
+<script id="flowE" data-name="Koch ribbons · polar fan" type="x-shader/x-fragment">
+float ka_h(float x){return fract(sin(x*127.1+11.7)*43758.5453);}
+float ka_h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+mat2 ka_rot(float a){float c=cos(a),s=sin(a);return mat2(c,s,-s,c);}
+// time-evolving hash in [0,1]
+float ka_th(float i,float t){float f=t*0.35;float k=floor(f);float x=fract(f);x=x*x*(3.-2.*x);return mix(ka_h(i+k*7.3),ka_h(i+(k+1.)*7.3),x);}
+// Koch-like stepped length: multi-scale square steps over strand index
+float ka_steps(float k,float t){
+  float s=0.,amp=0.2;
+  for(int i=0;i<5;i++){
+    float sc=exp2(float(4-i));          // block size in tubes: 16,8,4,2,1
+    float b=floor(k/sc);
+    float v=ka_th(b+float(i)*31.,t+float(i)*1.7);
+    s+=amp*(v>0.5?1.:0.)*(0.6+0.8*v);
+    amp*=0.66;
+  }
+  return s;
+}
+vec3 ka_pal(float x,float ph){
+  vec3 a,b,c;
+  if(ph<0.17||ph>0.83){a=vec3(0.50,0.22,0.85);b=vec3(0.62,0.62,0.18);c=vec3(0.98,0.90,0.62);}
+  else if(ph<0.5){a=vec3(0.10,0.62,0.70);b=vec3(0.95,0.52,0.14);c=vec3(1.0,0.88,0.6);}
+  else {a=vec3(0.85,0.18,0.62);b=vec3(0.35,0.60,0.95);c=vec3(0.30,0.95,0.95);}
+  // blend schemes smoothly between anchors
+  float w=ph; vec3 a1=vec3(0.50,0.22,0.85),b1=vec3(0.62,0.62,0.18),c1=vec3(0.98,0.90,0.62);
+  vec3 a2=vec3(0.10,0.62,0.70),b2=vec3(0.95,0.52,0.14),c2=vec3(1.0,0.88,0.6);
+  vec3 a3=vec3(0.85,0.18,0.62),b3=vec3(0.35,0.60,0.95),c3=vec3(0.30,0.95,0.95);
+  float w2=smoothstep(0.,.33,w)*(1.-smoothstep(.33,.66,w)), w3=smoothstep(.33,.66,w)*(1.-smoothstep(.66,1.,w));
+  float w1=1.-smoothstep(0.,.33,w)+smoothstep(.66,1.,w); w2=smoothstep(0.,.33,w)-smoothstep(.33,.66,w); w3=smoothstep(.33,.66,w)-smoothstep(.66,1.,w);
+  a=a1*w1+a2*w2+a3*w3; b=b1*w1+b2*w2+b3*w3; c=c1*w1+c2*w2+c3*w3;
+  x=clamp(x,0.,1.);
+  return x<.5?mix(a,b,x*2.):mix(b,c,(x-.5)*2.);
+}
+vec3 flowScene(vec2 uv,float t,float phase){
+  vec3 bg=vec3(0.05,0.047,0.09);
+  float vg=smoothstep(1.05,0.15,length(uv*vec2(0.9,1.0)));
+  vec3 col=bg*(0.45+0.9*vg)+vec3(0.012,0.008,0.02)*vg;
+  // hub, slowly drifting
+  vec2 hub=vec2(-0.22+0.05*sin(t*1.05),0.02+0.05*cos(t*0.9));
+  vec2 p=uv-hub;
+  float r=length(p);
+  float rot=0.45*sin(t*1.05)+0.25*sin(t*2.1+1.)-0.55;
+  float a=atan(p.y,p.x);
+  // swirl/bend: streamlines curve with radius
+  float bend=1.1+0.6*sin(t*1.05+0.7);
+  float ab=a-rot-bend*r*(1.0+0.25*sin(a*2.+t*1.05))+0.12*log(r+0.05);
+  ab=mod(ab+3.14159,6.28318)-3.14159;
+  // fan extent
+  const float N=11.0;                    // tubes per radian-ish scale
+  float span=1.55+0.2*sin(t*2.1);
+  float sc=ab*N*1.0;                     // strand coordinate
+  float k=floor(sc);
+  float ku=sc-k-0.5;                     // across-tube [-0.5,0.5]
+  // tube width grows with radius: use arc-length-normalised coordinate
+  float rw=max(r,0.08);
+  float nt=ab*(26.0*(0.55+0.9*rw));      // tube count across angle
+  float kk=floor(nt); float u=fract(nt)-0.5;
+  float kidx=kk+floor(rw*3.);            // index for steps (stable-ish)
+  float kn=ab/span;                      // -1..1 across fan
+  // lengths
+  float env=0.78*(1.0-pow(abs(kn),2.6))+0.12;
+  float ph=ka_h(kk*1.37+3.)*0.04;
+  float rend=env*0.5+ka_steps(floor(ab*52.),t)*1.0+ph-0.05;
+  float rin=0.07+0.06*ka_h(floor(ab*40.));
+  // blur (DOF): soft in lower-left
+  float bl=clamp(0.6*smoothstep(0.1,-0.6,uv.x+uv.y*0.9+0.1)+0.12,0.,1.);
+  float pxw=fwidth(nt)+0.0001;
+  float soft=pxw+bl*0.9;
+  float spx=fwidth(r)*(1.+bl*6.)+0.001;
+  float inFan=smoothstep(span,span-0.04-bl*0.1,abs(ab));
+  float inR=smoothstep(rend,rend-spx*1.2,r)*smoothstep(rin,rin+0.03,r);
+  float cov=inFan*inR;
+  if(cov<=0.001) return col;
+  // cylinder shading
+  float n=clamp(u*2.0,-1.,1.);
+  float nz=sqrt(max(1.-n*n,0.));
+  vec3 N3=vec3(n,0.,nz);
+  vec3 L=normalize(vec3(-0.5,0.6,0.7));
+  float dif=max(dot(N3,L),0.)*0.75+0.25;
+  float spec=pow(max(dot(reflect(-L,N3),vec3(0,0,1)),0.),24.)*0.5;
+  float fres=pow(1.-nz,2.5)*0.35;
+  vec3 tubeC=vec3(0.66,0.69,0.67);
+  vec3 tc=tubeC*dif+spec+fres*vec3(0.7,0.75,0.85);
+  // tube edge/gap
+  float edge=1.-smoothstep(1.0-soft*1.2,1.0,abs(n));
+  // end cap highlight
+  float cap=smoothstep(rend-0.02-bl*0.02,rend,r);
+  tc=mix(tc,tc*0.7+vec3(0.12),cap*0.8);
+  // inner coloured strand
+  float hh=ka_h(kk*3.1+9.);
+  float wob=0.18*sin(r*40.*(0.6+hh)+hh*20.+t*1.5);
+  float line=1.-smoothstep(0.03,0.14+bl*0.3,abs(u-wob*0.5));
+  float g=clamp(r/(rend+0.02),0.,1.);
+  vec3 sc3=ka_pal(r*1.7-0.12+0.12*hh-0.15*kn*kn,phase)*0.8;
+  sc3*=1.0+0.4*line;
+  // translucency: opaque toward the outer end, see-through near hub
+  float op=mix(0.2,0.88,smoothstep(0.15,0.55,r));
+  op=mix(op,0.95,cap);
+  // coloured inner shows as glow behind tube
+  vec3 behind=sc3*(0.45+0.55*line);
+  vec3 tube=mix(behind,tc,op);
+  tube+= sc3*line*0.25*(1.-op);
+  // gaps between tubes
+  tube*=mix(0.72,1.0,edge);
+  tube=mix(tube,tube*0.9+bg,0.0);
+  tube*=0.85+0.15*vg;
+  float alpha=cov*mix(0.9,1.0,edge)*(1.-0.3*bl);
+  col=mix(col,tube,alpha);
   return col;
 }
 </script>
@@ -1589,7 +1799,7 @@ function randomize(){
 $('bPal').onclick=()=>setPal(curPalPos()+1); $('bRand').onclick=randomize;
 
 // persistence
-const PERSIST=['cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
+const PERSIST=['sSym','cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
 function save(){ try{ const o={v:SCHEMA,type:shown,palIdx,theme,realIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
 const PERF=['sRes','sQual','cAuto','sFps'];
 if(isPro){ $('sRes').value=0.62; $('sQual').value=1; $('sFps').value=60; }
@@ -1876,7 +2086,7 @@ function frameBody(nowMs){
   progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:12+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:+$('sGlow').value,
-    uSlice:$('cSlice').checked?1:0,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
+    uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
     uMatA:realCur.matA,uMatB:realCur.matB,uMetal:realCur.metal,uRough:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uWrap:realCur.wrap,uShK:realCur.shk,uAmb:realCur.amb,uClay:realCur.clay,uFloorOn:floorOn?1:0,uFloorY:floorY,
     uPA:palCur.a,uPB:palCur.b,uPC:palCur.c,uPD:palCur.d,uLDR:useFloat?0:1,uFFT:3});
   }
@@ -1971,7 +2181,7 @@ renderTL(); if(hashP.get('tl')==='1') setTimeout(tlStart,800);
 // take = song meta + start state + analysis/camera/clock frames (30 Hz) + discrete events (fractal, theme, material, dive, sculpt) + observations (hands…)
 const TAKE_COLS=['t','az','el','zoom','a0','a1','a2','hue','T','fx','fy','fz','diveR','dive','chaos','kal','bass','mid','high','beat','snare','hat','bright','pitch','bpm','drop','energy','onset'];
 const DPH=['idle','in','hold','out'];
-const LOOK_SLIDERS=['sBloom','sGlow','sTrail','sKal','sHue'], PERF_SLIDERS=['sMB','sMM','sMH','sWarp'];
+const LOOK_SLIDERS=['sBloom','sGlow','sTrail','sKal','sHue'], PERF_SLIDERS=['sMB','sMM','sMH','sWarp','sSym'];
 const PAL_NAMES=()=>PALS.map(p=>p.n);
 let takeRec=null, take=null, playing=false, pl=null, playKal=0, playCam=true, playLook=true;
 const q3=v=>Math.round(v*1000)/1000, nowS=()=>performance.now()/1000;
@@ -2013,7 +2223,7 @@ function playStart(){
 function playStop(){ playing=false; pl=null; $('bTakePlay').textContent='▶ Play take'; $('bTakePlay').classList.remove('on'); $('takeScrub').style.display='none'; try{ player.pause(); }catch(e){} }
 function applyStartState(){
   const o=take.start, nv=(v,a,b,d)=>Number.isFinite(+v)?clamp(+v,a,b):d;
-  $('sMB').value=nv(o.shape,0,1.2,0); $('sMM').value=nv(o.detail,0,1.2,0); $('sMH').value=nv(o.sparkle,0,1.2,0); $('sWarp').value=nv(o.warp,0,2,0.6);
+  $('sMB').value=nv(o.shape,0,1.2,0); $('sMM').value=nv(o.detail,0,1.2,0); $('sMH').value=nv(o.sparkle,0,1.2,0); $('sWarp').value=nv(o.warp,0,2,0.6); $('sSym').value=nv(o.sym,0,16,0);
   if(playLook){ setTheme(nrm(o.theme,THEMES.length),true); palIdx=nrm(o.palIdx,PALS.length); realIdx=nrm(o.realIdx,LOOKS.length);
     $('sHue').value=nv(o.hue,0,1,0); $('sKal').value=nv(o.kal,0,12,0); $('sBloom').value=nv(o.bloom,0,2,1); $('sGlow').value=nv(o.glow,0,2,1); $('sTrail').value=nv(o.trail,0,0.95,0); }
   if(playCam){ zoomMul=nv(o.zoom,0.08,4,1); az=nv(o.az,-100,100,0.6); el=nv(o.el,-1.5,1.5,0.35); }
@@ -2103,7 +2313,7 @@ function takeTrim(a,b){
   const st=JSON.parse(JSON.stringify(take.start));                               // fold earlier events into the new start state
   take.events.filter(e=>e[0]<a).forEach(e=>{ const [,k,v]=e;
     if(k==='type') st.type=v; else if(k==='theme') st.theme=v; else if(k==='pal') st.palIdx=v; else if(k==='look') st.realIdx=v;
-    else if(k==='slider'){ const m={sMB:'shape',sMM:'detail',sMH:'sparkle',sWarp:'warp',sHue:'hue',sKal:'kal',sBloom:'bloom',sGlow:'glow',sTrail:'trail'}[v[0]]; if(m) st[m]=v[1]; } });
+    else if(k==='slider'){ const m={sMB:'shape',sMM:'detail',sMH:'sparkle',sWarp:'warp',sSym:'sym',sHue:'hue',sKal:'kal',sBloom:'bloom',sGlow:'glow',sTrail:'trail'}[v[0]]; if(m) st[m]=v[1]; } });
   const first=take.frames.find(r=>r[0]>=a); if(first){ st.az=first[1]; st.el=first[2]; st.zoom=first[3]; st.hue=first[7]; }
   take.frames=take.frames.filter(r=>r[0]>=a&&r[0]<=b).map(r=>{ const c=r.slice(); c[0]=q3(c[0]-a); return c; });
   take.events=take.events.filter(e=>e[0]>=a&&e[0]<=b).map(e=>[q3(e[0]-a),e[1],e[2]]);
@@ -2220,7 +2430,7 @@ $('bDive').onclick=()=>setDive(!diveOn);
 // ───────────────────────── looks: save slots + shareable state ─────────────────────────
 function exportState(){ return {v:1,type:shown,theme,palIdx,realIdx,hue:+$('sHue').value,az:+az.toFixed(3),el:+el.toFixed(3),zoom:+zoomMul.toFixed(3),
   shape:+$('sMB').value,detail:+$('sMM').value,sparkle:+$('sMH').value,warp:+$('sWarp').value,kal:+$('sKal').value,bloom:+$('sBloom').value,
-  glow:+$('sGlow').value,trail:+$('sTrail').value,react:$('sReact').value,ang:ang.map(v=>+v.toFixed(3)),flow:flowMode?1:0,flowVar}; }
+  glow:+$('sGlow').value,trail:+$('sTrail').value,react:$('sReact').value,ang:ang.map(v=>+v.toFixed(3)),flow:flowMode?1:0,flowVar,sym:+$('sSym').value}; }
 function applyState(o){
   if(!o||typeof o!=='object') return; const nv=(v,a,b,d)=>Number.isFinite(+v)?clamp(+v,a,b):d;
   setTheme(nrm(o.theme,THEMES.length),true); palIdx=nrm(o.palIdx,PALS.length); realIdx=nrm(o.realIdx,LOOKS.length);
@@ -2229,7 +2439,7 @@ function applyState(o){
   if(o.react in REACT) $('sReact').value=o.react;
   zoomMul=nv(o.zoom,0.08,4,1); az=nv(o.az,-100,100,0.6); el=nv(o.el,-1.5,1.5,0.35);
   if(Array.isArray(o.ang)&&o.ang.length===3) for(let i=0;i<3;i++) ang[i]=nv(o.ang[i],-100,100,ang[i]);
-  setFlowVar(o.flowVar|0,true); setFlow(!!o.flow,true); padSync(); setType(o.type); save();
+  $('sSym').value=nv(o.sym,0,16,0); setFlowVar(o.flowVar|0,true); setFlow(!!o.flow,true); padSync(); setType(o.type); save();
 }
 // ── reference scenes: the clay-render look of the reference photos (3D Burning Ship over a sky-to-haze gradient, floating, no floor) ──
 const REFS=[
