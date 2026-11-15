@@ -116,10 +116,47 @@ module.exports=async function({b,page,rec,errText,URL}){
     await p.waitForFunction(()=>isFinite(player.duration)&&player.currentTime>0.3,null,{timeout:90000}); await p.waitForTimeout(800);
     const w=await p.evaluate(()=>({dur:player.duration,live:A.live,bass:A.bass,kind:mediaInfo&&mediaInfo.kind,name:lastFileName,err:player.error&&player.error.code}));
     rec('G10 audio-only WAV (no MIME) plays and drives the analysis',w.dur>2.5&&w.live&&w.bass>0.05&&w.kind==='audio'&&!w.err,JSON.stringify(w));
-    await p.evaluate(()=>{ FractalPulse.startTake(); }); await p.waitForTimeout(1500); const sg=await p.evaluate(()=>{ FractalPulse.stopTake(); return take&&take.song; });
+    await p.evaluate(()=>{ FractalPulse.startTake(); }); await p.waitForFunction(()=>takeRec&&takeRec.frames.length>=3,null,{timeout:60000}); const sg=await p.evaluate(()=>{ FractalPulse.stopTake(); return take&&take.song; });
     rec('G10 take records source-media metadata and says the media is not embedded',sg&&sg.name==='FL export.wav'&&sg.kind==='audio'&&sg.size>1000&&/NOT embedded/.test(sg.reference),JSON.stringify(sg));
     await p.setInputFiles('#fFile',{name:'broken.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('definitely not audio'.repeat(50))});
     await p.waitForFunction(()=>document.getElementById('err').style.display!=='none'&&/Couldn.t play/.test(document.getElementById('err').textContent),null,{timeout:20000}).catch(()=>{});
     const er=await p.evaluate(()=>document.getElementById('err').textContent); rec('G10 undecodable file gives a clear message naming the file',/broken\.mp3/.test(er)&&/WAV, MP3 or M4A/.test(er),er);
     rec('G10 no console errors',p.errs.filter(e=>!/Failed to load resource|media|Couldn.t play/i.test(e)).length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G11: instrument UI pass ──
+  { const p=await page(b,'scale=0.12&q=0&type=14',{ctx:{viewport:{width:1280,height:800}}}); await p.evaluate(()=>{ document.getElementById('bSilent').click(); document.getElementById('ui').classList.remove('hidden'); });
+    await p.waitForFunction(()=>document.getElementById('ctl').textContent.length>3,null,{timeout:60000});
+    // workspace navigation from the strip
+    const nav=await p.evaluate(async()=>{ const out={}; for(const w of ['explore','sculpt','perform','forge']){ document.querySelector(`#strip .ws[data-ws=${w}]`).click(); out[w]=[...document.querySelectorAll('#ui .wsec:not(.hide) h2')].length; } const ui=document.getElementById('ui'); const before=!ui.classList.contains('hidden'); document.querySelector('#strip .ws[data-ws=forge]').click(); return {out,before,afterToggle:!ui.classList.contains('hidden'),ws:workspace}; });
+    rec('G11 strip switches workspaces; tapping the active one closes the panel',Object.values(nav.out).every(n=>n>0)&&nav.before&&!nav.afterToggle,JSON.stringify(nav));
+    // control ownership
+    const own=await p.evaluate(async()=>{ const g=()=>document.getElementById('ctl').textContent; const sleep=ms=>new Promise(r=>setTimeout(r,ms)); await sleep(500); const a=g(); setFrozen(true,true); await sleep(500); const b2=g(); setFrozen(false,true); FractalPulse.startTake(); await sleep(600); const c=g(); const amber=document.getElementById('ctl').classList.contains('amber'); return {a,b2,c,amber}; });
+    rec('G11 status line says who controls the artwork (touch / frozen / recording)',/You|sculpt|Show|Director/.test(own.a)&&/FROZEN/.test(own.b2)&&/REC TAKE/.test(own.c)&&own.amber,JSON.stringify(own));
+    // synthetic take with non-uniform timestamps + a slider gesture
+    const tl=await p.evaluate(async()=>{ FractalPulse.stopTake(); const frames=[]; let t=0; for(let i=0;i<500;i++){ t+=0.03+0.04*((i*7)%5)/4; const f=new Array(28).fill(0); f[0]=+t.toFixed(3); f[3]=1+0.3*Math.sin(i/30); f[27]=i%40===0?1:0; frames.push(f); }
+      const ev=[[1,'type',3],[2,'theme',1],[3,'pulse',1]]; for(let i=0;i<12;i++) ev.push([5+i*0.1,'slider',['sGlow',0.2+i*0.05]]); ev.push([9,'slider',['sGlow',1.4]]); ev.push([6,'slider',['sBloom',0.5]]);
+      ev.sort((a,b)=>a[0]-b[0]); const raw=JSON.stringify(ev); take={format:'fractal-pulse-performance',v:1,created:new Date().toISOString(),duration:t,song:null,start:exportState(),cols:TAKE_COLS,frames,events:ev,observations:[]};
+      document.querySelector('#strip .ws[data-ws=perform]').click(); await new Promise(r=>setTimeout(r,700)); const items=tlItems(); const g=items.filter(x=>x.gesture&&x.id==='sGlow');
+      return {n:items.length,gestures:g.length,biggest:g.reduce((m,x)=>Math.max(m,x.n),0),sceneMarks:items.filter(x=>x.track==='scene').length,rawKept:JSON.stringify(take.events)===raw,rate:+(frames.length/t).toFixed(1),dur:+t.toFixed(1)}; });
+    rec('G11 timeline groups slider moves into gestures but keeps every raw event; irregular sample rate preserved',tl.gestures===2&&tl.biggest===12&&tl.sceneMarks===1&&tl.rawKept&&tl.rate>14&&tl.rate<30,JSON.stringify(tl));
+    // dirty tracking + hold to compare
+    const dc=await p.evaluate(async()=>{ const sleep=ms=>new Promise(r=>setTimeout(r,ms)); setFrozen(true,true); saveSpecimen(true,{name:'UI test'}); await sleep(3800); const sp=specimens[0]; const clean=document.getElementById('idDirty').hidden; const base=exportState().sym;
+      $('sSym').value=+$('sSym').value+3; $('sSym').dispatchEvent(new Event('input')); await sleep(600); const dirty=!document.getElementById('idDirty').hidden; const edited=+$('sSym').value;
+      const b=document.getElementById('bCompare'); b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true})); const during=+$('sSym').value; b.dispatchEvent(new PointerEvent('pointerup',{bubbles:true})); const after=+$('sSym').value;
+      return {id:typeof specCode==='function'&&/^FP·/.test(specCode(sp)),clean,dirty,edited,during,base,after,idText:document.getElementById('idSpec').textContent}; });
+    rec('G11 unsaved changes are flagged; hold-to-compare shows the saved version and returns to the edit',dc.id&&dc.clean&&dc.dirty&&dc.during!==dc.edited&&Math.abs(dc.during-dc.base)<0.01&&dc.after===dc.edited,JSON.stringify(dc));
+    // clean view keeps state
+    const cv=await p.evaluate(async()=>{ const st=JSON.stringify(exportState().pins)+exportState().type; document.getElementById('sClean').click(); const hid=getComputedStyle(document.getElementById('strip')).opacity==='0'; const keep=JSON.stringify(exportState().pins)+exportState().type===st; document.getElementById('cleanBack').click(); await new Promise(r=>setTimeout(r,500)); return {hid,keep,back:getComputedStyle(document.getElementById('strip')).opacity==='1'}; });
+    rec('G11 clean view hides controls, preserves state, and returns',cv.hid&&cv.keep&&cv.back,JSON.stringify(cv));
+    // collapsible sections persist
+    const co=await p.evaluate(()=>{ const h=[...document.querySelectorAll('#ui .wsec h2')].find(x=>/Fractal/.test(x.textContent)); h.click(); const col=h.parentElement.classList.contains('collapsed'); return {col,stored:JSON.parse(localStorage.getItem('fractalPulseCollapsed')||'{}')}; });
+    rec('G11 sections collapse and remember it',co.col&&Object.values(co.stored).includes(1),JSON.stringify(co));
+    rec('G11 no console errors (desktop)',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+  { // phone: strip / sheet never move the viewport, nothing overflows horizontally
+    const p=await page(b,'scale=0.1&q=0&type=14',{ctx:{viewport:{width:390,height:844},hasTouch:true}}); await p.evaluate(()=>document.getElementById('bSilent').click());
+    await p.waitForFunction(()=>frame>2,null,{timeout:90000});
+    const m=await p.evaluate(async()=>{ const a0=az,e0=el,z0=zoomMul; document.querySelector('#strip .ws[data-ws=sculpt]').click(); await new Promise(r=>setTimeout(r,500)); const ui=document.getElementById('ui').getBoundingClientRect(),st=document.getElementById('strip').getBoundingClientRect();
+      return {sheetAboveStrip:ui.bottom<=st.top+1,stripFull:Math.abs(st.width-innerWidth)<2,noHScroll:document.documentElement.scrollWidth<=innerWidth+1,viewKept:az===a0&&el===e0&&zoomMul===z0,btnH:Math.min(...[...document.querySelectorAll('#strip button')].map(x=>x.getBoundingClientRect().height))}; });
+    rec('G11 phone: sheet sits above the strip, strip spans the width, no horizontal scroll, buttons ≥40px, view untouched',m.sheetAboveStrip&&m.stripFull&&m.noHScroll&&m.viewKept&&m.btnH>=40,JSON.stringify(m));
+    rec('G11 no console errors (phone)',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };
