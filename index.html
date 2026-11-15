@@ -252,6 +252,25 @@
   <details><summary style="cursor:pointer;color:var(--dim);font-size:11px">Events (edit / delete / jump)</summary><div id="takeEvents"></div></details>
   <textarea id="takePaste" rows="2" placeholder="…or paste take JSON here" style="width:100%;margin-top:6px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--fg);font:11px monospace;padding:6px"></textarea>
   <button id="bTakePaste" style="margin-top:4px">Load pasted JSON</button>
+  <h2>Still art · high resolution</h2>
+  <div class="row"><span>Size</span><select id="stPreset"><option value="2048x2048">2048 × 2048 square</option><option value="1080x1350">1080 × 1350 portrait</option><option value="1920x1080">1920 × 1080 wide</option><option value="3000x3000">3000 × 3000 (tiled)</option><option value="4096x4096">4096 × 4096 (tiled, if device allows)</option><option value="custom">Custom…</option></select></div>
+  <div class="row" id="stCustom" style="display:none"><span>W × H</span><input id="stW" type="number" min="16" max="16384" value="2048" style="width:70px"><input id="stH" type="number" min="16" max="16384" value="2048" style="width:70px"></div>
+  <div class="row"><span>Antialias</span><select id="stSS"><option value="1">Off (1×)</option><option value="2" selected>2×2 supersample</option><option value="3">3×3 supersample</option></select></div>
+  <div class="row"><span>Background</span><select id="stBg"><option value="scene">As shown</option><option value="alpha">Transparent · no floor</option><option value="alphafloor">Transparent · keep floor</option></select></div>
+  <div class="row"><span>Bloom</span><input id="stBloom" type="range" min="0" max="2" step="0.05" value="1"></div>
+  <div class="row"><span>Glow</span><input id="stGlow" type="range" min="0" max="2" step="0.05" value="1"></div>
+  <div class="grid"><button id="bStill">🖼 Render still</button><button id="bStillCancel" style="display:none">✖ Cancel</button></div>
+  <div id="stInfo" style="color:var(--dim);font-size:11px;margin-top:4px">Freezes the current look, renders it in tiles if the device cannot do it in one pass, and saves a PNG. Limits are probed on this device, not assumed.</div>
+  <h2>E-PAPER NODE 000 · 384 × 184</h2>
+  <div class="row"><span>Palette</span><select id="epPal"><option value="bw">Black / white</option><option value="bwr">Black / white / red</option></select></div>
+  <div class="row"><span>Threshold</span><input id="epThr" type="range" min="0" max="255" step="1" value="128"></div>
+  <div class="row"><span>Dither</span><select id="epDith"><option value="none">None (hard threshold)</option><option value="fs">Floyd–Steinberg</option><option value="atk" selected>Atkinson</option><option value="bayer">Bayer 4×4</option></select></div>
+  <div class="row"><span>Background</span><select id="epBg"><option value="black">Black</option><option value="white">White</option></select><span style="flex:0 0 auto">Invert</span><input id="epInv" type="checkbox"></div>
+  <div class="row"><span>Title</span><input id="epTitle" type="text" maxlength="40" placeholder="optional, e.g. FP-0001" style="flex:1;min-width:0;padding:5px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:var(--fg)"></div>
+  <div class="grid"><button id="bEp">◼ Render e-paper preview</button><button id="bEpSave" disabled>⬇ Save 384×184 PNG</button></div>
+  <canvas id="epCan" width="384" height="184" style="width:384px;max-width:100%;image-rendering:pixelated;border:1px solid rgba(255,255,255,.2);margin-top:6px;display:block;background:#000"></canvas>
+  <canvas id="epBig" width="384" height="184" style="width:100%;image-rendering:pixelated;border:1px solid rgba(255,255,255,.2);margin-top:6px;display:block;background:#000"></canvas>
+  <div id="epInfo" style="color:var(--dim);font-size:11px;margin-top:4px">Makes the image file only. Nothing is sent to a label; uploading to hardware is a separate, unverified step.</div>
   <h2>Capture</h2>
   <div class="grid">
     <button id="bRec">● Record clip</button>
@@ -269,6 +288,8 @@ precision highp int;
 out vec4 outCol;
 
 uniform vec2  uRes;
+uniform vec2  uOrigin, uFull;                     // tile origin / full-frame size in pixels (tiled still export); normally (0,0) and uRes
+uniform float uAlphaMode, uKeepFloor, uShadowAlpha; // transparent export: alpha = coverage; floor can become a shadow catcher
 uniform float uTime;
 uniform vec3  uCam;
 uniform vec3  uTarget;
@@ -836,13 +857,13 @@ vec3 floorColor(vec3 rd, float tf, float sh, vec3 rc){
 
 void main(){
   gRot = rotM(uAng);
-  vec2 uv = (gl_FragCoord.xy - 0.5*uRes)/uRes.y;
+  vec2 uv = (gl_FragCoord.xy + uOrigin - 0.5*uFull)/uFull.y;
   vec3 ro = uCam;
   vec3 fw = normalize(uTarget-ro);
   vec3 rt = normalize(cross(fw, vec3(0,1,0)));
   vec3 up = cross(rt, fw);
   vec3 rd = normalize(uv.x*rt + uv.y*up + uFocal*fw);
-  gPx = 1.0/(uRes.y*uFocal);
+  gPx = 1.0/(uFull.y*uFocal);
   bool real = (uTheme==1||uTheme==3), cosmic = (uTheme==2);
 
   float tf = 1e9;
@@ -890,10 +911,16 @@ void main(){
   } else if(onFloor){
     col = floorColor(rd, tf, sh, gotR ? rc : envMap(reflect(rd,vec3(0,1,0)),false));
   }
-  if(!real) col += pal(0.15)*halo*0.011*uGlow*uExpo*(0.55 + 0.8*uBeat + 0.5*uEnergy + 0.3*uPulse + 1.2*uDrop);
+  float aOut = hit ? t : -1.0;                       // alpha carries ray depth (used by Dive mode)
+  if(uAlphaMode>0.5){                                // transparent still export: coverage in alpha, background removed
+    if(hit) aOut = 1.0;
+    else if(onFloor){ if(uKeepFloor>0.5) aOut = 1.0; else { aOut = (1.0-sh)*uShadowAlpha; col = vec3(0.0); } }   // floor hidden, shadow kept
+    else { aOut = 0.0; col = vec3(0.0); }
+  }
+  if(!real) col += pal(0.15)*halo*0.011*uGlow*uExpo*(0.55 + 0.8*uBeat + 0.5*uEnergy + 0.3*uPulse + 1.2*uDrop);   // glow stays as emitted light
   col = min(col, vec3(12.0));
   if(uLDR>0.5) col = col/(1.0+col);
-  outCol = vec4(col, hit ? t : -1.0);      // alpha carries ray depth (used by Dive mode)
+  outCol = vec4(col, aOut);
 }
 </script>
 
@@ -902,7 +929,7 @@ void main(){
 <script id="flowWrap" type="x-shader/x-fragment">#version 300 es
 precision highp float;
 out vec4 outCol;
-uniform vec2 uRes;
+uniform vec2 uRes, uOrigin, uFull;
 uniform float uTime, uFlowRot, uFlowZoom, uFlowPhase, uBass, uMid, uHigh, uBeat, uDrop;
 mat2 w_rot(float a){ float c=cos(a), s=sin(a); return mat2(c,s,-s,c); }
 float w_h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
@@ -918,7 +945,7 @@ vec3 w_pal(float x, float phase){
 }
 //@@CANDIDATE@@
 void main(){
-  vec2 uv=(gl_FragCoord.xy-0.5*uRes)/uRes.y;
+  vec2 uv=(gl_FragCoord.xy+uOrigin-0.5*uFull)/uFull.y;
   vec2 q=w_rot(uFlowRot)*uv*uFlowZoom;
   q*=1.0-0.05*uBass-0.04*uDrop;                                                       // bass makes the whole field breathe
   q+=0.012*uMid*vec2(sin(q.y*7.0+uTime*1.3),cos(q.x*7.0+uTime));                     // mids ripple it
@@ -1419,7 +1446,9 @@ precision highp float;
 out vec4 o;
 uniform sampler2D uScene, uPrev, uBloom, uFB;
 uniform float uTrail;
-uniform vec2  uRes;
+uniform vec2  uRes;                               // size of THIS render target
+uniform vec2  uOrigin, uFull;                     // tile origin / full-frame size (tiled still export); normally (0,0) and uRes
+uniform float uAlpha;                             // 1 = write coverage alpha (premultiplied light) for transparent export
 uniform float uTime, uBeat, uDrop, uBloomI, uCA, uTrans, uKal, uKalRot, uHue, uExp, uPunch, uVig, uGrain, uSharp, uFlat;
 
 float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
@@ -1429,14 +1458,15 @@ float fbm(vec2 p){ return 0.5*vn(p)+0.25*vn(p*2.03)+0.125*vn(p*4.1)+0.0625*vn(p*
 
 vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0); }
 
+vec2 toTex(vec2 q){ return (q*uFull.y + 0.5*uFull - uOrigin)/uRes; }     // centred full-frame coords -> this target's texcoords
 vec3 grab(sampler2D tex, vec2 q, vec2 off){
-  vec2 asp = vec2(uRes.y/uRes.x, 1.0);
-  vec2 uv = q*asp + 0.5;
-  return vec3(texture(tex, uv+off*asp).r, texture(tex, uv).g, texture(tex, uv-off*asp).b);
+  vec2 sc = uFull.y/uRes;
+  vec2 uv = toTex(q);
+  return vec3(texture(tex, uv+off*sc).r, texture(tex, uv).g, texture(tex, uv-off*sc).b);
 }
 
 void main(){
-  vec2 p = (gl_FragCoord.xy - 0.5*uRes)/uRes.y;
+  vec2 p = (gl_FragCoord.xy + uOrigin - 0.5*uFull)/uFull.y;
   vec2 q = p;
   if(uKal>1.5){                                    // kaleidoscope mirror
     float a = atan(p.y,p.x) + uKalRot, r = length(p);
@@ -1448,7 +1478,7 @@ void main(){
   vec2 off = normalize(q+1e-4)*ca*(0.0015 + 0.006*length(q));
   vec3 cur = grab(uScene,q,off);
   {                                                // unsharp mask: recovers crispness when the scene renders below screen res
-    vec2 px = 1.0/vec2(textureSize(uScene,0)); vec2 su = q*vec2(uRes.y/uRes.x,1.0)+0.5;
+    vec2 px = 1.0/vec2(textureSize(uScene,0)); vec2 su = toTex(q);
     vec3 nb = (texture(uScene,su+vec2(px.x,0.)).rgb + texture(uScene,su-vec2(px.x,0.)).rgb + texture(uScene,su+vec2(0.,px.y)).rgb + texture(uScene,su-vec2(0.,px.y)).rgb)*0.25;
     cur = max(cur + clamp(cur-nb,-0.6,0.6)*uSharp, 0.0);
   }
@@ -1460,14 +1490,14 @@ void main(){
     float edge = smoothstep(0.0,0.12,m)*(1.0-smoothstep(0.12,0.3,m));
     cur = mix(cur, prev, m) + edge*vec3(1.4,1.0,0.7)*0.7;
   }
-  vec2 buv = (q*vec2(uRes.y/uRes.x,1.0)) + 0.5;
+  vec2 buv = toTex(q);
   vec3 bl = texture(uBloom, buv).rgb;
   vec3 col = cur + bl*uBloomI*(0.9 + 1.2*uBeat + 1.5*uDrop);
   col *= uExp*(1.0 + uPunch*(0.25*uBeat + 0.5*uDrop));
   col = (uFlat>0.5) ? clamp(col,0.0,1.0) : aces(col);        // 2D scenes keep their authored colours (no filmic desaturation)
   col = pow(col, vec3(0.4545));
   col *= 1.0 - uVig*dot(p,p);
-  col += (h21(gl_FragCoord.xy+fract(uTime)*100.0)-0.5)*(uGrain/255.0);
+  col += (h21(gl_FragCoord.xy+uOrigin+fract(uTime)*100.0)-0.5)*(uGrain/255.0);
   if(uTrail>0.001){                                  // video feedback: previous frame, slightly zoomed + rotated + hue-rotated, decayed
     vec2 fc = (gl_FragCoord.xy/uRes - 0.5)*vec2(uRes.x/uRes.y,1.0);
     float a = 0.006*sin(uTime*0.6) + 0.004;
@@ -1476,7 +1506,9 @@ void main(){
     fb = mix(fb, fb.gbr, 0.035);
     col = max(col, fb*uTrail);
   }
-  o = vec4(col,1.0);
+  float aOut = 1.0;
+  if(uAlpha>0.5){ float sa = texture(uScene,toTex(q)).a; aOut = clamp(max(sa, max(col.r,max(col.g,col.b))), 0.0, 1.0); }   // object coverage or emitted glow
+  o = vec4(col,aOut);
 }
 </script>
 
@@ -2176,10 +2208,15 @@ function frameBody(nowMs){
   const sunA=0.9+T*0.035+0.5*A.mid, sunE=realCur.sunEl+0.06*Math.sin(T*0.1), sunDir=[Math.cos(sunE)*Math.sin(sunA),Math.sin(sunE),Math.cos(sunE)*Math.cos(sunA)];
 
   // targets
-  const dpr=Math.min(devicePixelRatio||1,isPro?2:1.5), cw=Math.max(64,Math.floor(innerWidth*dpr)), ch=Math.max(64,Math.floor(innerHeight*dpr));
-  const sw=Math.max(48,Math.floor(cw*resScale/16)*16), sh=Math.max(48,Math.floor(ch*resScale/16)*16);
-  if(canvas.width!==cw||canvas.height!==ch){ canvas.width=cw; canvas.height=ch; }
-  ensureTargets(sw,sh,cw,ch);
+  let cw,ch,sw,sh;
+  if(expo.active){ cw=sw=expo.bw; ch=sh=expo.bh; }                 // still export: render buffers sized for one tile; the visible canvas is left alone
+  else{
+    const dpr=Math.min(devicePixelRatio||1,isPro?2:1.5); cw=Math.max(64,Math.floor(innerWidth*dpr)); ch=Math.max(64,Math.floor(innerHeight*dpr));
+    sw=Math.max(48,Math.floor(cw*resScale/16)*16); sh=Math.max(48,Math.floor(ch*resScale/16)*16);
+    if(canvas.width!==cw||canvas.height!==ch){ canvas.width=cw; canvas.height=ch; }
+  }
+  ensureTargets(sw,sh,cw,ch); if(expo.active) ensureExpoTarget(cw,ch);
+  const XO=expo.active?[expo.cur.x0-expo.margin,expo.cur.y0-expo.margin]:[0,0], XF=expo.active?[expo.W,expo.H]:[sw,sh];
   const hw=innerWidth, hh=isMobile?56:90; if(hudC.width!==hw||hudC.height!==hh){ hudC.width=hw; hudC.height=hh; hudC.style.height=hh+'px'; }
 
   // pass 1 — fractal → HDR scene buffer
@@ -2187,13 +2224,13 @@ function frameBody(nowMs){
   bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
   if(flowMode){
     const fp=flowProg(flowVar);
-    fp.set({uRes:[sw,sh],uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uDrop:A.drop});
+    fp.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uDrop:A.drop});
   } else {
-  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
+  progScene.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
-    uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:+$('sGlow').value,
+    uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:expo.active?expo.glow:+$('sGlow').value,
     uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uSliceAt:+$('sCutAt').value,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
-    uMatA:realCur.matA,uMatB:realCur.matB,uMetal:$('cMatOv').checked?+$('sMetal').value:realCur.metal,uRough:$('cMatOv').checked?+$('sRough').value:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uWrap:realCur.wrap,uShK:realCur.shk,uAmb:realCur.amb,uClay:realCur.clay,uFloorOn:floorOn?1:0,uFloorY:floorY,
+    uMatA:realCur.matA,uMatB:realCur.matB,uMetal:$('cMatOv').checked?+$('sMetal').value:realCur.metal,uRough:$('cMatOv').checked?+$('sRough').value:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uWrap:realCur.wrap,uShK:realCur.shk,uAmb:realCur.amb,uClay:realCur.clay,uFloorOn:(floorOn&&!(expo.active&&expo.floor==='none'))?1:0,uFloorY:floorY,
     uPA:palCur.a,uPB:palCur.b,uPC:palCur.c,uPD:palCur.d,uLDR:useFloat?0:1,uFFT:3});
   }
   gl.drawArrays(gl.TRIANGLES,0,3);
@@ -2222,15 +2259,16 @@ function frameBody(nowMs){
 
   // pass 3 — composite to screen (kaleidoscope, CA, dissolve, tonemap)
   transT=Math.max(0,transT-Math.min(rawDt,0.5)/1.1);
-  const trailAmt=Math.max(+$('sTrail').value, chaosL*0.5, flowMode?0.62:0), useTrail=trailAmt>0.01;
-  gl.bindFramebuffer(gl.FRAMEBUFFER,useTrail?trails[tw].fbo:null); gl.viewport(0,0,cw,ch);
+  const trailAmt=Math.max(+$('sTrail').value, chaosL*0.5, flowMode?0.62:0), useTrail=trailAmt>0.01&&!expo.active;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,expo.active?expoT.fbo:(useTrail?trails[tw].fbo:null)); gl.viewport(0,0,cw,ch);
   bindTex(0,scenes[cur].tex); bindTex(1,scenes[1-cur].tex); bindTex(2,bloomB.tex); bindTex(3,trails[1-tw].tex);
   const kv=+$('sKal').value, kal=(playing&&playLook)?playKal:(kv>=2?kv:(dirKal||(chaosL>0.6?chaosKal:0)));
-  progComp.set({uScene:0,uPrev:1,uBloom:2,uFB:3,uTrail:useTrail?Math.min(0.96,trailAmt):0,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uSharp:clamp((1-resScale)*0.9,0.08,0.55),uBloomI:th.bloomI*+$('sBloom').value,uFlat:flowMode?1:0,uExp:flowMode?1.0:th.exp,uPunch:th.punch,uVig:flowMode?0.16:th.vig,uGrain:th.grain,
-    uCA:th.ca*(+$('sBloom').value>0?1:0.4),uTrans:transT*transT*(3-2*transT)*1.0,uKal:kal,uKalRot:kalRot,uHue:hue});
+  progComp.set({uScene:0,uPrev:1,uBloom:2,uFB:3,uTrail:useTrail?Math.min(0.96,trailAmt):0,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uOrigin:XO,uFull:expo.active?XF:[cw,ch],uAlpha:expo.active&&expo.alpha?1:0,uSharp:expo.active?0:clamp((1-resScale)*0.9,0.08,0.55),uBloomI:th.bloomI*(expo.active?expo.bloom:+$('sBloom').value),uFlat:flowMode?1:0,uExp:flowMode?1.0:th.exp,uPunch:th.punch,uVig:flowMode?0.16:th.vig,uGrain:th.grain,
+    uCA:th.ca*(+$('sBloom').value>0?1:0.4),uTrans:expo.active?0:transT*transT*(3-2*transT)*1.0,uKal:expo.active?expo.kal:kal,uKalRot:kalRot,uHue:hue});
   gl.drawArrays(gl.TRIANGLES,0,3);
   if(useTrail){ gl.bindFramebuffer(gl.READ_FRAMEBUFFER,trails[tw].fbo); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);
     gl.blitFramebuffer(0,0,cw,ch,0,0,cw,ch,gl.COLOR_BUFFER_BIT,gl.NEAREST); tw=1-tw; }
+  if(expo.active&&expo.onFrame){ const cb=expo.onFrame; expo.onFrame=null; if(expo.ingest){ expo.ingest=false; try{ ingestTile(); }catch(e){ expo.error=e; } } cb(); }
   if(shot){ shot=false; const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='fractal-pulse.png'; a.click(); }
 
   drawHud();
@@ -2452,6 +2490,121 @@ $('bTakePaste').onclick=()=>{ try{ loadTakeObj(JSON.parse($('takePaste').value))
 $('bTrim').onclick=()=>takeTrim(+$('trimA').value,+$('trimB').value);
 try{ const t=JSON.parse(localStorage.getItem('fractalPulseTake')||'null'); if(t) loadTakeObj(t); else takeChanged(false); }catch(e){ takeChanged(false); }
 
+// ═════════════════════ STILL-ART RENDERER ═════════════════════
+// Freezes what you see, renders it as one pass or as tiles (with a margin so bloom/sharpen cross tile borders), box-filters supersamples
+// and stitches a PNG-ready canvas. Camera projection, vignette, grain and bloom lookups use full-frame coordinates, so tiles line up.
+const expo={active:false,onFrame:null,ingest:false,cancel:false};
+let expoT=null;
+function ensureExpoTarget(w,h){ if(expoT&&expoT.w===w&&expoT.h===h) return; free(expoT); expoT=makeTarget(w,h,false); gl.bindFramebuffer(gl.FRAMEBUFFER,null); }
+function gpuLimits(){ return {maxTex:gl.getParameter(gl.MAX_TEXTURE_SIZE),maxRB:gl.getParameter(gl.MAX_RENDERBUFFER_SIZE),maxView:Array.from(gl.getParameter(gl.MAX_VIEWPORT_DIMS))}; }
+function canvasOk(w,h){ try{ const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); if(!x) return false; x.fillStyle='#fff'; x.fillRect(w-1,h-1,1,1); const ok=x.getImageData(w-1,h-1,1,1).data[0]===255; c.width=c.height=1; return ok; }catch(e){ return false; } }
+let canvasCap=null;                                                       // output canvases are limited by the browser (iOS Safari: 16.7 MP), so probe, never assume
+function canvasCapPx(){ if(canvasCap) return canvasCap; for(const sz of [4096,3072,2048,1024]){ if(canvasOk(sz,sz)){ canvasCap=sz*sz; return canvasCap; } } canvasCap=1024*1024; return canvasCap; }
+function probeBuffer(w,h){                                                // can this device actually allocate the render buffers for a w×h pass?
+  const L=gpuLimits(); if(w>L.maxTex||h>L.maxTex||w>L.maxView[0]||h>L.maxView[1]) return false; gl.getError(); let ok=true; const ts=[];
+  try{ ts.push(makeTarget(w,h,useFloat),makeTarget(w,h,false),makeTarget(Math.max(32,w>>2),Math.max(32,h>>2),useFloat)); ok=ts.every(t=>t.ok)&&gl.getError()===0; }catch(e){ ok=false; }
+  ts.forEach(free); gl.bindFramebuffer(gl.FRAMEBUFFER,null); return ok; }
+function planStill(o){
+  const rw=o.W*o.ss, rh=o.H*o.ss, cap=canvasCapPx();
+  if(!(o.W>=16&&o.H>=16&&o.W<=16384&&o.H<=16384)) return {ok:false,why:'Width and height must be between 16 and 16384.'};
+  if(o.W*o.H>cap) return {ok:false,why:`${o.W}×${o.H} is ${(o.W*o.H/1e6).toFixed(1)} MP, above this device's canvas limit of ${(cap/1e6).toFixed(1)} MP.`};
+  const L=gpuLimits(), lim=Math.min(L.maxTex,L.maxView[0],L.maxView[1],4096);
+  if(!o.forceTile && rw<=lim && rh<=lim && rw*rh<=8e6 && probeBuffer(rw,rh)) return {ok:true,tiled:false,rw,rh,bw:rw,bh:rh,margin:0,tile:Math.max(rw,rh),nx:1,ny:1,tiles:1,L,cap};
+  const g=o.ss*4, margin=o.margin!=null?o.margin:Math.ceil(96*o.ss/4)*4;       // margin >= the bloom blur reach (~72 px) so tile borders are invisible
+  let tile=o.forceTile?Math.max(g,Math.floor(o.forceTile/g)*g):Math.max(g*8,Math.floor(Math.min(1024,Math.max(rw,rh))/g)*g);
+  while(tile>=g*4 && !probeBuffer(tile+2*margin,tile+2*margin)) tile=Math.floor(tile/2/g)*g;
+  if(tile<g*4) return {ok:false,why:'This device cannot allocate render buffers even for small tiles.'};
+  const nx=Math.ceil(rw/tile), ny=Math.ceil(rh/tile);
+  return {ok:true,tiled:true,rw,rh,bw:tile+2*margin,bh:tile+2*margin,margin,tile,nx,ny,tiles:nx*ny,L,cap}; }
+function ingestTile(){                                                    // read the tile's interior, box-filter ss×ss, un-premultiply, stitch into the output canvas
+  const {x0,y0,w,h}=expo.cur, m=expo.margin, ss=expo.ss; gl.bindFramebuffer(gl.FRAMEBUFFER,expoT.fbo);
+  const buf=new Uint8Array(w*h*4); gl.readPixels(m,m,w,h,gl.RGBA,gl.UNSIGNED_BYTE,buf); if(gl.getError()!==0) throw new Error('GPU read-back failed');
+  const ow=w/ss|0, oh=h/ss|0, out=new ImageData(ow,oh), od=out.data, n=ss*ss;
+  for(let oy=0;oy<oh;oy++) for(let ox=0;ox<ow;ox++){
+    let r=0,g=0,b=0,a=0; for(let j=0;j<ss;j++){ const row=h-1-(oy*ss+j); for(let i=0;i<ss;i++){ const k=(row*w+ox*ss+i)*4; r+=buf[k]; g+=buf[k+1]; b+=buf[k+2]; a+=buf[k+3]; } }
+    const o=(oy*ow+ox)*4;
+    if(expo.alpha){ const af=a/n/255; if(af>0.002){ od[o]=Math.min(255,r/n/af); od[o+1]=Math.min(255,g/n/af); od[o+2]=Math.min(255,b/n/af); od[o+3]=a/n; } }   // premultiplied light -> straight alpha
+    else { od[o]=r/n; od[o+1]=g/n; od[o+2]=b/n; od[o+3]=255; } }
+  expo.octx.putImageData(out,(x0/ss)|0,((expo.H-(y0+h))/ss)|0); }
+const framesPassed=n=>new Promise(res=>{ const f0=frame; const t=setInterval(()=>{ if(frame>=f0+n){ clearInterval(t); res(); } },30); });
+const nextExpoFrame=()=>new Promise((res,rej)=>{ const to=setTimeout(()=>{ expo.onFrame=null; rej(new Error('a render step timed out')); },120000); expo.onFrame=()=>{ clearTimeout(to); res(); }; });
+let stillProgress=()=>{};
+async function renderStill(o){
+  if(expo.active) return {error:'An export is already running.'};
+  o=Object.assign({W:2048,H:2048,ss:1,transparent:false,floor:'keep',bloom:1,glow:1},o); o.W=o.W|0; o.H=o.H|0; o.ss=clamp(o.ss|0,1,3); if(flowMode) o.transparent=false;
+  const plan=planStill(o); if(!plan.ok) return {error:plan.why};
+  const notes=[]; const saved={frozen,sMB:$('sMB').value,sMM:$('sMM').value,sMH:$('sMH').value};
+  const st=captureState(true); $('sMB').value=st.shape; $('sMM').value=st.detail; $('sMH').value=st.sparkle; setFrozen(true,true);   // freeze exactly what is on screen
+  const kv=+$('sKal').value; let kal=kv>=2?kv:0; if(plan.tiled&&kal>=2){ kal=0; notes.push('Kaleidoscope mixes distant parts of the frame, so it was switched off for this tiled export. Choose a smaller size to keep it.'); }
+  if(plan.tiled) notes.push(`Rendered as ${plan.tiles} tiles of ${plan.tile}px with a ${plan.margin}px overlap.`);
+  if(o.transparent&&flowMode) notes.push('2D scenes are opaque; the transparent option was ignored.');
+  const out=document.createElement('canvas'); out.width=o.W; out.height=o.H; const octx=out.getContext('2d');
+  Object.assign(expo,{active:true,cancel:false,onFrame:null,ingest:false,error:null,W:plan.rw,H:plan.rh,ss:o.ss,bw:plan.bw,bh:plan.bh,margin:plan.margin,alpha:!!o.transparent,floor:o.floor,bloom:o.bloom,glow:o.glow,kal,cur:{x0:0,y0:0,w:plan.rw,h:plan.rh},octx});
+  const t0=performance.now(); let n=0;
+  try{
+    await framesPassed(2);
+    for(let ty=0;ty<plan.ny;ty++) for(let tx=0;tx<plan.nx;tx++){
+      if(expo.cancel) throw 'cancel';
+      const x0=tx*plan.tile, y0=ty*plan.tile; expo.cur={x0,y0,w:Math.min(plan.tile,plan.rw-x0),h:Math.min(plan.tile,plan.rh-y0)}; expo.ingest=true;
+      await nextExpoFrame(); if(expo.error) throw expo.error; n++; stillProgress(n,plan.tiles,performance.now()-t0);
+    }
+    return {canvas:out,plan,notes,ms:performance.now()-t0,transparent:!!o.transparent};
+  }catch(e){ return e==='cancel'?{cancelled:true,done:n,of:plan.tiles}:{error:String(e&&e.message||e)}; }
+  finally{ expo.active=false; expo.onFrame=null; free(expoT); expoT=null; $('sMB').value=saved.sMB; $('sMM').value=saved.sMM; $('sMH').value=saved.sMH; if(!saved.frozen) setFrozen(false,true); }
+}
+
+// ═════════════════════ STILL UI + E-PAPER NODE 000 ═════════════════════
+function saveCanvasPNG(c,name){ c.toBlob(b=>{ if(!b){ toast('PNG encode failed'); return; } const url=URL.createObjectURL(b), a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),30000); },'image/png'); }
+function stillOpts(){
+  const p=$('stPreset').value; let W,H; if(p==='custom'){ W=+$('stW').value|0; H=+$('stH').value|0; } else [W,H]=p.split('x').map(Number);
+  const bg=$('stBg').value; return {W,H,ss:+$('stSS').value,transparent:bg!=='scene',floor:bg==='alphafloor'?'keep':(bg==='alpha'?'none':'keep'),bloom:+$('stBloom').value,glow:+$('stGlow').value}; }
+$('stPreset').onchange=()=>{ $('stCustom').style.display=$('stPreset').value==='custom'?'flex':'none'; };
+$('bStillCancel').onclick=()=>{ expo.cancel=true; };
+$('bStill').onclick=async()=>{
+  const o=stillOpts(); $('bStill').disabled=true; $('bStillCancel').style.display=''; $('stInfo').textContent='Planning…';
+  stillProgress=(n,m,ms)=>{ $('stInfo').textContent=`Tile ${n}/${m} · ${(ms/1000).toFixed(1)} s`; };
+  const r=await renderStill(o); $('bStill').disabled=false; $('bStillCancel').style.display='none'; stillProgress=()=>{};
+  if(r.error) $('stInfo').textContent='Could not render: '+r.error;
+  else if(r.cancelled) $('stInfo').textContent=`Cancelled after ${r.done}/${r.of} tiles. Your view is unchanged.`;
+  else { $('stInfo').textContent=`Done: ${r.canvas.width}×${r.canvas.height}${r.transparent?' (transparent)':''} in ${(r.ms/1000).toFixed(1)} s. `+r.notes.join(' '); saveCanvasPNG(r.canvas,`fractal-pulse-${r.canvas.width}x${r.canvas.height}.png`); }
+};
+const EP={W:384,H:184,last:null};
+const BAYER4=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+function epQuantize(src,o){            // src: ImageData (any size already scaled to 384×184); returns ImageData using only the palette
+  const W=src.width,H=src.height,pal=o.pal==='bwr'?[[0,0,0],[255,255,255],[255,0,0]]:[[0,0,0],[255,255,255]];
+  const d=src.data,f=new Float32Array(W*H*3),off=128-o.thr;
+  for(let i=0;i<W*H;i++){ let r=d[i*4],g=d[i*4+1],b=d[i*4+2]; if(o.inv){ r=255-r; g=255-g; b=255-b; } f[i*3]=r+off; f[i*3+1]=g+off; f[i*3+2]=b+off; }
+  const out=new ImageData(W,H),od=out.data;
+  const near=(r,g,b)=>{ let bi=0,bd=1e9; for(let k=0;k<pal.length;k++){ const p=pal[k],dd=(r-p[0])**2+(g-p[1])**2+(b-p[2])**2; if(dd<bd){bd=dd;bi=k;} } return bi; };
+  const diff=(x,y,er,eg,eb,w)=>{ if(x<0||x>=W||y>=H) return; const k=(y*W+x)*3; f[k]+=er*w; f[k+1]+=eg*w; f[k+2]+=eb*w; };
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const k=(y*W+x)*3; let r=f[k],g=f[k+1],b=f[k+2];
+    if(o.dither==='bayer'){ const t=(BAYER4[(y&3)*4+(x&3)]+0.5)/16-0.5; r+=t*96; g+=t*96; b+=t*96; }
+    const c=pal[near(r,g,b)]; const q=(y*W+x)*4; od[q]=c[0]; od[q+1]=c[1]; od[q+2]=c[2]; od[q+3]=255;
+    if(o.dither==='fs'||o.dither==='atk'){ const er=f[k]-c[0],eg=f[k+1]-c[1],eb=f[k+2]-c[2];
+      if(o.dither==='fs'){ diff(x+1,y,er,eg,eb,7/16); diff(x-1,y+1,er,eg,eb,3/16); diff(x,y+1,er,eg,eb,5/16); diff(x+1,y+1,er,eg,eb,1/16); }
+      else { const w=1/8; diff(x+1,y,er,eg,eb,w); diff(x+2,y,er,eg,eb,w); diff(x-1,y+1,er,eg,eb,w); diff(x,y+1,er,eg,eb,w); diff(x+1,y+1,er,eg,eb,w); diff(x,y+2,er,eg,eb,w); } }
+  }
+  return out; }
+function epTitleStrip(img,text,pal){                   // crisp 1-bit caption strip stamped after quantising so it is never dithered
+  if(!text) return; const W=img.width,H=img.height,sh=12,c=document.createElement('canvas'); c.width=W; c.height=sh; const x=c.getContext('2d');
+  x.fillStyle='#000'; x.fillRect(0,0,W,sh); x.fillStyle='#fff'; x.font='bold 9px monospace'; x.textBaseline='middle'; x.fillText(text,3,sh/2+0.5);
+  const m=x.getImageData(0,0,W,sh).data;
+  for(let y=0;y<sh;y++) for(let xx=0;xx<W;xx++){ const on=m[(y*W+xx)*4]>127, q=((H-sh+y)*W+xx)*4, v=on?255:0; img.data[q]=v; img.data[q+1]=v; img.data[q+2]=v; } }
+function epPaint(img){ EP.last=img; for(const id of ['epCan','epBig']){ const c=$(id); c.getContext('2d').putImageData(img,0,0); } $('bEpSave').disabled=false; }
+async function epRender(){
+  const bg=$('epBg').value, r=await renderStill({W:EP.W,H:EP.H,ss:2,transparent:!flowMode,floor:'none',bloom:0.8,glow:0.8});
+  if(r.error||r.cancelled) return {error:r.error||'cancelled'};
+  const c=document.createElement('canvas'); c.width=EP.W; c.height=EP.H; const x=c.getContext('2d');
+  x.fillStyle=bg==='white'?'#fff':'#000'; x.fillRect(0,0,EP.W,EP.H); x.drawImage(r.canvas,0,0);
+  EP.src=x.getImageData(0,0,EP.W,EP.H); return epFinish(EP.src); }
+function epFinish(src){ const q=epQuantize(src,{pal:$('epPal').value,thr:+$('epThr').value,dither:$('epDith').value,inv:$('epInv').checked}); epTitleStrip(q,$('epTitle').value.trim(),$('epPal').value); epPaint(q);
+  let red=0,wh=0,n=EP.W*EP.H; for(let i=0;i<n;i++){ const d=q.data; if(d[i*4]===255&&d[i*4+1]===0) red++; else if(d[i*4]===255) wh++; }
+  $('epInfo').textContent=`${EP.W}×${EP.H} · ${$('epPal').value==='bwr'?'black/white/red':'black/white'} · white ${(100*wh/n).toFixed(0)}%${red?` · red ${(100*red/n).toFixed(0)}%`:''}. Image file only; nothing is sent to hardware.`; return {ok:true}; }
+$('bEp').onclick=async()=>{ $('bEp').disabled=true; $('epInfo').textContent='Rendering…'; const r=await epRender(); $('bEp').disabled=false; if(r.error) $('epInfo').textContent='Could not render: '+r.error; };
+['epPal','epThr','epDith','epInv','epTitle'].forEach(id=>$(id).addEventListener('input',()=>{ if(EP.src) epFinish(EP.src); }));
+$('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.W; c.height=EP.H; c.getContext('2d').putImageData(EP.last,0,0); saveCanvasPNG(c,'e-paper-node-000.png'); };
+
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
@@ -2562,7 +2715,7 @@ loadSpecimens(); renderSpecimens();
 
 // ═════════════════════ WORKSPACES: Explore / Sculpt / Perform / Forge ═════════════════════
 const WS_MAP={'Fractal':'explore sculpt','Theme':'explore','Audio':'explore perform','Sculpt · no music needed':'sculpt','Morph timeline':'explore perform','Look':'explore sculpt','Reactivity':'perform',
-  'Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Capture':'forge'};
+  'Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
 (function groupWorkspaces(){
   const ui=$('ui'); let cur=null;
   [...ui.children].forEach(el=>{

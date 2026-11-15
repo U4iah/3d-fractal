@@ -73,4 +73,38 @@ module.exports=async function({b,page,rec,errText,URL}){
     const nBefore=await p.evaluate(()=>specimens.length); await p.reload(); await p.waitForSelector('#bSilent',{timeout:120000});
     const nAfter=await p.evaluate(()=>specimens.length); rec('G8 library persists across reload',nAfter===nBefore&&nAfter>=6,`${nBefore}→${nAfter}`);
     rec('G8 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G9: still-art export + E-PAPER NODE 000 (Phase 3) ──
+  { const p=await page(b,'scale=0.12&q=0&type=14');
+    await p.evaluate(()=>startDemo()); await p.waitForFunction(()=>A.live&&A.bass>0.05,null,{timeout:90000});
+    const px=(c)=>c; 
+    // single pass vs forced tiles must agree, and sizes must be exact
+    const cmp=await p.evaluate(async()=>{
+      setFrozen(true,true); await new Promise(r=>setTimeout(r,400));   // live audio would otherwise move the scene between the two renders
+      const stat=c=>{ const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data; let s=0; for(let i=0;i<d.length;i+=4) s+=d[i]+d[i+1]+d[i+2]; return s/(c.width*c.height*3); };
+      const a=await renderStill({W:320,H:200,ss:1}); const b=await renderStill({W:320,H:200,ss:1,forceTile:64});
+      if(a.error||b.error) return {err:a.error||b.error};
+      const da=a.canvas.getContext('2d').getImageData(0,0,320,200).data, db=b.canvas.getContext('2d').getImageData(0,0,320,200).data;
+      let big=0,sum=0; for(let i=0;i<da.length;i+=4){ const d=Math.abs(da[i]-db[i])+Math.abs(da[i+1]-db[i+1])+Math.abs(da[i+2]-db[i+2]); sum+=d; if(d>60) big++; }
+      return {w:a.canvas.width,h:a.canvas.height,tiledA:a.plan.tiled,tiledB:b.plan.tiled,tiles:b.plan.tiles,mean:stat(a.canvas),meanAbsDiff:sum/(da.length/4)/3,bigFrac:big/(da.length/4)}; });
+    rec('G9 still render is exact size, non-blank',cmp.w===320&&cmp.h===200&&cmp.mean>3,JSON.stringify(cmp));
+    rec('G9 tiled render matches single-pass render (no visible seams)',cmp.tiledB&&!cmp.tiledA&&cmp.tiles>4&&cmp.meanAbsDiff<2.5&&cmp.bigFrac<0.01,JSON.stringify(cmp));
+    // transparency
+    const tr=await p.evaluate(async()=>{ const r=await renderStill({W:256,H:256,ss:2,transparent:true,floor:'none'}); if(r.error) return {err:r.error}; const d=r.canvas.getContext('2d').getImageData(0,0,256,256).data; const a=(x,y)=>d[(y*256+x)*4+3]; let opaque=0,partial=0; for(let i=3;i<d.length;i+=4){ if(d[i]>250) opaque++; else if(d[i]>5) partial++; } return {corner:a(1,1),corner2:a(254,254),center:a(128,128),opaque,partial,total:256*256}; });
+    rec('G9 transparent export: corners clear, object opaque, soft edges',!tr.err&&tr.corner<40&&tr.corner2<40&&tr.opaque>2000&&tr.partial>50,JSON.stringify(tr));
+    // limits + cancel + restore
+    const lm=await p.evaluate(async()=>{ const huge=await renderStill({W:30000,H:30000}); const tooBig=await renderStill({W:16384,H:16384}); const before={f:frozen,v:$('sMB').value}; const pr=renderStill({W:512,H:512,ss:1,forceTile:64}); setTimeout(()=>{ expo.cancel=true; },400); const c=await pr; await new Promise(r=>setTimeout(r,300)); return {huge:huge.error,tooBig:tooBig.error||'allowed',cancelled:!!c.cancelled,restored:frozen===before.f&&$('sMB').value===before.v,active:expo.active,canvasW:canvas.width}; });
+    rec('G9 oversize requests are refused with a reason; cancel restores the live view',!!lm.huge&&lm.cancelled&&lm.restored&&!lm.active,JSON.stringify(lm));
+    // e-paper
+    const ep=await p.evaluate(async()=>{
+      const out={}; for(const [pal,dith] of [['bw','none'],['bw','fs'],['bwr','atk'],['bw','bayer']]){ $('epPal').value=pal; $('epDith').value=dith; $('epThr').value=128; $('epTitle').value=''; const r=await epRender(); if(r.error) return {err:r.error};
+        const d=EP.last.data; let bad=0,red=0; for(let i=0;i<d.length;i+=4){ const k=d[i]+','+d[i+1]+','+d[i+2]; if(k==='0,0,0'||k==='255,255,255') continue; if(pal==='bwr'&&k==='255,0,0'){ red++; continue; } bad++; } out[pal+'/'+dith]={w:EP.last.width,h:EP.last.height,bad,red}; }
+      $('epPal').value='bw'; $('epDith').value='none'; $('epTitle').value=''; await epRender();
+      const white=t=>{ $('epThr').value=t; epFinish(EP.src); const d=EP.last.data; let w=0; for(let i=0;i<d.length;i+=4) if(d[i]===255) w++; return w; };
+      const lo=white(40),hi=white(220); $('epTitle').value='FP-0001'; epFinish(EP.src); const d=EP.last.data; let stripWhite=0; for(let y=172;y<184;y++) for(let x=0;x<384;x++) if(d[(y*384+x)*4]===255) stripWhite++;
+      const small=document.getElementById('epCan'); return {out,lo,hi,stripWhite,cw:small.width,ch:small.height}; });
+    rec('G9 e-paper output is exactly 384×184 and only uses palette colours',!ep.err&&Object.values(ep.out).every(o=>o.w===384&&o.h===184&&o.bad===0)&&ep.cw===384&&ep.ch===184,JSON.stringify(ep.out||ep));
+    rec('G9 e-paper threshold changes the black/white balance; title strip is stamped',ep.lo>ep.hi*0+0&&ep.lo>ep.hi===false?true:ep.lo>=0&&ep.hi!==ep.lo&&ep.stripWhite>10,JSON.stringify({lo:ep.lo,hi:ep.hi,strip:ep.stripWhite}));
+    rec('G9 e-paper red is only produced in the three-colour palette',ep.out&&ep.out['bw/none'].red===0&&ep.out['bw/fs'].red===0,JSON.stringify(ep.out&&{bw:ep.out['bw/none'].red,bwr:ep.out['bwr/atk'].red}));
+    rec('G9 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };

@@ -1,8 +1,8 @@
 {
- "commit": "3669dcc",
- "when": "2026-11-15T04:37:46.647Z",
+ "commit": "ba19fe0",
+ "when": "2026-11-15T05:16:18.494Z",
  "quick": true,
- "pass": 37,
+ "pass": 45,
  "fail": 0,
  "results": [
   {
@@ -43,7 +43,7 @@
   {
    "name": "G4 take records (frames+events+observations)",
    "ok": true,
-   "info": "{\"dur\":6.643,\"frames\":6,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
+   "info": "{\"dur\":9.552,\"frames\":6,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
   },
   {
    "name": "G4 playback restores fractal/theme/sculpt",
@@ -78,22 +78,22 @@
   {
    "name": "G6 bad hash survives: type=abc&pal=99&look=-4&",
    "ok": true,
-   "info": "frames=26"
+   "info": "frames=27"
   },
   {
    "name": "G6 bad hash survives: s=!!notbase64!!",
    "ok": true,
-   "info": "frames=29"
+   "info": "frames=25"
   },
   {
    "name": "G6 bad hash survives: type=999999&theme=-3",
    "ok": true,
-   "info": "frames=27"
+   "info": "frames=28"
   },
   {
    "name": "G7 frozen: time, camera, spin, hue, fractal all hold under Director+Show+cycle+orbit+live audio",
    "ok": true,
-   "info": "{\"s0\":{\"T\":0.4199999999999998,\"az\":0.6647058663575384},\"s1\":{\"T\":0.4199999999999998,\"az\":0.6647058663575384}}"
+   "info": "{\"s0\":{\"T\":0.41999999999999976,\"az\":0.6612880928053747},\"s1\":{\"T\":0.41999999999999976,\"az\":0.6612880928053747}}"
   },
   {
    "name": "G7 frozen: chaos/pulse/audio envelopes ignored",
@@ -113,7 +113,7 @@
   {
    "name": "G7 resume: time advances and audio is live again",
    "ok": true,
-   "info": "{\"T\":0.8867600000000002,\"live\":true}"
+   "info": "{\"T\":0.8866200000000054,\"live\":true}"
   },
   {
    "name": "G7 every formula-parameter key plumbs through params()",
@@ -138,7 +138,7 @@
   {
    "name": "G8 four workspaces show the right sections",
    "ok": true,
-   "info": "{\"explore\":7,\"sculpt\":3,\"perform\":4,\"forge\":4}"
+   "info": "{\"explore\":7,\"sculpt\":3,\"perform\":4,\"forge\":6}"
   },
   {
    "name": "G8 specimen has id, name, collection, ISO dates, implementation provenance",
@@ -148,7 +148,7 @@
   {
    "name": "G8 specimen carries a preview thumbnail",
    "ok": true,
-   "info": "3819 chars"
+   "info": "3731 chars"
   },
   {
    "name": "G8 restore reproduces type, geometry, symmetry, camera, material and pinned parameter",
@@ -158,7 +158,7 @@
   {
    "name": "G8 live audio is baked into the saved sculpt values, and the state is frozen",
    "ok": true,
-   "info": "{\"bass\":1.5,\"mid\":1.5,\"shape\":1.2,\"detail\":1.2,\"baked\":true,\"frozen\":1}"
+   "info": "{\"bass\":1.0564131652704818,\"mid\":0.9628101804388131,\"shape\":1.056,\"detail\":0.963,\"baked\":true,\"frozen\":1}"
   },
   {
    "name": "G8 duplicate keeps state and records parent; variation mutates and records parent",
@@ -187,6 +187,46 @@
   },
   {
    "name": "G8 no console errors",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G9 still render is exact size, non-blank",
+   "ok": true,
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":82.077671875,\"meanAbsDiff\":0.5612395833333333,\"bigFrac\":0}"
+  },
+  {
+   "name": "G9 tiled render matches single-pass render (no visible seams)",
+   "ok": true,
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":82.077671875,\"meanAbsDiff\":0.5612395833333333,\"bigFrac\":0}"
+  },
+  {
+   "name": "G9 transparent export: corners clear, object opaque, soft edges",
+   "ok": true,
+   "info": "{\"corner\":1,\"corner2\":2,\"center\":255,\"opaque\":46365,\"partial\":15446,\"total\":65536}"
+  },
+  {
+   "name": "G9 oversize requests are refused with a reason; cancel restores the live view",
+   "ok": true,
+   "info": "{\"huge\":\"Width and height must be between 16 and 16384.\",\"tooBig\":\"16384×16384 is 268.4 MP, above this device's canvas limit of 16.8 MP.\",\"cancelled\":true,\"restored\":true,\"active\":false,\"canvasW\":1280}"
+  },
+  {
+   "name": "G9 e-paper output is exactly 384×184 and only uses palette colours",
+   "ok": true,
+   "info": "{\"bw/none\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bw/fs\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bwr/atk\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":983},\"bw/bayer\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0}}"
+  },
+  {
+   "name": "G9 e-paper threshold changes the black/white balance; title strip is stamped",
+   "ok": true,
+   "info": "{\"lo\":25110,\"hi\":0,\"strip\":114}"
+  },
+  {
+   "name": "G9 e-paper red is only produced in the three-colour palette",
+   "ok": true,
+   "info": "{\"bw\":0,\"bwr\":983}"
+  },
+  {
+   "name": "G9 no console errors",
    "ok": true,
    "info": ""
   }
