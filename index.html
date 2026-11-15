@@ -2450,6 +2450,10 @@ const REFS=[
   {n:'Ref 4 · candy terracotta', s:{type:14,theme:3,palIdx:0,realIdx:6,hue:0,shape:0.3,detail:0.3,sparkle:0,warp:0.05,kal:0,bloom:0.3,glow:0,trail:0,sym:16,az:0.3,el:1.5, zoom:0.75,ang:[0,0,0]}},
   {n:'Ref 5 · candy sandstone',  s:{type:14,theme:3,palIdx:0,realIdx:4,hue:0,shape:0.3,detail:0.3,sparkle:0,warp:0.05,kal:0,bloom:0.3,glow:0,trail:0,sym:16,az:0.3,el:1.45,zoom:0.9, ang:[0,0,0]}},
   {n:'Ref 6 · candy frost',      s:{type:14,theme:3,palIdx:0,realIdx:7,hue:0,shape:0.3,detail:0.3,sparkle:0,warp:0.05,kal:0,bloom:0.3,glow:0,trail:0,sym:16,az:0.3,el:1.5, zoom:0.6, ang:[0,0,0]}},
+  // Mandelbox family (found by a second parallel search): `shape` is the key parameter. At 0 it is flat sandy noise; at 0.9-1.1 it forms concentric polygonal rings, radial ribs and a granular central disc
+  {n:'Ref 7 · mandala (negative box)', s:{type:15,theme:3,palIdx:0,realIdx:4,hue:0,shape:1.0,detail:0,sparkle:0,warp:0.1,kal:0,bloom:0.3,glow:0,trail:0,sym:12,az:0.3,el:1.5,zoom:0.4, ang:[0.3,0.5,0.1]}},
+  {n:'Ref 8 · mandala (Mandelbox 16)', s:{type:5, theme:3,palIdx:0,realIdx:4,hue:0,shape:1.1,detail:0,sparkle:0,warp:0.1,kal:0,bloom:0.3,glow:0,trail:0,sym:16,az:0.3,el:1.5,zoom:0.4, ang:[0.3,0.5,0.1]}},
+  {n:'Ref 9 · mandala frost',          s:{type:5, theme:3,palIdx:0,realIdx:7,hue:0,shape:1.0,detail:0,sparkle:0,warp:0.1,kal:0,bloom:0.3,glow:0,trail:0,sym:12,az:0.3,el:1.5,zoom:0.25,ang:[0.3,0.5,0.1]}},
 ];
 const refBox=$('refs'); REFS.forEach(r=>{ const b=document.createElement('button'); b.textContent=r.n; b.onclick=()=>{ applyState(r.s); toast(r.n); }; refBox.appendChild(b); });
 const SLOT_KEY='fractalPulseSlots';
