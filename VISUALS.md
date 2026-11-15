@@ -1,6 +1,6 @@
 # Visual catalogue
 
-Everything worth keeping is saved three ways: **in the app** (selectable), **as source** (`shaders/flow/*.glsl` for the 2D scenes, plus the shader inside `index.html`), and **as a rendered still** (`gallery/`). The renders are software-GL stills at low resolution, so a real GPU is crisper.
+Everything worth keeping is saved three ways: **in the app** (selectable), **as source** (`shaders/flow/*.glsl` for the 2D scenes, plus the shader inside `index.html`), and **as a rendered still** (`gallery/`). The renders are software-GL stills at low resolution, so a real GPU is crisper. 2D scenes use a flat tone path (authored colours are kept, with no filmic desaturation), which is why the copper is saturated.
 
 When a new visual turns up during experiments: (1) add a `<script id="flowX" data-name="…" type="x-shader/x-fragment">` block to `index.html` defining `vec3 flowScene(vec2 uv, float t, float phase)`, (2) copy the GLSL to `shaders/flow/`, (3) render a still into `gallery/`, (4) add a line here.
 
