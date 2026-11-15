@@ -1,6 +1,6 @@
 {
- "commit": "f3c5faa",
- "when": "2026-11-15T07:01:29.385Z",
+ "commit": "e4ceeec",
+ "when": "2026-11-15T07:53:45.322Z",
  "quick": true,
  "pass": 59,
  "fail": 0,
@@ -43,7 +43,7 @@
   {
    "name": "G4 take records (frames+events+observations)",
    "ok": true,
-   "info": "{\"dur\":29.48,\"frames\":6,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
+   "info": "{\"dur\":29.32,\"frames\":6,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
   },
   {
    "name": "G4 playback restores fractal/theme/sculpt",
@@ -78,22 +78,22 @@
   {
    "name": "G6 bad hash survives: type=abc&pal=99&look=-4&",
    "ok": true,
-   "info": "frames=25"
+   "info": "frames=26"
   },
   {
    "name": "G6 bad hash survives: s=!!notbase64!!",
    "ok": true,
-   "info": "frames=33"
+   "info": "frames=29"
   },
   {
    "name": "G6 bad hash survives: type=999999&theme=-3",
    "ok": true,
-   "info": "frames=28"
+   "info": "frames=27"
   },
   {
    "name": "G7 frozen: time, camera, spin, hue, fractal all hold under Director+Show+cycle+orbit+live audio",
    "ok": true,
-   "info": "{\"s0\":{\"T\":0.4201400000000006,\"az\":0.6602919588017462},\"s1\":{\"T\":0.4201400000000006,\"az\":0.6602919588017462}}"
+   "info": "{\"s0\":{\"T\":0.4199999999999985,\"az\":0.6599130959419679},\"s1\":{\"T\":0.4199999999999985,\"az\":0.6599130959419679}}"
   },
   {
    "name": "G7 frozen: chaos/pulse/audio envelopes ignored",
@@ -113,7 +113,7 @@
   {
    "name": "G7 resume: time advances and audio is live again",
    "ok": true,
-   "info": "{\"T\":1.1201400000000006,\"live\":true}"
+   "info": "{\"T\":0.7933799999999946,\"live\":true}"
   },
   {
    "name": "G7 every formula-parameter key plumbs through params()",
@@ -138,7 +138,7 @@
   {
    "name": "G8 four workspaces show the right sections",
    "ok": true,
-   "info": "{\"explore\":7,\"sculpt\":3,\"perform\":4,\"forge\":6}"
+   "info": "{\"explore\":7,\"sculpt\":2,\"perform\":4,\"forge\":6}"
   },
   {
    "name": "G8 specimen has id, name, collection, ISO dates, implementation provenance",
@@ -148,7 +148,7 @@
   {
    "name": "G8 specimen carries a preview thumbnail",
    "ok": true,
-   "info": "3707 chars"
+   "info": "3751 chars"
   },
   {
    "name": "G8 restore reproduces type, geometry, symmetry, camera, material and pinned parameter",
@@ -178,7 +178,7 @@
   {
    "name": "G8 capture a specimen from a performance take (source + timestamp recorded, frozen)",
    "ok": true,
-   "info": "{\"added\":1,\"kind\":\"take\",\"t\":0.018,\"frozen\":1}"
+   "info": "{\"added\":1,\"kind\":\"take\",\"t\":0.023,\"frozen\":1}"
   },
   {
    "name": "G8 library persists across reload",
@@ -193,17 +193,17 @@
   {
    "name": "G9 still render is exact size, non-blank",
    "ok": true,
-   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":83.01302604166666,\"meanAbsDiff\":0.8578802083333333,\"bigFrac\":0}"
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":82.10784895833334,\"meanAbsDiff\":0.5831770833333333,\"bigFrac\":0}"
   },
   {
    "name": "G9 tiled render matches single-pass render (no visible seams)",
    "ok": true,
-   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":83.01302604166666,\"meanAbsDiff\":0.8578802083333333,\"bigFrac\":0}"
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":82.10784895833334,\"meanAbsDiff\":0.5831770833333333,\"bigFrac\":0}"
   },
   {
    "name": "G9 transparent export: corners clear, object opaque, soft edges",
    "ok": true,
-   "info": "{\"corner\":1,\"corner2\":2,\"center\":255,\"opaque\":46253,\"partial\":16090,\"total\":65536}"
+   "info": "{\"corner\":0,\"corner2\":2,\"center\":255,\"opaque\":46301,\"partial\":15467,\"total\":65536}"
   },
   {
    "name": "G9 oversize requests are refused with a reason; cancel restores the live view",
@@ -213,17 +213,17 @@
   {
    "name": "G9 e-paper output is exactly 384×184 and only uses palette colours",
    "ok": true,
-   "info": "{\"bw/none\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bw/fs\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bwr/atk\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":1007},\"bw/bayer\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0}}"
+   "info": "{\"bw/none\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bw/fs\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bwr/atk\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":852},\"bw/bayer\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0}}"
   },
   {
    "name": "G9 e-paper threshold changes the black/white balance; title strip is stamped",
    "ok": true,
-   "info": "{\"lo\":25128,\"hi\":0,\"strip\":114}"
+   "info": "{\"lo\":25146,\"hi\":0,\"strip\":114}"
   },
   {
    "name": "G9 e-paper red is only produced in the three-colour palette",
    "ok": true,
-   "info": "{\"bw\":0,\"bwr\":1007}"
+   "info": "{\"bw\":0,\"bwr\":852}"
   },
   {
    "name": "G9 no console errors",
@@ -238,7 +238,7 @@
   {
    "name": "G10 audio-only WAV (no MIME) plays and drives the analysis",
    "ok": true,
-   "info": "{\"dur\":3,\"live\":true,\"bass\":0.8206994244000179,\"kind\":\"audio\",\"name\":\"FL export.wav\",\"err\":null}"
+   "info": "{\"dur\":3,\"live\":true,\"bass\":0.9520309516178471,\"kind\":\"audio\",\"name\":\"FL export.wav\",\"err\":null}"
   },
   {
    "name": "G10 take records source-media metadata and says the media is not embedded",
@@ -258,12 +258,12 @@
   {
    "name": "G11 strip switches workspaces; tapping the active one closes the panel",
    "ok": true,
-   "info": "{\"out\":{\"explore\":6,\"sculpt\":3,\"perform\":4,\"forge\":6},\"before\":true,\"afterToggle\":false,\"ws\":\"forge\"}"
+   "info": "{\"out\":{\"explore\":6,\"sculpt\":2,\"perform\":4,\"forge\":6},\"before\":true,\"afterToggle\":false,\"ws\":\"forge\"}"
   },
   {
    "name": "G11 status line says who controls the artwork (touch / frozen / recording)",
    "ok": true,
-   "info": "{\"a\":\"Controlling · You (touch)\",\"b2\":\"Controlling · FROZEN\",\"c\":\"● REC TAKE 0:00.5 · You (touch)\",\"amber\":true}"
+   "info": "{\"a\":\"Controlling · You (touch)\",\"b2\":\"Controlling · FROZEN\",\"c\":\"● REC TAKE 0:00.4 · You (touch)\",\"amber\":true}"
   },
   {
    "name": "G11 timeline groups slider moves into gestures but keeps every raw event; irregular sample rate preserved",
@@ -273,7 +273,7 @@
   {
    "name": "G11 unsaved changes are flagged; hold-to-compare shows the saved version and returns to the edit",
    "ok": true,
-   "info": "{\"id\":true,\"clean\":true,\"dirty\":true,\"edited\":3,\"during\":0,\"base\":0,\"after\":3,\"idText\":\"FP·MWHHJF · UI test\"}"
+   "info": "{\"id\":true,\"clean\":true,\"dirty\":true,\"edited\":3,\"during\":0,\"base\":0,\"after\":3,\"idText\":\"FP·MWHJEG · UI test\"}"
   },
   {
    "name": "G11 clean view hides controls, preserves state, and returns",
