@@ -61,6 +61,9 @@
   #padLbl{position:absolute;left:8px;top:6px;font-size:9px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
   #chaosBar{position:fixed;left:0;right:0;top:0;height:3px;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,#ff3b8b,#ffd23b,#3bffe8);z-index:4;pointer-events:none}
   select{font:inherit;color:var(--fg);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px;flex:1}
+  #freezeBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(60px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;text-align:center;padding:0;font-size:16px;background:rgba(10,12,24,.6);backdrop-filter:blur(8px)}
+  #freezeBtn.on{background:rgba(124,240,255,.35);border-color:var(--accent)}
+  #sculptParams .row span{flex:0 0 112px;font-size:12px}
   #menuBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;
       text-align:center;padding:0;font-size:18px;background:rgba(10,12,24,.6);backdrop-filter:blur(8px)}
   .tlrow{display:flex;gap:4px;margin:4px 0}.tlrow select{min-width:0;flex:2;padding:6px}.tlrow select+select{flex:1}.tlrow button{padding:6px 10px}.tlrow.cur select{border-color:var(--accent)}
@@ -88,6 +91,7 @@
 <div id="toast"></div>
 <div id="chaosBar"></div>
 <div id="pad"><div id="padLbl">shape ↔ · detail ↕</div><div id="padDot"></div></div>
+<button id="freezeBtn" aria-label="freeze" title="Freeze / Resume (Z)">❄</button>
 <button id="menuBtn" aria-label="menu">☰</button>
 <div id="err"></div>
 
@@ -136,6 +140,21 @@
   <div class="row"><span>Sparkle</span><input id="sMH" type="range" min="0" max="1.2" step="0.005" value="0"></div>
   <div class="row"><span>Hue</span><input id="sHue" type="range" min="0" max="1" step="0.005" value="0"></div>
   <div class="row"><span>Dive speed</span><input id="sDive" type="range" min="0.25" max="2.5" step="0.01" value="1"></div>
+  <div class="row"><span>Freeze</span><button id="bFreeze" style="flex:1">❄ Freeze <kbd>Z</kbd></button></div>
+  <details id="sculptDetails"><summary style="cursor:pointer;color:var(--accent);font-size:12px;margin:6px 0">Formula parameters &amp; geometry</summary>
+    <div class="sub">This fractal's own parameters. Moving one pins it (music and animation stop driving it); ↺ lets go.</div>
+    <div id="sculptParams"></div>
+    <div class="sub" style="margin-top:8px">Geometry (every formula)</div>
+    <div class="row"><span>Iterations</span><input id="sIterB" type="range" min="6" max="24" step="1" value="12"></div>
+    <div class="row"><span>Cut-away at</span><input id="sCutAt" type="range" min="-1.5" max="1.5" step="0.01" value="0"></div>
+    <div class="row"><span>Twist</span><input id="sTwist" type="range" min="-1" max="1" step="0.01" value="0"></div>
+    <div class="row"><span>Bend</span><input id="sBend" type="range" min="0" max="1" step="0.01" value="0"></div>
+    <div class="sub" style="margin-top:8px">Material (Realistic / Clay)</div>
+    <div class="row"><span>Override look</span><input id="cMatOv" type="checkbox"></div>
+    <div class="row"><span>Roughness</span><input id="sRough" type="range" min="0.05" max="1" step="0.01" value="0.5"></div>
+    <div class="row"><span>Metal</span><input id="sMetal" type="range" min="0" max="1" step="0.01" value="0"></div>
+    <button id="bUnpinAll" style="margin-top:6px">Unpin all formula parameters</button>
+  </details>
   <div class="row"><span>Sculpt pad</span><input id="cPad" type="checkbox"><small style="color:var(--dim)">thumb XY pad</small></div>
   <div class="row"><span>Idle motion</span><input id="cIdle" type="checkbox"><small style="color:var(--dim)">drift when silent</small></div>
   <div class="grid">
@@ -240,7 +259,7 @@ uniform float uK, uK2;                            // per-fractal normalisation (
 float gPower, gQW, gScale, gFoldA; vec3 gJC;
 uniform float uHue;
 uniform float uGlow;
-uniform float uSlice;
+uniform float uSlice, uSliceAt;
 uniform float uBound;
 uniform float uSize;
 uniform float uTwist, uBend, uStep, uExpo;
@@ -593,7 +612,7 @@ float map(vec3 p){
   gEps = ge;
   float d = dA;
   if(uNW>1){ float m = smoothstep(0.0,1.0,uMorph); d = mix(dA,dB,m); gTrap = mix(tA,tB,m); } else gTrap = tA;
-  if(uSlice>0.5) d = max(d, q.x);
+  if(uSlice>0.5) d = max(d, q.x - uSliceAt);
   return d;
 }
 
@@ -1690,10 +1709,10 @@ Object.assign(A,{snare:0,hat:0,bright:0.5,pitch:0.5});
 let bAvg=0, lastBeat=-9, beatCount=0, phase=0, eShort=0, eLong=0.2, lastDrop=-99, quietSince=-99;
 const ibis=[];
 function analyse(dt,now){
-  const sens=+$('sSens').value, live = hasAudio && analyser && actx.state==='running';
+  const fz=frozen&&!playing, sens=+$('sSens').value, live = hasAudio && analyser && actx.state==='running' && !fz;
   const RC=REACT[$('sReact').value]||REACT.bal;
   const man={bass:+$('sMB').value, mid:+$('sMM').value, high:+$('sMH').value};
-  const idle=!live && $('cIdle').checked;
+  const idle=!live && !fz && $('cIdle').checked;
   A.live=live; A.idle=idle; A.animating=live||idle;
   let raw;
   if(live){
@@ -1723,6 +1742,7 @@ function analyse(dt,now){
       else { const g=i<FB*0.3?man.bass:i<FB*0.65?man.mid:man.high; fftBytes[i]=255*(0.05+0.6*g*(0.65+0.35*Math.sin(i*1.3))); }
     }
   }
+  if(fz){ E.bass=E.mid=E.high=0; A.snare=0; A.hat=0; }          // frozen: no envelope tails, only the manual Shape/Detail/Sparkle values
   const k=['bass','mid','high'], nrm=[0,0,0];
   for(let i=0;i<3;i++){
     agc[i]=Math.max(agc[i]*Math.pow(0.5,dt/6), raw[i], 0.1);
@@ -1760,6 +1780,50 @@ let az=0.6, el=0.35, zoomMul=1, transT=0, kalRot=0;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const menu=$('types');
 TYPES.forEach((t,i)=>{ const b=document.createElement('button'); b.innerHTML=t.name+'<kbd>'+((i<9)?i+1:(i===9?0:''))+'</kbd>'; b.onclick=()=>setType(i); menu.appendChild(b); });
+// Formula-specific parameters actually supported by each fractal: [key, label, min, max, step].  Keys map onto the params() result.
+const JC3=[['jx','Julia c · x',-1,1,0.01],['jy','Julia c · y',-1,1,0.01],['jz','Julia c · z',-1,1,0.01]];
+const TWIST=['fold','Twist per fold',-0.8,0.8,0.01];
+const PSCHEMA={
+  0:[['power','Power',2,15,0.1]], 2:[['power','Power',2,15,0.1]], 3:[['power','Power',2,15,0.1]],
+  1:[['power','Power',4,13,0.1],...JC3], 4:[...JC3,['qw','Quaternion w',-1,1,0.01]],
+  5:[['scale','Box scale',1.9,3.1,0.01]], 6:[['scale','Offset',0.8,1.4,0.005],TWIST], 7:[['scale','Offset',0.6,1.6,0.01],TWIST],
+  8:[['scale','Inversion scale',0.8,1.4,0.005]], 9:[['power','Power',4,12,0.1],['scale','Box-fold limit',0.6,1.6,0.01]],
+  10:[['scale','Offset',0.7,1.4,0.01],TWIST], 11:[['scale','Fold box',0.7,1.4,0.01],TWIST], 12:[['qw','Slice w',-1,1,0.01]],
+  13:[['scale','Offset',0.8,1.4,0.01],TWIST], 14:[['power','Fold scale (φ² ≈ 2.618)',2,3.5,0.01],['scale','Vertex offset',0.5,1.6,0.01],TWIST,['qw','End-sphere radius',0.3,2,0.01]],
+  15:[['scale','Box scale',-2.8,-1.5,0.01]], 16:[['scale','Box scale',1.8,2.8,0.01],...JC3], 17:[],
+  18:[...JC3,['qw','Quaternion w',-1,1,0.01]], 19:[['power','Power',2,4,0.01]], 20:[['power','Power',2,4,0.01],...JC3]
+};
+const pins={};                       // pins[type][key] = value: an explicit user value that overrides music/animation for that parameter
+let frozen=false, lastP=null;
+function pinVal(P,ty,k){ return k==='jx'?P.jc[0]:k==='jy'?P.jc[1]:k==='jz'?P.jc[2]:P[k]; }
+function applyPins(P,ty){ const pn=pins[ty]; if(!pn) return P;
+  for(const k in pn){ const v=pn[k]; if(k==='jx') P.jc[0]=v; else if(k==='jy') P.jc[1]=v; else if(k==='jz') P.jc[2]=v; else P[k]=v; } return P; }
+function buildSculptParams(){
+  const box=$('sculptParams'); if(!box) return; const ty=shown; box.innerHTML=''; const sch=PSCHEMA[ty]||[];
+  if(!sch.length){ box.innerHTML='<div class="sub">This formula has no editable parameters (use Shape / Detail / Geometry).</div>'; return; }
+  sch.forEach(([k,label,min,max,step])=>{
+    const row=document.createElement('div'); row.className='row'; const sp=document.createElement('span'); sp.textContent=label;
+    const inp=document.createElement('input'); inp.type='range'; inp.min=min; inp.max=max; inp.step=step; inp.dataset.k=k;
+    const val=document.createElement('small'); val.style.cssText='width:42px;text-align:right;color:var(--dim)';
+    const un=document.createElement('button'); un.textContent='↺'; un.title='unpin: let music and animation drive it again'; un.style.cssText='flex:0 0 auto;padding:2px 8px;opacity:'+((pins[ty]&&k in pins[ty])?1:0.35);
+    inp.oninput=()=>{ (pins[ty]=pins[ty]||{})[k]=+inp.value; val.textContent=(+inp.value).toFixed(2); un.style.opacity=1; save(); };
+    un.onclick=()=>{ if(pins[ty]){ delete pins[ty][k]; if(!Object.keys(pins[ty]).length) delete pins[ty]; } un.style.opacity=0.35; save(); };
+    if(pins[ty]&&k in pins[ty]){ inp.value=pins[ty][k]; val.textContent=(+pins[ty][k]).toFixed(2); }
+    row.append(sp,inp,val,un); row.dataset.k=k; box.appendChild(row); });
+}
+function refreshSculptParams(){      // show the live (animated) value of every un-pinned parameter
+  if(!lastP) return; const ty=shown;
+  $('sculptParams').querySelectorAll('.row').forEach(row=>{ const k=row.dataset.k, inp=row.querySelector('input'), val=row.querySelector('small');
+    if(pins[ty]&&k in pins[ty]) return; if(document.activeElement===inp) return; const v=pinVal(lastP,ty,k); if(Number.isFinite(v)){ inp.value=v; val.textContent=(+v).toFixed(2); } });
+}
+function setFrozen(on,quiet){
+  frozen=!!on;
+  if(frozen){ if(morphTo>=0){ type=morphTo; morphTo=-1; morphT=0; }                 // finish a morph in flight, then hold still
+    azV=elV=0; chaosL=0; kick[0]=kick[1]=kick[2]=0; A.beat=0; A.drop=0; A.onset=false; if(diveOn) setDive(false,true); }
+  $('freezeBtn').classList.toggle('on',frozen); $('bFreeze').textContent=frozen?'▶ Resume':'❄ Freeze'; $('bFreeze').classList.toggle('on',frozen);
+  if(!quiet) toast(frozen?'Frozen: nothing moves until you resume. Orbit, sculpt and parameters stay editable.':'Resumed',2600);
+  save();
+}
 let morphTo=-1, morphT=0, rendered=false, shown=0;
 function setType(i){
   i=Number.isFinite(+i)?Math.trunc(+i):0;
@@ -1774,7 +1838,7 @@ function setType(i){
   [...menu.children].forEach((b,j)=>b.classList.toggle('on',j===nt));
   $('info').innerHTML=TYPES[nt].info;
   const t=$('title'); t.textContent=TYPES[nt].name; t.style.opacity=1; clearTimeout(t._h); t._h=setTimeout(()=>t.style.opacity=.35,2500);
-  A.beat=1; save();
+  A.beat=1; save(); buildSculptParams();
   try{ emit('type',{type:nt,name:TYPES[nt].name}); recEv('type',nt); }catch(e){}
 }
 const isLookTheme=t=>t===1||t===3;                                    // Realistic and Clay both use the material "looks"
@@ -1803,7 +1867,7 @@ function randomize(){
 $('bPal').onclick=()=>setPal(curPalPos()+1); $('bRand').onclick=randomize;
 
 // persistence
-const PERSIST=['sSym','cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
+const PERSIST=['sIterB','sCutAt','sTwist','sBend','cMatOv','sRough','sMetal','sSym','cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
 function save(){ try{ const o={v:SCHEMA,type:shown,palIdx,theme,realIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
 const PERF=['sRes','sQual','cAuto','sFps'];
 if(isPro){ $('sRes').value=0.62; $('sQual').value=1; $('sFps').value=60; }
@@ -1852,6 +1916,7 @@ addEventListener('keydown',e=>{
   else if(k==='t') setTheme((theme+1)%THEMES.length);
   else if(k==='d') setDive(!diveOn);
   else if(k==='g') setFlow(!flowMode);
+  else if(k==='z') setFrozen(!frozen);
   else if(k==='v'){ setFlowVar(flowVar+1); if(!flowMode) setFlow(true); }
   else if(k==='r') randomize();
   else if(k==='k'){ const s=$('sKal'); s.value = +s.value<2? 6 : (+s.value>=12? 0 : +s.value+2); save(); }
@@ -1865,7 +1930,7 @@ let chaosL=0, chaosExt=0, chaosSpeed=0, chaosT=0, chaosMorphT=0, chaosKal=6;
 let gyroOn=false, gyroBase=null, gTgtAz=0, gTgtEl=0, gyroAz=0, gyroEl=0, extView=false, lastShake=0;
 const pdist=()=>{ const v=[...ptrs.values()]; return Math.hypot(v[0].x-v[1].x,v[0].y-v[1].y); };
 const pang=()=>{ const v=[...ptrs.values()]; return Math.atan2(v[1].y-v[0].y,v[1].x-v[0].x); };
-function pulse(){ try{ recEv('pulse',1); }catch(e){} A.beat=1; A.drop=Math.max(A.drop,0.3); for(let i=0;i<3;i++) kick[i]+=(Math.random()-0.5)*2.2; hue+=0.02; }
+function pulse(){ if(frozen&&!playing) return; try{ recEv('pulse',1); }catch(e){} A.beat=1; A.drop=Math.max(A.drop,0.3); for(let i=0;i<3;i++) kick[i]+=(Math.random()-0.5)*2.2; hue+=0.02; }
 // 1 finger = spin (with inertia) · 2 fingers = pinch zoom + twist · 3+ fingers = CHAOS (more fingers, more chaos) · double-tap = pulse
 canvas.addEventListener('pointerdown',e=>{
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t0:performance.now(),moved:false});
@@ -1938,6 +2003,8 @@ function params(ty){
   P.fold += 0.22*A.snare*RC.snare + 0.45*(A.pitch-0.5)*RC.pitch*(A.live?1:0);
   P.power += 1.4*A.snare*RC.snare;
   if(P.jc[0]||P.jc[1]||P.jc[2]){ const q=(A.pitch-0.5)*0.35*RC.pitch*(A.live?1:0); P.jc=[P.jc[0]+q,P.jc[1]-q*0.7,P.jc[2]+q*0.5]; }
+  applyPins(P,ty);
+  if(ty===shown && !playing) lastP=P;
   return P;
 }
 
@@ -1993,7 +2060,7 @@ function frameBody(nowMs){
   analyse(dt,now);
   // CHAOS: 3+ fingers (or an external controller) ramps a storm of audio-like energy, kicks, warp, hue spin and kaleidoscope
   { const nF=ptrs.size;
-    let tg = nF>=3 ? Math.min(1,0.55+0.2*(nF-3)+Math.min(0.3,chaosSpeed*0.002)) : 0; tg=Math.max(tg,chaosExt,burstT>0?0.8:0);
+    let tg = nF>=3 ? Math.min(1,0.55+0.2*(nF-3)+Math.min(0.3,chaosSpeed*0.002)) : 0; tg=Math.max(tg,chaosExt,burstT>0?0.8:0); if(frozen&&!playing){ tg=0; chaosL=0; }
     chaosL += (tg-chaosL)*Math.min(1,dt*(tg>chaosL?3.5:1.3)); chaosSpeed*=Math.exp(-dt*3);
     const C=chaosL; $('chaosBar').style.transform=`scaleX(${C.toFixed(3)})`;
     if(C>0.02){
@@ -2014,12 +2081,12 @@ function frameBody(nowMs){
   if(A.onset) emit('beat',{bpm:Math.round(A.bpm||0),bass:+A.bass.toFixed(2)});
   { const dn=A.drop>0.97; if(dn&&!prevDropFlag) emit('drop',{}); prevDropFlag=dn; }
   if(nowMs-lastStateEmit>500){ lastStateEmit=nowMs; emit('state',FP.state); }
-  if(!playing){ tlTick(dt); director(dt); }
+  if(!playing && !frozen){ tlTick(dt); director(dt); }
   const motion=+$('sMotion').value, warp=+$('sWarp').value*(1+3*chaosL);
-  if(A.animating||flowMode) T+=dt*(0.6+0.8*motion)*(flowMode?(0.55+0.9*A.bass+0.5*A.mid):1);
+  if(!(frozen&&!playing) && (A.animating||flowMode)) T+=dt*(0.6+0.8*motion)*(flowMode?(0.55+0.9*A.bass+0.5*A.mid):1);
   if(A.onset||(A.idle&&A.beat>0.99)){
     const amt=(A.drop>0.9?3.5:1.4)*motion; for(let i=0;i<3;i++) kick[i]+=(Math.random()-0.5)*amt; hue+=0.012+0.05*A.drop;
-    if(!playing && $('cCycle').checked && T-lastSwitch>(A.drop>0.9?4:26) && (A.drop>0.9 || beatCount%8===0)) setType(shown+1);
+    if(!playing && !frozen && $('cCycle').checked && T-lastSwitch>(A.drop>0.9?4:26) && (A.drop>0.9 || beatCount%8===0)) setType(shown+1);
   }
   for(let i=0;i<3;i++) kick[i]*=Math.exp(-dt*2.2);
   const base=[0.11,0.16,0.07];
@@ -2028,6 +2095,7 @@ function frameBody(nowMs){
   if($('cOrbit').checked && !drag && A.animating) az+=dt*(0.08+0.25*A.mid)*(camMode===2?2.2:1)*motion;
   if(camMode===2 && !drag) el+= (0.6*Math.sin(camT*0.23)-el)*dt*0.5;
   if(A.animating) kalRot+=dt*(0.1+0.4*A.mid);
+  if(frozen){ azV=elV=0; }
   if(!drag){ az+=azV*dt; el=clamp(el+elV*dt,-1.5,1.5); const dmp=Math.exp(-dt*2.4); azV*=dmp; elV*=dmp; }
 
   playApplyCam();                                          // performance playback: camera, spin, hue, clock come from the take
@@ -2043,8 +2111,8 @@ function frameBody(nowMs){
   const tp=PALS[palIdx]; for(const k of ['a','b','c','d']) for(let i=0;i<3;i++) palCur[k][i]+=(tp[k][i]-palCur[k][i])*Math.min(1,dt*2.5);
 
   // warp: twist + bend, scaled to the fractal and limited by a step safety factor
-  const twist=warp*(0.22*Math.sin(T*0.31)+0.85*A.mid-0.15)/cfg.size*0.5;
-  const bend =warp*cfg.size*0.05*(1.0*A.bass+0.3*Math.sin(T*0.2));
+  const twist=warp*(0.22*Math.sin(T*0.31)+0.85*A.mid-0.15)/cfg.size*0.5 + (+$('sTwist').value)/cfg.size;
+  const bend =warp*cfg.size*0.05*(1.0*A.bass+0.3*Math.sin(T*0.2)) + (+$('sBend').value)*cfg.size*0.12;
   const stepF=0.85/(1+Math.abs(twist)*cfg.size*1.0+Math.abs(bend)*2.1)*(1-0.4*Math.sin(Math.PI*morphT)*(morphing?1:0));
 
   let zoomAuto=1;
@@ -2053,7 +2121,7 @@ function frameBody(nowMs){
   if(cfg.inside && divePh==='idle') dist=Math.max(0.25,dist);
   const floorOn = theme===1 && !cfg.inside, floorY=-1.275;
   // ── dive state machine: in → hold → out → in … (focus re-anchored to the surface by GPU depth read-back) ──
-  const R0=dist/Math.max(0.05,zoomMul), DIVE_MIN=0.012*1.5, diveSim=!(playing&&playCam);
+  const R0=dist/Math.max(0.05,zoomMul), DIVE_MIN=0.012*1.5, diveSim=!(playing&&playCam)&&!frozen;
   if(diveSim && diveOn && divePh==='idle'){ divePh='in'; diveR=R0; diveAim=[0,0]; }
   if(diveSim && divePh!=='idle'){
     const sp=+$('sDive').value;
@@ -2087,11 +2155,11 @@ function frameBody(nowMs){
     const fp=flowProg(flowVar);
     fp.set({uRes:[sw,sh],uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uDrop:A.drop});
   } else {
-  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:12+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
+  progScene.set({uRes:[sw,sh],uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,cw/ch*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:+$('sGlow').value,
-    uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
-    uMatA:realCur.matA,uMatB:realCur.matB,uMetal:realCur.metal,uRough:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uWrap:realCur.wrap,uShK:realCur.shk,uAmb:realCur.amb,uClay:realCur.clay,uFloorOn:floorOn?1:0,uFloorY:floorY,
+    uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uSliceAt:+$('sCutAt').value,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
+    uMatA:realCur.matA,uMatB:realCur.matB,uMetal:$('cMatOv').checked?+$('sMetal').value:realCur.metal,uRough:$('cMatOv').checked?+$('sRough').value:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uWrap:realCur.wrap,uShK:realCur.shk,uAmb:realCur.amb,uClay:realCur.clay,uFloorOn:floorOn?1:0,uFloorY:floorY,
     uPA:palCur.a,uPB:palCur.b,uPC:palCur.c,uPD:palCur.d,uLDR:useFloat?0:1,uFFT:3});
   }
   gl.drawArrays(gl.TRIANGLES,0,3);
@@ -2134,6 +2202,7 @@ function frameBody(nowMs){
   drawHud();
   if(frame%15===0) $('stat').textContent=`${(1000/ema).toFixed(0)} fps · scene ${sw}×${sh} · ${rec?'● REC '+Math.floor((performance.now()-recStart)/1000)+'s · ':''}${A.live?'audio':(A.idle?'idle':'sculpt')}${A.bpm?` · ${A.bpm.toFixed(0)} bpm`:''} · ${useFloat?'HDR':'LDR'} · ${th.name}`;
   if(takeRec) takeSample(now);
+  if(frame%8===0) refreshSculptParams();
   frame++;
 }
 function drawHud(){
@@ -2217,7 +2286,7 @@ function observe(kind,data){ if(takeRec && !playing) takeRec.obs.push([q3(nowS()
 
 // ---- playback ----
 function playStart(){
-  if(!take) return; if(takeRec) takeStopRec();
+  if(!take) return; if(takeRec) takeStopRec(); if(frozen) setFrozen(false,true);
   playCam=$('cTakeCam').checked; playLook=$('cTakeLook').checked;
   playing=true; pl={t0:nowS(),fi:0,ei:0,oi:0,onset:false,r:null,r2:null,f:0};
   $('bTakePlay').textContent='■ Stop take'; $('bTakePlay').classList.add('on');
@@ -2419,6 +2488,8 @@ async function setTilt(on){
   }catch(err){ toast('Tilt unavailable here ('+err.message+'). It works on the standalone page.',5000); }
 }
 $('bTilt').onclick=()=>setTilt(!gyroOn);
+$('bFreeze').onclick=()=>setFrozen(!frozen); $('freezeBtn').onclick=()=>setFrozen(!frozen);
+$('bUnpinAll').onclick=()=>{ delete pins[shown]; buildSculptParams(); save(); toast('Parameters released'); };
 // ───────────────────────── DIVE: fly the camera into the fractal's surface ─────────────────────────
 function setDive(on,auto){
   if(on && flowMode){ toast('Dive is for the 3D fractals'); return; }
@@ -2434,7 +2505,9 @@ $('bDive').onclick=()=>setDive(!diveOn);
 // ───────────────────────── looks: save slots + shareable state ─────────────────────────
 function exportState(){ return {v:1,type:shown,theme,palIdx,realIdx,hue:+$('sHue').value,az:+az.toFixed(3),el:+el.toFixed(3),zoom:+zoomMul.toFixed(3),
   shape:+$('sMB').value,detail:+$('sMM').value,sparkle:+$('sMH').value,warp:+$('sWarp').value,kal:+$('sKal').value,bloom:+$('sBloom').value,
-  glow:+$('sGlow').value,trail:+$('sTrail').value,react:$('sReact').value,ang:ang.map(v=>+v.toFixed(3)),flow:flowMode?1:0,flowVar,sym:+$('sSym').value}; }
+  glow:+$('sGlow').value,trail:+$('sTrail').value,react:$('sReact').value,ang:ang.map(v=>+v.toFixed(3)),flow:flowMode?1:0,flowVar,sym:+$('sSym').value,
+  pins:JSON.parse(JSON.stringify(pins)),iter:+$('sIterB').value,cutAt:+$('sCutAt').value,twist:+$('sTwist').value,bend:+$('sBend').value,
+  mat:{on:$('cMatOv').checked?1:0,rough:+$('sRough').value,metal:+$('sMetal').value},cut:$('cSlice').checked?1:0,frozen:frozen?1:0,T:+T.toFixed(3)}; }
 function applyState(o){
   if(!o||typeof o!=='object') return; const nv=(v,a,b,d)=>Number.isFinite(+v)?clamp(+v,a,b):d;
   setTheme(nrm(o.theme,THEMES.length),true); palIdx=nrm(o.palIdx,PALS.length); realIdx=nrm(o.realIdx,LOOKS.length);
@@ -2443,7 +2516,13 @@ function applyState(o){
   if(o.react in REACT) $('sReact').value=o.react;
   zoomMul=nv(o.zoom,0.08,4,1); az=nv(o.az,-100,100,0.6); el=nv(o.el,-1.5,1.5,0.35);
   if(Array.isArray(o.ang)&&o.ang.length===3) for(let i=0;i<3;i++) ang[i]=nv(o.ang[i],-100,100,ang[i]);
-  $('sSym').value=nv(o.sym,0,16,0); setFlowVar(o.flowVar|0,true); setFlow(!!o.flow,true); padSync(); setType(o.type); save();
+  $('sSym').value=nv(o.sym,0,16,0);
+  for(const k in pins) delete pins[k]; if(o.pins&&typeof o.pins==='object') for(const t in o.pins){ const ty=nrm(+t,TYPES.length), src=o.pins[t]; if(!src||typeof src!=='object') continue; for(const k in src) if(Number.isFinite(+src[k])&&/^(power|scale|fold|qw|jx|jy|jz)$/.test(k)) (pins[ty]=pins[ty]||{})[k]=+src[k]; }
+  $('sIterB').value=nv(o.iter,6,24,12); $('sCutAt').value=nv(o.cutAt,-1.5,1.5,0); $('sTwist').value=nv(o.twist,-1,1,0); $('sBend').value=nv(o.bend,0,1,0);
+  if(o.mat&&typeof o.mat==='object'){ $('cMatOv').checked=!!o.mat.on; $('sRough').value=nv(o.mat.rough,0.05,1,0.5); $('sMetal').value=nv(o.mat.metal,0,1,0); } else $('cMatOv').checked=false;
+  $('cSlice').checked=!!o.cut;
+  setFlowVar(o.flowVar|0,true); setFlow(!!o.flow,true); padSync(); setType(o.type);
+  setFrozen(!!o.frozen,true); if(frozen&&Number.isFinite(+o.T)) T=+o.T; save();
 }
 // ── reference scenes: the clay-render look of the reference photos (3D Burning Ship over a sky-to-haze gradient, floating, no floor) ──
 const REFS=[

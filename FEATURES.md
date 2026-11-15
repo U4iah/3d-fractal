@@ -32,3 +32,9 @@ Baseline checkpoint before the Quinn Proxy expansion: commit `c117de0` (local an
 
 ## Expansion roadmap status (Quinn Proxy brief, 2026-11-14)
 See the "Expansion status" section at the end of this file, updated as phases land.
+
+## Expansion status (Quinn Proxy brief)
+| Phase | Status | Notes |
+|---|---|---|
+| 0 Protected baseline | ✅ | `c117de0`, regression suite `tests/regression.js`, this inventory |
+| 1 Sculpt: Freeze / Resume + formula parameters | ✅ simulated | ❄ button (also **Z**) holds time, envelopes, camera, spin, hue, Director, Show, cycle, chaos, pulse and dives; orbit/sculpt/pins stay editable. 21 formulas expose only their own parameters (1–4 each) with pin / ↺ unpin; geometry: iterations, cut-away position, twist, bend, material override. 📱 real-finger feel untested |

@@ -44,7 +44,7 @@ const errText=p=>p.evaluate(()=>document.getElementById('err').textContent||'');
     rec('G4 playback restores fractal/theme/sculpt',pl.shown===6&&pl.theme===2&&Math.abs(pl.sMB-.55)<.01,JSON.stringify(pl));
     const rs=await p.evaluate(()=>{ setTheme(1,true); document.getElementById('cTakeLook').checked=false; playStart(); playSeek(take.duration-.05); const r={theme,shown}; playStop(); document.getElementById('cTakeLook').checked=true; return r; });
     rec('G4 re-skin keeps own theme, take fractal',rs.theme===1&&rs.shown===6,JSON.stringify(rs));
-    const jt=await p.evaluate(()=>{ const s=JSON.stringify(take); loadTakeObj(JSON.parse(s)); const a=take.frames.length; takeTrim(.5,take.duration); let rej; try{ loadTakeObj({format:'x'}); rej='accepted'; }catch(e){ rej='rejected'; } return {a,trimmedFrames:take.frames.length,rej}; });
+    const jt=await p.evaluate(()=>{ const s=JSON.stringify(take); loadTakeObj(JSON.parse(s)); const a=take.frames.length; takeTrim(take.frames[1][0],take.duration); let rej; try{ loadTakeObj({format:'x'}); rej='accepted'; }catch(e){ rej='rejected'; } return {a,trimmedFrames:take.frames.length,rej}; });
     rec('G4 JSON round-trip, trim, reject garbage',jt.trimmedFrames<jt.a&&jt.rej==='rejected',JSON.stringify(jt));
     rec('G4 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
   // ── G5: iOS audio-session handling (simulated session that rejects capture in 'playback') ──
