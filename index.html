@@ -36,7 +36,7 @@
   #info b{color:var(--accent)} #info code{color:#ffd88a}
   #stat{position:fixed;left:12px;top:10px;color:var(--dim);font-size:11px;text-shadow:0 0 6px #000;pointer-events:none}
   #title{position:fixed;left:12px;bottom:96px;font-size:22px;font-weight:600;text-shadow:0 0 12px #000;pointer-events:none;letter-spacing:.02em;transition:opacity .6s}
-  #toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);padding:6px 14px;border-radius:99px;background:rgba(0,0,0,.55);
+  #toast{position:fixed;left:50%;top:calc(46px + env(safe-area-inset-top));z-index:8;max-width:min(92vw,520px);text-align:center;transform:translateX(-50%);padding:6px 14px;border-radius:99px;background:rgba(0,0,0,.55);
       color:#fff;font-size:12px;opacity:0;transition:opacity .4s;pointer-events:none}
   #start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(8,10,30,.55),rgba(0,0,0,.92));z-index:5;transition:opacity .5s}
   #start.gone{opacity:0;pointer-events:none}
@@ -147,8 +147,10 @@
     #grab{display:block}
     #wsTabs{display:none}
     #strip{left:0;right:0;bottom:0;transform:none;border-radius:16px 16px 0 0;border-width:1px 0 0;justify-content:space-around;padding:6px 6px calc(8px + env(safe-area-inset-bottom))}
-    #strip button{padding:12px 6px;min-width:0;min-height:46px;flex:1}
-    #strip .ws{font-size:11px}
+    #strip{gap:2px}
+    #strip button{padding:12px 2px;min-width:0;min-height:46px;flex:1}
+    #strip .ws{font-size:10px;letter-spacing:0;flex:1.6}
+    #strip .sep{margin:2px 0}
     #title{bottom:calc(70px + env(safe-area-inset-bottom))}
     #pad{bottom:calc(138px + env(safe-area-inset-bottom))}
     canvas#hud{bottom:calc(52px + env(safe-area-inset-bottom))}
