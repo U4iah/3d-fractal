@@ -52,3 +52,11 @@ Picker accepts `audio/*`, `video/*` and explicit extensions (mp3, wav, m4a, aac,
 6. Record a take (●), stop, play it back (▶). Are recording/playback states obvious? Does the timeline show your moves?
 7. Clean view: does ◻ give a clean screen and the faint ✕ bring controls back?
 8. Anything that got in your way?
+
+## Validation against a real take (local only, not in this repository)
+U4's `performance-1794708619119.fpx.json` (schema v1, 113.062 s, 2,422 samples × 28 columns, 45 events, no observations, starts on fractal 13 / Neon, song reference `Kenny James - Smoke Break (Official Music Video).mp4`, song length 120.05 s) was loaded in the app on 2026-11-15:
+- It loads and plays; the original file was not modified and is **not committed or published**. Public tests use a synthetic take with the same irregular timing.
+- Sample gaps are 0.030–0.113 s (median 0.047 s, ≈21.4 samples/s), so playback is by timestamp, not an assumed 30 Hz.
+- The timeline shows the 45 raw slider events as 4 gestures: Glow ≈58.0–58.2 s (16 events), Bloom ≈60.4–60.6 s (12), Trail ≈63.2–63.5 s (11) and ≈64.2–64.6 s (6). This matches the glow/bloom reduction near 58–60 s and trails from ≈63 s noted for the take. The 18 recorded onset flags are drawn as-is; no beat grid is invented.
+- The take has no FIELD observations, and the timeline says so.
+- In software GL, switching to the take's starting fractal triggers a very slow shader compile; timestamp-based playback caught up correctly afterwards. Real-device behaviour is untested.
