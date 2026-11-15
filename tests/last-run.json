@@ -1,0 +1,94 @@
+{
+ "commit": "c117de0",
+ "when": "2026-11-15T03:56:08.219Z",
+ "quick": true,
+ "pass": 17,
+ "fail": 0,
+ "results": [
+  {
+   "name": "G1 page loads, no console errors",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G1 catalogue sizes",
+   "ok": true,
+   "info": "fractals=21 2Dscenes=12 themes=4 refs=9"
+  },
+  {
+   "name": "G1 all 4 themes switch without error",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G1 share-link state round-trip",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G1 look slots save/load",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G2 5 3D fractals render",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G3 4 2D scenes render",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G4 take records (frames+events+observations)",
+   "ok": true,
+   "info": "{\"dur\":10.565,\"frames\":6,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
+  },
+  {
+   "name": "G4 playback restores fractal/theme/sculpt",
+   "ok": true,
+   "info": "{\"shown\":6,\"theme\":2,\"sMB\":0.55}"
+  },
+  {
+   "name": "G4 re-skin keeps own theme, take fractal",
+   "ok": true,
+   "info": "{\"theme\":1,\"shown\":6}"
+  },
+  {
+   "name": "G4 JSON round-trip, trim, reject garbage",
+   "ok": true,
+   "info": "{\"a\":6,\"trimmedFrames\":5,\"rej\":\"rejected\"}"
+  },
+  {
+   "name": "G4 no console errors",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G5 mic works after switching to play-and-record",
+   "ok": true,
+   "info": "{\"log\":[\"playback\",\"play-and-record\"],\"hasAudio\":true,\"err\":\"\"}"
+  },
+  {
+   "name": "G5 demo flips back to playback",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G6 bad hash survives: type=abc&pal=99&look=-4&",
+   "ok": true,
+   "info": "frames=29"
+  },
+  {
+   "name": "G6 bad hash survives: s=!!notbase64!!",
+   "ok": true,
+   "info": "frames=31"
+  },
+  {
+   "name": "G6 bad hash survives: type=999999&theme=-3",
+   "ok": true,
+   "info": "frames=26"
+  }
+ ]
+}

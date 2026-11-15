@@ -174,7 +174,7 @@ Built-in generative demo (128 bpm kick, clap, hats, acid bass, arp, delay), file
 
 ## 5. What was verified, and what wasn't
 
-- Verified: the shader compiles, and all 14 fractals render with live audio-driven uniforms. Tested in headless Chromium with software WebGL, using the built-in demo audio and screenshots.
+- Verified (simulated, software GL): the shader compiles and all 21 fractals and 12 2D scenes render; the regression suite is `tests/regression.js`. See `FEATURES.md` for the current inventory and what still needs real-device testing.
 - **Not verified on a device:** Dive's pixel read-back on iOS, Show mode with real music, compile time on Apple GPUs.
 - **iPhone 16 Pro:** the device detection and defaults were checked with an emulated iPhone. Actual frame rate and the best resolution/quality settings on the device itself are unmeasured.
 - **Not verified on real hardware.** Frame rate is untested on a real GPU, and so are mic input and tab capture, since they need a browser prompt.

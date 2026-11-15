@@ -1,5 +1,7 @@
 # Fractal Pulse
 
+> **Current inventory and status:** see `FEATURES.md` (what is implemented, what is tested only in simulation, what needs a real device, and what is proposed). **Regression tests:** `tests/regression.js`. **Baseline checkpoint:** commit `c117de0`.
+
 Real-time, music-reactive 3D fractals. It is a single file with no build step and no dependencies.
 
 **Run it:** open `index.html` in a modern desktop browser (WebGL2). Chrome, Edge and Firefox work. A GPU is strongly recommended.
