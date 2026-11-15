@@ -1568,6 +1568,9 @@ const bindTex=(unit,tex)=>{ gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(g
 let recDest=null, actx=null, analyser=null, freq=null, srcNode=null, demoTimer=null, mediaStream=null, demoMaster=null;
 const player = $('player');
 let hasAudio = false, lastFileName = '', flowMode = false;
+// iOS audio-session category: 'playback' plays through the ring/silent switch but forbids mic capture;
+// the mic needs 'play-and-record'. Switch per source.
+function setAudioSession(type){ try{ if(navigator.audioSession) navigator.audioSession.type=type; }catch(e){} }
 function ensureCtx(){
   if(!actx){
     actx = new (window.AudioContext||window.webkitAudioContext)();
@@ -1575,7 +1578,7 @@ function ensureCtx(){
     analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0.5;
     freq = new Uint8Array(analyser.frequencyBinCount);
     try{ recDest = actx.createMediaStreamDestination(); analyser.connect(recDest); }catch(e){}
-    try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}     // iOS: play through the silent switch
+    setAudioSession('playback');                                                              // iOS: play through the silent switch
     actx.onstatechange=()=>{ if(actx.state!=='running' && hasAudio) actx.resume().catch(()=>{}); };
   }
   if(actx.state!=='running') actx.resume().catch(()=>{});
@@ -1595,7 +1598,7 @@ function done(){ hasAudio=true; $('start').classList.add('gone'); }
 
 // built-in generative demo: 128 bpm kick / clap / hats / acid bass / arp / pad, with a breakdown every 8 bars so drops can be detected
 function startDemo(){
-  ensureCtx(); stopSources();
+  ensureCtx(); setAudioSession('playback'); stopSources();
   demoMaster = actx.createGain(); demoMaster.gain.value = 0.8;
   const delay = actx.createDelay(1); delay.delayTime.value = 60/128*0.75;
   const fb = actx.createGain(); fb.gain.value = 0.38;
@@ -1638,7 +1641,7 @@ function startDemo(){
 }
 function useFile(file){
   if(!file) return;
-  ensureCtx(); stopSources();
+  ensureCtx(); setAudioSession('playback'); stopSources();
   lastFileName = file.name || ''; player.src = URL.createObjectURL(file); player.style.display='block';
   if(!player._node){ player._node = actx.createMediaElementSource(player); }
   srcNode = player._node; srcNode.connect(analyser); srcNode.connect(actx.destination);
@@ -1647,10 +1650,11 @@ function useFile(file){
 async function useMic(){
   try{
     ensureCtx();
+    setAudioSession('play-and-record');                      // must be set BEFORE getUserMedia on iOS
     const ms = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     stopSources(); mediaStream = ms;
     srcNode = actx.createMediaStreamSource(mediaStream); srcNode.connect(analyser); done();
-  }catch(e){ showErr('Microphone unavailable: '+e.message); setTimeout(()=>$('err').style.display='none',4000); }
+  }catch(e){ setAudioSession('playback'); showErr('Microphone unavailable: '+e.message); setTimeout(()=>$('err').style.display='none',4000); }
 }
 async function useTab(){
   try{
