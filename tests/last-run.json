@@ -1,8 +1,8 @@
 {
- "commit": "481b7ef",
- "when": "2026-11-15T04:13:51.764Z",
+ "commit": "3669dcc",
+ "when": "2026-11-15T04:37:46.647Z",
  "quick": true,
- "pass": 26,
+ "pass": 37,
  "fail": 0,
  "results": [
   {
@@ -43,7 +43,7 @@
   {
    "name": "G4 take records (frames+events+observations)",
    "ok": true,
-   "info": "{\"dur\":10.191,\"frames\":6,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
+   "info": "{\"dur\":6.643,\"frames\":6,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
   },
   {
    "name": "G4 playback restores fractal/theme/sculpt",
@@ -78,22 +78,22 @@
   {
    "name": "G6 bad hash survives: type=abc&pal=99&look=-4&",
    "ok": true,
-   "info": "frames=31"
+   "info": "frames=26"
   },
   {
    "name": "G6 bad hash survives: s=!!notbase64!!",
    "ok": true,
-   "info": "frames=28"
+   "info": "frames=29"
   },
   {
    "name": "G6 bad hash survives: type=999999&theme=-3",
    "ok": true,
-   "info": "frames=31"
+   "info": "frames=27"
   },
   {
    "name": "G7 frozen: time, camera, spin, hue, fractal all hold under Director+Show+cycle+orbit+live audio",
    "ok": true,
-   "info": "{\"s0\":{\"T\":0.4199999999999997,\"az\":0.6630999482834549},\"s1\":{\"T\":0.4199999999999997,\"az\":0.6630999482834549}}"
+   "info": "{\"s0\":{\"T\":0.4199999999999998,\"az\":0.6647058663575384},\"s1\":{\"T\":0.4199999999999998,\"az\":0.6647058663575384}}"
   },
   {
    "name": "G7 frozen: chaos/pulse/audio envelopes ignored",
@@ -113,7 +113,7 @@
   {
    "name": "G7 resume: time advances and audio is live again",
    "ok": true,
-   "info": "{\"T\":1.0035200000000022,\"live\":true}"
+   "info": "{\"T\":0.8867600000000002,\"live\":true}"
   },
   {
    "name": "G7 every formula-parameter key plumbs through params()",
@@ -132,6 +132,61 @@
   },
   {
    "name": "G7 no console errors",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "name": "G8 four workspaces show the right sections",
+   "ok": true,
+   "info": "{\"explore\":7,\"sculpt\":3,\"perform\":4,\"forge\":4}"
+  },
+  {
+   "name": "G8 specimen has id, name, collection, ISO dates, implementation provenance",
+   "ok": true,
+   "info": "{\"app\":\"fractal-pulse\",\"appVersion\":\"fp-2026.11.14\",\"shaderRev\":1,\"formula\":{\"index\":14,\"name\":\"Icosahedral IFS\",\"rev\":1},\"scene2d\":null}"
+  },
+  {
+   "name": "G8 specimen carries a preview thumbnail",
+   "ok": true,
+   "info": "3819 chars"
+  },
+  {
+   "name": "G8 restore reproduces type, geometry, symmetry, camera, material and pinned parameter",
+   "ok": true,
+   "info": "{\"diff\":[],\"pin\":2.7}"
+  },
+  {
+   "name": "G8 live audio is baked into the saved sculpt values, and the state is frozen",
+   "ok": true,
+   "info": "{\"bass\":1.5,\"mid\":1.5,\"shape\":1.2,\"detail\":1.2,\"baked\":true,\"frozen\":1}"
+  },
+  {
+   "name": "G8 duplicate keeps state and records parent; variation mutates and records parent",
+   "ok": true,
+   "info": "{\"n\":3,\"dupParent\":true,\"dupSame\":true,\"varParent\":true,\"varDiffers\":true,\"varName\":\"Rosette A · var 2\",\"kids\":2}"
+  },
+  {
+   "name": "G8 import accepts valid specimens/collections, assigns fresh ids, rejects garbage and future versions, flags renderer drift",
+   "ok": true,
+   "info": "{\"n1\":1,\"gained\":4,\"nGarbage\":0,\"nBadJson\":0,\"nFuture\":0,\"drift\":true,\"nCol\":2,\"uniqueIds\":true}"
+  },
+  {
+   "name": "G8 look slot ⇄ specimen conversion",
+   "ok": true,
+   "info": "{\"added\":1,\"src\":\"look-slot\",\"slotType\":14,\"expect\":14}"
+  },
+  {
+   "name": "G8 capture a specimen from a performance take (source + timestamp recorded, frozen)",
+   "ok": true,
+   "info": "{\"added\":1,\"kind\":\"take\",\"t\":1.201,\"frozen\":1}"
+  },
+  {
+   "name": "G8 library persists across reload",
+   "ok": true,
+   "info": "9→9"
+  },
+  {
+   "name": "G8 no console errors",
    "ok": true,
    "info": ""
   }

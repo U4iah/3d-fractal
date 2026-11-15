@@ -23,9 +23,9 @@ Baseline checkpoint before the Quinn Proxy expansion: commit `c117de0` (local an
 
 ## Known gaps (as of the baseline)
 - ⛔ The `message` listener accepts any sender; no origin or schema checks. (Addressed in the integration phase.)
-- ⛔ No reliable **Freeze / Resume**; time, audio envelopes, the Director and automatic camera moves can all still run.
-- ⛔ Sculpt parameters are generic audio offsets (Shape / Detail / Sparkle); formula-specific parameters are not directly editable.
-- ⛔ Look slots are temporary UI state, not a versioned artwork format.
+- ✅ (resolved in Phase 1) Freeze / Resume.
+- ✅ (resolved in Phase 1) Formula-specific parameters are directly editable.
+- ✅ (resolved in Phase 2) Specimens are the versioned artwork format. Look slots remain temporary UI state.
 - ⛔ Still export is a viewport screenshot.
 - ⛔ Takes store post-envelope analysis (sculpt and chaos contributions mixed in), so the original source analysis cannot be separated.
 - ⛔ The README's old count of fractals was out of date (now 21).
@@ -38,3 +38,4 @@ See the "Expansion status" section at the end of this file, updated as phases la
 |---|---|---|
 | 0 Protected baseline | ✅ | `c117de0`, regression suite `tests/regression.js`, this inventory |
 | 1 Sculpt: Freeze / Resume + formula parameters | ✅ simulated | ❄ button (also **Z**) holds time, envelopes, camera, spin, hue, Director, Show, cycle, chaos, pulse and dives; orbit/sculpt/pins stay editable. 21 formulas expose only their own parameters (1–4 each) with pin / ↺ unpin; geometry: iterations, cut-away position, twist, bend, material override. 📱 real-finger feel untested |
+| 2 Specimens + workspaces | ✅ simulated | Versioned specimen format (`SPECIMENS.md`): save, restore, duplicate, variation, overwrite, export/import (single + collection), capture from a take, look-slot conversion, collections, thumbnails, renderer-drift flag. Four workspaces (Explore / Sculpt / Perform / Forge) group the menu. 📱 real-device storage limits untested |

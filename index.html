@@ -61,6 +61,17 @@
   #padLbl{position:absolute;left:8px;top:6px;font-size:9px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
   #chaosBar{position:fixed;left:0;right:0;top:0;height:3px;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,#ff3b8b,#ffd23b,#3bffe8);z-index:4;pointer-events:none}
   select{font:inherit;color:var(--fg);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:5px;flex:1}
+  #wsTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:8px 0 2px}
+  #wsTabs button{text-align:center;padding:7px 2px;font-size:12px;letter-spacing:.04em}
+  .wsec.hide{display:none}
+  .spgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+  .spc{position:relative;border:1px solid rgba(255,255,255,.14);border-radius:8px;overflow:hidden;cursor:pointer;background:rgba(255,255,255,.05);aspect-ratio:1}
+  .spc.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .spc img{width:100%;height:100%;object-fit:cover;display:block}
+  .spc .cap{position:absolute;left:0;right:0;bottom:0;font-size:9.5px;padding:2px 4px;background:rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .spc .drift{position:absolute;top:2px;right:3px;font-size:11px}
+  #spDetail{margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,.05)}
+  #spDetail input[type=text],#spDetail textarea,#spName,#spColl{width:100%;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:var(--fg);font:inherit;padding:6px}
   #freezeBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(60px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;text-align:center;padding:0;font-size:16px;background:rgba(10,12,24,.6);backdrop-filter:blur(8px)}
   #freezeBtn.on{background:rgba(124,240,255,.35);border-color:var(--accent)}
   #sculptParams .row span{flex:0 0 112px;font-size:12px}
@@ -111,6 +122,7 @@
 <div id="ui">
   <h1>Fractal Pulse</h1>
   <div class="sub">drag spin · pinch zoom · twist rotate · <b>3 fingers = chaos</b> · double-tap pulse</div>
+  <div id="wsTabs"><button data-ws="explore">Explore</button><button data-ws="sculpt">Sculpt</button><button data-ws="perform">Perform</button><button data-ws="forge">Forge</button></div>
   <h2>Fractal</h2>
   <div class="grid" id="types"></div>
   <h2>Theme</h2>
@@ -135,9 +147,9 @@
   </div>
   <audio id="player" controls style="display:none"></audio>
   <h2>Sculpt · no music needed</h2>
-  <div class="row"><span>Shape</span><input id="sMB" type="range" min="0" max="1.2" step="0.005" value="0"></div>
-  <div class="row"><span>Detail</span><input id="sMM" type="range" min="0" max="1.2" step="0.005" value="0"></div>
-  <div class="row"><span>Sparkle</span><input id="sMH" type="range" min="0" max="1.2" step="0.005" value="0"></div>
+  <div class="row"><span>Shape</span><input id="sMB" type="range" min="0" max="1.2" step="0.001" value="0"></div>
+  <div class="row"><span>Detail</span><input id="sMM" type="range" min="0" max="1.2" step="0.001" value="0"></div>
+  <div class="row"><span>Sparkle</span><input id="sMH" type="range" min="0" max="1.2" step="0.001" value="0"></div>
   <div class="row"><span>Hue</span><input id="sHue" type="range" min="0" max="1" step="0.005" value="0"></div>
   <div class="row"><span>Dive speed</span><input id="sDive" type="range" min="0.25" max="2.5" step="0.01" value="1"></div>
   <div class="row"><span>Freeze</span><button id="bFreeze" style="flex:1">❄ Freeze <kbd>Z</kbd></button></div>
@@ -196,6 +208,27 @@
   <div class="row"><span>Quality</span><select id="sQual"><option value="0">Low (phones)</option><option value="1">Medium</option><option value="2">High</option></select></div>
   <div class="row"><span>Resolution</span><input id="sRes" type="range" min="0.3" max="1.5" step="0.01" value="0.7"></div>
   <div class="row"><span>Auto-res</span><input id="cAuto" type="checkbox" checked></div>
+  <h2>Specimens</h2>
+  <div class="sub">A specimen is a reproducible mathematical object (formula, parameters, camera, material, frozen time, provenance), not a screenshot.</div>
+  <div class="row"><span>Name</span><input id="spName" type="text" placeholder="name this specimen" maxlength="60"></div>
+  <div class="row"><span>Collection</span><input id="spColl" type="text" list="spCollList" placeholder="Unsorted" maxlength="40"><datalist id="spCollList"></datalist></div>
+  <div class="grid"><button id="bSpSave">💎 Save specimen</button><button id="bSpFreezeSave">❄ Freeze + save</button></div>
+  <div class="row"><span>Show</span><select id="spFilter"><option value="*">All collections</option></select></div>
+  <div id="spList" class="spgrid"></div>
+  <div id="spDetail" style="display:none">
+    <div id="spInfo" class="sub"></div>
+    <div class="row"><span>Name</span><input id="spEName" type="text" maxlength="60"></div>
+    <div class="row"><span>Collection</span><input id="spEColl" type="text" list="spCollList" maxlength="40"></div>
+    <textarea id="spNotes" rows="2" placeholder="notes"></textarea>
+    <div class="grid" style="margin-top:6px">
+      <button id="bSpRestore">↩ Restore</button><button id="bSpDup">⧉ Duplicate</button>
+      <button id="bSpVar">✦ Variation</button><button id="bSpUpdate">⟳ Overwrite with current</button>
+      <button id="bSpExport">⬇ Export</button><button id="bSpDel">🗑 Delete</button>
+    </div>
+    <div class="row"><span>To look slot</span><select id="spToSlot"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select><button id="bSpToSlot" style="flex:0 0 auto">Copy</button></div>
+  </div>
+  <div class="grid" style="margin-top:6px"><label class="btn">Import…<input id="fSpec" type="file" accept=".json,application/json" hidden></label><button id="bSpExportAll">Export collection</button></div>
+  <div class="row"><span>Slot → specimen</span><select id="spFromSlot"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select><button id="bSlotToSpec" style="flex:0 0 auto">Convert</button></div>
   <h2>Slots &amp; sharing</h2>
   <div class="grid" id="slots"></div>
   <div class="row"><span>Store mode</span><input id="cStore" type="checkbox"><small style="color:var(--dim)">tap a slot to overwrite</small></div>
@@ -206,6 +239,7 @@
   <h2>Performance take · editable</h2>
   <div class="grid">
     <button id="bTakeRec">● Record take</button><button id="bTakePlay">▶ Play take</button>
+    <button id="bSpFromTake">💎 Capture specimen here</button>
     <button id="bTakeSave">⬇ Save take file</button><button id="bTakeCopy">Copy take JSON</button>
     <label class="btn">Load take…<input id="fTake" type="file" accept=".json,application/json" hidden></label>
     <button id="bTakeClear">Clear take</button>
@@ -2203,6 +2237,7 @@ function frameBody(nowMs){
   if(frame%15===0) $('stat').textContent=`${(1000/ema).toFixed(0)} fps · scene ${sw}×${sh} · ${rec?'● REC '+Math.floor((performance.now()-recStart)/1000)+'s · ':''}${A.live?'audio':(A.idle?'idle':'sculpt')}${A.bpm?` · ${A.bpm.toFixed(0)} bpm`:''} · ${useFloat?'HDR':'LDR'} · ${th.name}`;
   if(takeRec) takeSample(now);
   if(frame%8===0) refreshSculptParams();
+  if(thumbReq) doThumb();
   frame++;
 }
 function drawHud(){
@@ -2416,6 +2451,132 @@ $('bTakeClear').onclick=()=>{ if(playing) playStop(); take=null; try{ localStora
 $('bTakePaste').onclick=()=>{ try{ loadTakeObj(JSON.parse($('takePaste').value)); toast('Take loaded'); }catch(e){ toast('Could not load take: '+e.message,4000); } };
 $('bTrim').onclick=()=>takeTrim(+$('trimA').value,+$('trimB').value);
 try{ const t=JSON.parse(localStorage.getItem('fractalPulseTake')||'null'); if(t) loadTakeObj(t); else takeChanged(false); }catch(e){ takeChanged(false); }
+
+// ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
+// Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
+// A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.14', SPEC_KEY='fractalPulseSpecimens';
+let specimens=[], spSel=null, thumbReq=null;
+const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
+function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,
+  formula:{index:ty,name:TYPES[ty].name,rev:FORMULA_REV[ty]||1}, scene2d:st.flow?{index:nrm(st.flowVar|0,FLOWS.length),name:FLOWS[nrm(st.flowVar|0,FLOWS.length)].n}:null}; }
+function migrateSpecimen(o){
+  if(!o||typeof o!=='object'||o.format!=='fractal-pulse-specimen') return null;
+  if(!(o.v>=1)||o.v>1) return null;                                    // future versions are rejected, never silently misread
+  if(!o.state||typeof o.state!=='object') return null;
+  // v1 is current: nothing to migrate yet. Future migrations chain here: if(o.v===1){ …; o.v=2; }
+  const im=o.implementation||{}, fi=im.formula&&Number.isFinite(+im.formula.index)?+im.formula.index:null;
+  o.drift=(im.shaderRev!==SHADER_REV)||(fi!==null&&((im.formula.rev||1)!==(FORMULA_REV[fi]||1)));
+  o.collection=String(o.collection||'Unsorted').slice(0,40); o.name=String(o.name||'Untitled').slice(0,60); o.notes=String(o.notes||'').slice(0,2000); o.parent=o.parent||null;
+  o.id=String(o.id||specNewId()).slice(0,40); o.created=o.created||new Date().toISOString(); o.modified=o.modified||o.created; o.source=o.source||{kind:'import'};
+  if(typeof o.thumb!=='string'||!o.thumb.startsWith('data:image/')||o.thumb.length>60000) o.thumb=null;
+  return o; }
+function loadSpecimens(){ try{ const o=JSON.parse(localStorage.getItem(SPEC_KEY)||'[]'); specimens=Array.isArray(o)?o.map(migrateSpecimen).filter(Boolean):[]; }catch(e){ specimens=[]; } }
+function persistSpecimens(){ try{ localStorage.setItem(SPEC_KEY,JSON.stringify(specimens)); return true; }catch(e){ toast('Storage is full: export your collection, then delete some specimens',5500); return false; } }
+// Capture the current sculpture. Audio-shaped geometry is "baked" into the manual Shape/Detail/Sparkle values, because a frozen restore uses exactly those.
+function captureState(freeze){
+  const st=exportState();
+  if(A.live||A.idle||chaosL>0.02){ st.shape=+clamp(A.bass,0,1.2).toFixed(3); st.detail=+clamp(A.mid,0,1.2).toFixed(3); st.sparkle=+clamp(A.high,0,1.2).toFixed(3); st.baked=true; }
+  if(freeze){ st.frozen=1; st.T=+T.toFixed(3); }
+  return st; }
+function audioSnap(){ const q=v=>+(+v||0).toFixed(3); return {live:!!A.live,bass:q(A.bass),mid:q(A.mid),high:q(A.high),beat:q(A.beat),snare:q(A.snare),hat:q(A.hat),bright:q(A.bright),pitch:q(A.pitch),bpm:q(A.bpm),drop:q(A.drop),energy:q(A.energy)}; }
+function makeSpecimen(o){
+  o=o||{}; const st=o.state||captureState(o.freeze!==false), now=new Date().toISOString();
+  return {format:'fractal-pulse-specimen',v:1,id:specNewId(),name:(o.name||'').trim()||(TYPES[nrm(st.type|0,TYPES.length)].name+' · '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})),
+    notes:o.notes||'',collection:(o.collection||'').trim()||'Unsorted',created:now,modified:now,parent:o.parent||null,
+    implementation:implBlock(st),source:o.source||{kind:'live'},audio:o.audio||audioSnap(),state:st,thumb:o.thumb||null}; }
+function doThumb(){ const cb=thumbReq; thumbReq=null; if(!cb) return; try{ const w=192,h=Math.max(48,Math.round(192*canvas.height/canvas.width)); const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(canvas,0,0,w,h); cb(c.toDataURL('image/jpeg',0.72)); }catch(e){ cb(null); } }
+function grabThumb(cb){ let done=false; const fin=t=>{ if(done) return; done=true; cb(t); }; thumbReq=fin; setTimeout(()=>{ if(thumbReq===fin){ thumbReq=null; } fin(null); },2500); }
+function addSpecimen(sp){ specimens.unshift(sp); persistSpecimens(); renderSpecimens(); selectSpecimen(sp.id); }
+function saveSpecimen(freeze,extra){
+  const o=Object.assign({name:$('spName').value,collection:$('spColl').value,freeze},extra||{}); const sp=makeSpecimen(o);
+  if(freeze){ const st=sp.state; $('sMB').value=st.shape; $('sMM').value=st.detail; $('sMH').value=st.sparkle; padSync(); setFrozen(true,true); }   // continue seamlessly from the baked, frozen state
+  grabThumb(t=>{ sp.thumb=t; addSpecimen(sp); toast('Specimen saved: '+sp.name,2200); $('spName').value=''; }); }
+function restoreSpecimen(sp){
+  const mode=$('sTrans').value; $('sTrans').value='cut'; try{ applyState(sp.state); }finally{ $('sTrans').value=mode; }
+  toast(sp.drift?'Restored, but made under a different renderer revision: appearance may differ':'Restored: '+sp.name,sp.drift?4500:2200); }
+function mutateState(st,sp){
+  const r=(a)=> (Math.random()-0.5)*2*a, c=(v,a,b)=>Math.max(a,Math.min(b,v)); const o=JSON.parse(JSON.stringify(st));
+  o.hue=+((((o.hue||0)+r(0.08))%1+1)%1).toFixed(3); o.shape=+c((o.shape||0)+r(0.15),0,1.2).toFixed(3); o.detail=+c((o.detail||0)+r(0.15),0,1.2).toFixed(3); o.az=+((o.az||0)+r(0.4)).toFixed(3);
+  const ty=nrm(o.type|0,TYPES.length), sch=(PSCHEMA[ty]||[]).slice(); o.pins=o.pins||{}; const pn=o.pins[ty]=o.pins[ty]||{};
+  for(let i=0;i<Math.min(2,sch.length);i++){ const [k,,mn,mx]=sch.splice((Math.random()*sch.length)|0,1)[0]; const base=Number.isFinite(+pn[k])?+pn[k]:(mn+mx)/2; pn[k]=+c(base+r(0.12)*(mx-mn),mn,mx).toFixed(3); }
+  return o; }
+function childCount(id){ return specimens.filter(x=>x.parent===id).length; }
+function duplicateSpecimen(sp,variation){
+  const st=variation?mutateState(sp.state,sp):JSON.parse(JSON.stringify(sp.state)); const n=variation?childCount(sp.id)+1:0;
+  const c=makeSpecimen({state:st,name:variation?sp.name.replace(/ · var \d+$/,'')+' · var '+n:sp.name+' (copy)',collection:sp.collection,notes:variation?'':sp.notes,parent:sp.id,
+    source:{kind:variation?'variation':'duplicate',of:sp.id},audio:sp.audio,thumb:variation?null:sp.thumb});
+  if(!variation){ addSpecimen(c); toast('Duplicated'); return; }
+  const mode=$('sTrans').value; $('sTrans').value='cut'; applyState(c.state); $('sTrans').value=mode;           // show the variation, then thumbnail it
+  setTimeout(()=>grabThumb(t=>{ c.thumb=t; addSpecimen(c); toast('Variation created from '+sp.name,2500); }),700); }
+function specimenFromSlot(i){ const st=slots[i]; if(!st){ toast('That look slot is empty'); return; } const c=makeSpecimen({state:JSON.parse(JSON.stringify(st)),name:'Slot '+(i+1)+' · '+TYPES[nrm(st.type|0,TYPES.length)].name,source:{kind:'look-slot',slot:i+1},audio:audioSnap()}); addSpecimen(c); toast('Slot '+(i+1)+' converted to a specimen'); }
+function specimenToSlot(sp,i){ slots[i]=JSON.parse(JSON.stringify(sp.state)); try{ localStorage.setItem(SLOT_KEY,JSON.stringify(slots)); }catch(e){} renderSlots(); toast('Copied to look slot '+(i+1)+' (slots hold looks, not provenance)'); }
+function specimenFromTake(){
+  if(!playing||!take){ toast('Play or scrub a take first, then capture the moment'); return; }
+  const t=+(nowS()-pl.t0).toFixed(3); const sp=makeSpecimen({freeze:true,source:{kind:'take',take:{created:take.created,song:take.song,t,duration:+take.duration.toFixed(2)}},collection:'From takes'});
+  grabThumb(th=>{ sp.thumb=th; addSpecimen(sp); toast('Specimen captured from the take at '+t.toFixed(1)+' s',2800); }); }
+function saveJsonFile(obj,filename){
+  const file=new File([JSON.stringify(obj)],filename,{type:'application/json'});
+  return (async()=>{ try{ if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:'Fractal Pulse'}); return; } }catch(e){ if(e.name==='AbortError') return; }
+    try{ const url=URL.createObjectURL(file), a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),30000); }catch(e){}
+    copyText(JSON.stringify(obj),'JSON'); })(); }
+function importSpecimens(text){
+  let o; try{ o=JSON.parse(text); }catch(e){ toast('Not valid JSON',3500); return 0; }
+  const arr=o&&o.format==='fractal-pulse-specimen-collection'&&Array.isArray(o.specimens)?o.specimens:[o]; let n=0,bad=0;
+  arr.forEach(x=>{ const m=migrateSpecimen(x); if(!m){ bad++; return; } if(specimens.some(s=>s.id===m.id)) m.id=specNewId(); m.source=Object.assign({},m.source,{importedAt:new Date().toISOString()}); specimens.unshift(m); n++; });
+  if(n){ persistSpecimens(); renderSpecimens(); selectSpecimen(specimens[0].id); }
+  toast(n?`Imported ${n} specimen${n>1?'s':''}${bad?`, skipped ${bad} invalid`:''}`:'No valid specimens in that file',3200); return n; }
+function renderSpecimens(){
+  const colls=[...new Set(specimens.map(s=>s.collection))].sort(), sel=$('spFilter'), cur=sel.value;
+  sel.innerHTML='<option value="*">All collections ('+specimens.length+')</option>'+colls.map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">'+c.replace(/</g,'&lt;')+'</option>').join(''); sel.value=colls.includes(cur)||cur==='*'?cur:'*';
+  $('spCollList').innerHTML=colls.map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">').join('');
+  const box=$('spList'); box.innerHTML=''; const list=specimens.filter(s=>sel.value==='*'||s.collection===sel.value);
+  if(!list.length){ box.style.display='block'; box.innerHTML='<div class="sub">No specimens yet. Find something you like and tap Save.</div>'; return; } box.style.display='grid';
+  list.forEach(sp=>{ const d=document.createElement('div'); d.className='spc'+(sp.id===spSel?' sel':''); d.title=sp.name;
+    d.innerHTML=(sp.thumb?'<img src="'+sp.thumb+'" alt="">':'<div style="padding:18px 6px;text-align:center;color:var(--dim);font-size:11px">no preview</div>')+(sp.drift?'<span class="drift" title="made under a different renderer revision">⚠</span>':'')+'<div class="cap"></div>';
+    d.querySelector('.cap').textContent=sp.name; d.onclick=()=>{ selectSpecimen(sp.id); restoreSpecimen(sp); }; box.appendChild(d); }); }
+function selectSpecimen(id){
+  spSel=id; const sp=specimens.find(s=>s.id===id); renderSpecimens(); const dt=$('spDetail'); if(!sp){ dt.style.display='none'; return; } dt.style.display='block';
+  const im=sp.implementation||{}, par=sp.parent?specimens.find(s=>s.id===sp.parent):null;
+  $('spInfo').textContent=`${(im.formula&&im.formula.name)||'?'} · ${sp.state.frozen?'frozen':'live-state'} · ${sp.source&&sp.source.kind||'live'}${sp.source&&sp.source.take?' @'+sp.source.take.t+'s':''}${par?' · from "'+par.name+'"':(sp.parent?' · parent not in library':'')}${childCount(sp.id)?' · '+childCount(sp.id)+' variation(s)':''}${sp.drift?' · ⚠ older renderer rev':''}`;
+  $('spEName').value=sp.name; $('spEColl').value=sp.collection; $('spNotes').value=sp.notes; }
+function editSelected(fn){ const sp=specimens.find(s=>s.id===spSel); if(!sp) return; fn(sp); sp.modified=new Date().toISOString(); persistSpecimens(); renderSpecimens(); }
+let delArm=0; const armBtn=(btn,label,fn)=>{ if(Date.now()-delArm<3000){ delArm=0; btn.textContent=label; fn(); } else { delArm=Date.now(); btn.textContent='Tap again to confirm'; setTimeout(()=>{ if(Date.now()-delArm>=2900) btn.textContent=label; },3100); } };
+$('bSpSave').onclick=()=>saveSpecimen(false); $('bSpFreezeSave').onclick=()=>saveSpecimen(true);
+$('spFilter').onchange=renderSpecimens;
+$('bSpRestore').onclick=()=>{ const sp=specimens.find(s=>s.id===spSel); if(sp) restoreSpecimen(sp); };
+$('bSpDup').onclick=()=>{ const sp=specimens.find(s=>s.id===spSel); if(sp) duplicateSpecimen(sp,false); };
+$('bSpVar').onclick=()=>{ const sp=specimens.find(s=>s.id===spSel); if(sp) duplicateSpecimen(sp,true); };
+$('bSpUpdate').onclick=()=>{ const sp=specimens.find(s=>s.id===spSel); if(!sp) return; const st=captureState(true); grabThumb(t=>editSelected(x=>{ x.state=st; x.implementation=implBlock(st); x.audio=audioSnap(); x.thumb=t||x.thumb; x.drift=false; toast('Specimen overwritten with the current sculpture'); selectSpecimen(x.id); })); };
+$('bSpExport').onclick=()=>{ const sp=specimens.find(s=>s.id===spSel); if(sp) saveJsonFile(sp,(sp.name.replace(/[^\w-]+/g,'_')||'specimen')+'.fps.json'); };
+$('bSpDel').onclick=()=>armBtn($('bSpDel'),'🗑 Delete',()=>{ specimens=specimens.filter(s=>s.id!==spSel); spSel=null; persistSpecimens(); renderSpecimens(); $('spDetail').style.display='none'; toast('Specimen deleted'); });
+$('bSpToSlot').onclick=()=>{ const sp=specimens.find(s=>s.id===spSel); if(sp) specimenToSlot(sp,+$('spToSlot').value-1); };
+$('spEName').onchange=()=>editSelected(x=>{ x.name=$('spEName').value.trim().slice(0,60)||x.name; });
+$('spEColl').onchange=()=>editSelected(x=>{ x.collection=$('spEColl').value.trim().slice(0,40)||'Unsorted'; });
+$('spNotes').onchange=()=>editSelected(x=>{ x.notes=$('spNotes').value.slice(0,2000); });
+$('fSpec').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>importSpecimens(rd.result); rd.readAsText(f); e.target.value=''; };
+$('bSpExportAll').onclick=()=>{ const f=$('spFilter').value, list=specimens.filter(s=>f==='*'||s.collection===f); if(!list.length){ toast('Nothing to export'); return; } saveJsonFile({format:'fractal-pulse-specimen-collection',v:1,created:new Date().toISOString(),collection:f==='*'?null:f,specimens:list},'fractal-pulse-collection.fpc.json'); };
+$('bSlotToSpec').onclick=()=>specimenFromSlot(+$('spFromSlot').value-1);
+$('bSpFromTake').onclick=specimenFromTake;
+loadSpecimens(); renderSpecimens();
+
+// ═════════════════════ WORKSPACES: Explore / Sculpt / Perform / Forge ═════════════════════
+const WS_MAP={'Fractal':'explore sculpt','Theme':'explore','Audio':'explore perform','Sculpt · no music needed':'sculpt','Morph timeline':'explore perform','Look':'explore sculpt','Reactivity':'perform',
+  'Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Capture':'forge'};
+(function groupWorkspaces(){
+  const ui=$('ui'); let cur=null;
+  [...ui.children].forEach(el=>{
+    if(el.tagName==='H2'){ cur=document.createElement('div'); cur.className='wsec'; cur.dataset.ws=WS_MAP[el.textContent.trim()]||'explore sculpt perform forge'; ui.insertBefore(cur,el); cur.appendChild(el); }
+    else if(el.id==='info'){ cur=null; el.classList.add('wsec'); el.dataset.ws='explore'; }
+    else if(cur) cur.appendChild(el); });
+})();
+let workspace='explore';
+function setWorkspace(ws){ workspace=ws; document.querySelectorAll('#wsTabs button').forEach(b=>b.classList.toggle('on',b.dataset.ws===ws));
+  document.querySelectorAll('#ui .wsec').forEach(sec=>sec.classList.toggle('hide',!sec.dataset.ws.split(' ').includes(ws)));
+  try{ localStorage.setItem('fractalPulseWs',ws); }catch(e){} }
+document.querySelectorAll('#wsTabs button').forEach(b=>b.onclick=()=>setWorkspace(b.dataset.ws));
+try{ const w=localStorage.getItem('fractalPulseWs'); if(w&&['explore','sculpt','perform','forge'].includes(w)) workspace=w; }catch(e){}
+setWorkspace(workspace);
 
 // ───────────────────────── record clips ─────────────────────────
 let rec=null, recChunks=[], recStart=0, lastClip=null;
