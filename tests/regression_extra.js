@@ -107,4 +107,19 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G9 e-paper threshold changes the black/white balance; title strip is stamped',ep.lo>ep.hi*0+0&&ep.lo>ep.hi===false?true:ep.lo>=0&&ep.hi!==ep.lo&&ep.stripWhite>10,JSON.stringify({lo:ep.lo,hi:ep.hi,strip:ep.stripWhite}));
     rec('G9 e-paper red is only produced in the three-colour palette',ep.out&&ep.out['bw/none'].red===0&&ep.out['bw/fs'].red===0,JSON.stringify(ep.out&&{bw:ep.out['bw/none'].red,bwr:ep.out['bwr/atk'].red}));
     rec('G9 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G10: media import (audio-only files, video, bad files) ──
+  { const p=await page(b,'scale=0.12&q=0'); const sr=22050,n=sr*3,buf=Buffer.alloc(44+n*2); buf.write('RIFF',0); buf.writeUInt32LE(36+n*2,4); buf.write('WAVEfmt ',8); buf.writeUInt32LE(16,16); buf.writeUInt16LE(1,20); buf.writeUInt16LE(1,22); buf.writeUInt32LE(sr,24); buf.writeUInt32LE(sr*2,28); buf.writeUInt16LE(2,32); buf.writeUInt16LE(16,34); buf.write('data',36); buf.writeUInt32LE(n*2,40);
+    for(let i=0;i<n;i++){ const t=i/sr,k=(t*2)%1; buf.writeInt16LE(Math.round(Math.sin(2*Math.PI*(60+120*Math.exp(-k*12))*k)*Math.exp(-k*6)*24000),44+i*2); }
+    const acc=await p.$eval('#fFile',e=>e.accept); rec('G10 import picker accepts audio, video and explicit extensions',/audio\/\*/.test(acc)&&/video\/\*/.test(acc)&&/\.mp3/.test(acc)&&/\.flac/.test(acc)&&/\.m4a/.test(acc)&&/\.wav/.test(acc)&&/\.mp4/.test(acc),acc);
+    await p.setInputFiles('#fFile',{name:'FL export.wav',mimeType:'',buffer:buf});     // empty MIME like some mobile pickers report
+    await p.waitForFunction(()=>isFinite(player.duration)&&player.currentTime>0.3,null,{timeout:90000}); await p.waitForTimeout(800);
+    const w=await p.evaluate(()=>({dur:player.duration,live:A.live,bass:A.bass,kind:mediaInfo&&mediaInfo.kind,name:lastFileName,err:player.error&&player.error.code}));
+    rec('G10 audio-only WAV (no MIME) plays and drives the analysis',w.dur>2.5&&w.live&&w.bass>0.05&&w.kind==='audio'&&!w.err,JSON.stringify(w));
+    await p.evaluate(()=>{ FractalPulse.startTake(); }); await p.waitForTimeout(1500); const sg=await p.evaluate(()=>{ FractalPulse.stopTake(); return take&&take.song; });
+    rec('G10 take records source-media metadata and says the media is not embedded',sg&&sg.name==='FL export.wav'&&sg.kind==='audio'&&sg.size>1000&&/NOT embedded/.test(sg.reference),JSON.stringify(sg));
+    await p.setInputFiles('#fFile',{name:'broken.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('definitely not audio'.repeat(50))});
+    await p.waitForFunction(()=>document.getElementById('err').style.display!=='none'&&/Couldn.t play/.test(document.getElementById('err').textContent),null,{timeout:20000}).catch(()=>{});
+    const er=await p.evaluate(()=>document.getElementById('err').textContent); rec('G10 undecodable file gives a clear message naming the file',/broken\.mp3/.test(er)&&/WAV, MP3 or M4A/.test(er),er);
+    rec('G10 no console errors',p.errs.filter(e=>!/Failed to load resource|media|Couldn.t play/i.test(e)).length===0,p.errs[0]||''); await p.context().close(); }
 };

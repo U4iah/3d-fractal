@@ -111,7 +111,7 @@
   <p>Twenty-one real distance-estimated 3D fractals — bulbs, quaternions, boxes, sponges, kleinian foam — folding, warping and spinning to your music in real time.</p>
   <div class="grid">
     <button id="bDemo">▶ Built-in demo beat</button>
-    <label class="btn">♪ Load audio file<input id="fFile" type="file" accept="audio/*" hidden></label>
+    <label class="btn">♪ Import audio / video<input id="fFile" type="file" accept="audio/*,video/*,.mp3,.wav,.wave,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.mp4,.m4v,.mov,.webm,.mka" hidden></label>
     <button id="bMic">🎤 Microphone</button>
     <button id="bTab">🖥 Tab / system audio</button>
   </div>
@@ -141,7 +141,7 @@
   <h2>Audio</h2>
   <div class="grid">
     <button id="bDemo2">Demo beat</button>
-    <label class="btn">File…<input id="fFile2" type="file" accept="audio/*" hidden></label>
+    <label class="btn">Import media…<input id="fFile2" type="file" accept="audio/*,video/*,.mp3,.wav,.wave,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.mp4,.m4v,.mov,.webm,.mka" hidden></label>
     <button id="bMic2">Mic</button>
     <button id="bTab2">Tab audio</button>
   </div>
@@ -1724,13 +1724,27 @@ function startDemo(){
   demoTimer = setInterval(()=>{ if(next < actx.currentTime-0.05) next = actx.currentTime+0.05; while(next < actx.currentTime+0.18){ play(n,next); next+=step; n++; } }, 25);
   done();
 }
+// Any browser-decodable audio OR video file works: the <audio> element plays the soundtrack of video files too, so no conversion is needed.
+let mediaInfo=null, mediaUrl=null;
+const EXT_MIME={mp3:'audio/mpeg',wav:'audio/wav',wave:'audio/wav',m4a:'audio/mp4',aac:'audio/aac',flac:'audio/flac',ogg:'audio/ogg',oga:'audio/ogg',opus:'audio/ogg; codecs=opus',aif:'audio/aiff',aiff:'audio/aiff',caf:'audio/x-caf',mp4:'video/mp4',m4v:'video/mp4',mov:'video/quicktime',webm:'video/webm',mka:'audio/x-matroska'};
+function mediaProbe(file){ const ext=((file.name||'').split('.').pop()||'').toLowerCase(), mime=file.type||EXT_MIME[ext]||''; const kind=/^video\//.test(mime)||['mp4','m4v','mov','webm'].includes(ext)?'video':'audio';
+  const can=player.canPlayType(mime)||player.canPlayType(EXT_MIME[ext]||''); return {name:file.name||'',ext,mime,kind,size:file.size|0,canPlay:can}; }
+function mediaError(info,code){ const how={1:'loading was aborted',2:'a read/network error occurred',3:'the browser could not decode it',4:'this format is not supported by this browser'}[code]||'it could not be played';
+  const tip=info.ext==='flac'?' FLAC is not supported by every iPhone/Safari version; WAV, MP3 or M4A always are.':(info.ext==='aif'||info.ext==='aiff'||info.ext==='caf'||info.ext==='mka')?' Try exporting WAV, MP3 or M4A instead.':' Try WAV, MP3 or M4A, or an MP4 with AAC audio.';
+  return `Couldn't play “${info.name}”: ${how}.${tip}`; }
 function useFile(file){
   if(!file) return;
   ensureCtx(); setAudioSession('playback'); stopSources();
-  lastFileName = file.name || ''; player.src = URL.createObjectURL(file); player.style.display='block';
+  const info=mediaProbe(file); lastFileName = file.name || '';
+  if(!info.canPlay && info.ext && !EXT_MIME[info.ext]){ showErr(`“${info.name}” doesn't look like an audio or video file the browser can play. Try WAV, MP3, M4A or MP4.`); setTimeout(()=>$('err').style.display='none',6000); }
+  if(mediaUrl) try{ URL.revokeObjectURL(mediaUrl); }catch(e){}
+  mediaUrl=URL.createObjectURL(file); mediaInfo=info; player.onerror=()=>{ const c=player.error&&player.error.code; showErr(mediaError(info,c)); setTimeout(()=>$('err').style.display='none',9000); lastFileName=''; mediaInfo=null; };
+  player.onloadedmetadata=()=>{ if(mediaInfo) mediaInfo.duration=+player.duration.toFixed(2); toast(`${info.kind==='video'?'🎬':'♪'} ${info.name} · ${isFinite(player.duration)?Math.floor(player.duration/60)+':'+String(Math.floor(player.duration%60)).padStart(2,'0'):'stream'}`,3200); };
+  player.src = mediaUrl; player.style.display='block';
   if(!player._node){ player._node = actx.createMediaElementSource(player); }
   srcNode = player._node; srcNode.connect(analyser); srcNode.connect(actx.destination);
-  player.play().catch(()=>{}); done();
+  player.play().catch(e=>{ if(e&&e.name==='NotAllowedError'){ toast('Press play on the player to start the audio',4000); } });   // other failures arrive via player.onerror
+  done();
 }
 async function useMic(){
   try{
@@ -1758,7 +1772,7 @@ async function useTab(){
 ['fFile','fFile2'].forEach(i=>{ $(i).parentElement.addEventListener('click',()=>ensureCtx()); $(i).onchange=e=>useFile(e.target.files[0]); });
 $('bSilent').onclick=e=>{e.preventDefault(); $('start').classList.add('gone'); toast('Drag to spin · pinch to zoom · twist to rotate · put THREE fingers down for chaos · double-tap to pulse',6500);};
 addEventListener('dragover',e=>e.preventDefault());
-addEventListener('drop',e=>{e.preventDefault(); const f=e.dataTransfer.files[0]; if(f && /\.json$/i.test(f.name)){ loadTakeFile(f); return; } ensureCtx(); useFile(f);});
+addEventListener('drop',e=>{e.preventDefault(); const f=e.dataTransfer.files[0]; if(f && /\.json$/i.test(f.name)){ loadTakeFile(f); return; } ensureCtx(); useFile(f);});   // audio and video files both work
 
 // ───────────────────────── analysis ─────────────────────────
 function bandAvg(f0,f1){
@@ -2337,7 +2351,7 @@ $('cSlice').addEventListener('change',()=>recEv('slider',['cSlice',$('cSlice').c
 
 function takeStartRec(){
   if(playing) playStop();
-  const song=(lastFileName && isFinite(player.duration)) ? {name:lastFileName,duration:+player.duration.toFixed(2)} : null;
+  const song=(lastFileName && isFinite(player.duration)) ? {name:lastFileName,duration:+player.duration.toFixed(2),kind:mediaInfo&&mediaInfo.kind,mime:mediaInfo&&mediaInfo.mime,size:mediaInfo&&mediaInfo.size,reference:'original media is NOT embedded; the take stores the musical analysis recorded while it played'} : null;
   takeRec={t0:nowS(),lastS:-9,frames:[],events:[],obs:[],onsetPending:false,start:exportState(),song};
   $('bTakeRec').textContent='■ Stop recording'; $('bTakeRec').classList.add('on'); toast('Recording take…',1500);
 }
