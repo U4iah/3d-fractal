@@ -18,7 +18,7 @@
   canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
   canvas#hud{position:fixed;left:0;right:0;bottom:0;width:100%;height:90px;pointer-events:none;transition:opacity .3s}
   #ui{position:fixed;top:58px;right:12px;width:284px;max-height:calc(100% - 70px);-webkit-overflow-scrolling:touch;overflow:auto;background:var(--panel);
-      backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;padding:12px;transition:opacity .25s}
+      border:1px solid var(--line);border-radius:12px;padding:12px;transition:opacity .25s}
   #ui.hidden{opacity:0;pointer-events:none}
   h1{font-size:14px;margin:0 0 2px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
   .sub{color:var(--dim);font-size:11px;margin-bottom:6px}
@@ -53,7 +53,7 @@
   #takeInfo{font-size:11px;color:var(--dim);margin:6px 0}
   #takeScrub{width:100%}
   #pad{position:fixed;left:calc(14px + env(safe-area-inset-left));bottom:calc(74px + env(safe-area-inset-bottom));width:132px;height:132px;border-radius:18px;
-      background:rgba(10,12,24,.45);border:1px solid rgba(185,168,255,.35);backdrop-filter:blur(6px);touch-action:none;display:none;z-index:2}
+      background:rgba(10,12,24,.45);border:1px solid rgba(185,168,255,.35);touch-action:none;display:none;z-index:2}
   #pad.on{display:block}
   #pad::before,#pad::after{content:"";position:absolute;background:rgba(255,255,255,.12)}
   #pad::before{left:50%;top:8px;bottom:8px;width:1px}#pad::after{top:50%;left:8px;right:8px;height:1px}
@@ -72,11 +72,11 @@
   .spc .drift{position:absolute;top:2px;right:3px;font-size:11px}
   #spDetail{margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,.05)}
   #spDetail input[type=text],#spDetail textarea,#spName,#spColl{width:100%;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:var(--fg);font:inherit;padding:6px}
-  #freezeBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(60px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;text-align:center;padding:0;font-size:16px;background:rgba(10,12,24,.6);backdrop-filter:blur(8px)}
+  #freezeBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(60px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;text-align:center;padding:0;font-size:16px;background:rgba(10,12,24,.6);}
   #freezeBtn.on{background:rgba(185,168,255,.35);border-color:var(--accent)}
   #sculptParams .row span{flex:0 0 112px;font-size:12px}
   #menuBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;
-      text-align:center;padding:0;font-size:18px;background:rgba(10,12,24,.6);backdrop-filter:blur(8px)}
+      text-align:center;padding:0;font-size:18px;background:rgba(10,12,24,.6);}
   .tlrow{display:flex;gap:4px;margin:4px 0}.tlrow select{min-width:0;flex:2;padding:6px}.tlrow select+select{flex:1}.tlrow button{padding:6px 10px}.tlrow.cur select{border-color:var(--accent)}
   #tlBarW{height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin:6px 0;overflow:hidden}#tlBar{height:100%;background:var(--accent);transform-origin:left;transform:scaleX(0)}
   .grid3{display:grid;grid-template-columns:1fr 1fr;gap:5px}
@@ -109,7 +109,7 @@
   #ctl{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);max-width:calc(100% - 140px);padding:4px 12px;border-radius:99px;font-size:11px;letter-spacing:.04em;color:var(--fg);
       background:rgba(15,14,21,.72);border:1px solid var(--line);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:3;transition:border-color .2s}
   #ctl.amber{border-color:var(--signal);color:#ffe2b8}
-  #strip{position:fixed;z-index:4;display:flex;align-items:center;gap:4px;padding:5px;border-radius:14px;background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(10px);
+  #strip{position:fixed;z-index:4;display:flex;align-items:center;gap:4px;padding:5px;border-radius:14px;background:var(--panel);border:1px solid var(--line);
       left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom))}
   #strip button{text-align:center;padding:8px 11px;min-width:42px;font-size:13px;border-radius:10px}
   #strip .sep{width:1px;align-self:stretch;background:var(--line);margin:2px 3px}
@@ -225,6 +225,8 @@
   .card h1{font-family:var(--serif);font-style:italic;font-weight:400;text-transform:none;letter-spacing:0;font-size:36px}
   .card button,.card label.btn{border-radius:var(--r)}
   @media (max-width:700px),(pointer:coarse){ #ui{border-radius:10px 10px 0 0} #strip{border-radius:10px 10px 0 0} input[type=range]{height:30px} input[type=checkbox]{width:36px;height:20px} input[type=checkbox]::after{width:14px;height:14px} input[type=checkbox]:checked::after{transform:translateX(16px)} }
+  /* no backdrop blur: blurring a live WebGL canvas every frame is very costly on laptop GPUs, so panels are near-opaque instead */
+  #ui{background:linear-gradient(180deg,rgba(18,16,26,.97),rgba(11,10,16,.97))!important} #strip{background:rgba(12,11,17,.96)!important} #ctl{background:rgba(12,11,17,.92)!important} #pad{background:rgba(12,11,17,.6)!important}
 </style>
 </head>
 <body>
@@ -2980,7 +2982,7 @@ function chromeTick(){
 }
 const roFmt=(el)=>{ const v=+el.value, st=+el.step||1; const d=st>=1?0:(st>=0.1?1:(st>=0.01?2:3)); return v.toFixed(d); };
 const readouts=[]; document.querySelectorAll('#ui input[type=range]').forEach(el=>{ if(el.id==='takeScrub') return; const o=document.createElement('output'); o.className='ro'; el.after(o); readouts.push([el,o]); const up=()=>{ o.textContent=roFmt(el); }; el.addEventListener('input',up); up(); });
-setInterval(()=>{ try{ chromeTick(); readouts.forEach(([el,o])=>{ const t=roFmt(el); if(o.textContent!==t) o.textContent=t; }); }catch(e){ console.warn('chrome',e); } },250);
+setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEach(([el,o])=>{ const t=roFmt(el); if(o.textContent!==t) o.textContent=t; }); }catch(e){ console.warn('chrome',e); } },250);
 // panel + strip behaviour
 const syncPanel=()=>document.body.classList.toggle('panelOpen',!$('ui').classList.contains('hidden'));
 new MutationObserver(syncPanel).observe($('ui'),{attributes:true,attributeFilter:['class']}); syncPanel();
