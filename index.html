@@ -576,6 +576,36 @@ float deBox(vec3 p, int mode){
   return length(z)/abs(dr);
 }
 
+
+// 21 : "U4" logotype. Liquid-metal letters (smooth-merged 3D tubes and beads) intersected with a Mandelbox, so the fractal carves the letters
+// while the whole thing stays a true 3D solid. gPower = fractal zoom, gQW = carve amount (0 = smooth letters, 1 = fully carved), gFoldA = extra melt.
+float sdSeg3(vec3 p, vec3 a, vec3 b, float r){ vec3 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0); return length(pa-ba*h)-r; }
+float sminK(float a, float b, float k){ float h=clamp(0.5+0.5*(b-a)/k,0.0,1.0); return mix(b,a,h)-k*h*(1.0-h); }
+float deLogo(vec3 p){
+  float rs = 0.19, k = 0.10 + gFoldA;
+  // U : two stems, a half-ring bottom, bead tops, a drip
+  vec3 c = vec3(-0.68,-0.12,0.0);
+  float dU = sdSeg3(p, vec3(-1.06,0.58,0.0), vec3(-1.06,-0.12,0.0), rs);
+  dU = sminK(dU, sdSeg3(p, vec3(-0.30,0.58,0.0), vec3(-0.30,-0.12,0.0), rs), k);
+  vec2 q = p.xy - c.xy;
+  float ring = length(vec2(length(q)-0.38, p.z)) - rs;
+  dU = sminK(dU, (p.y<c.y) ? ring : 1e3, k);
+  dU = sminK(dU, length(p-vec3(-1.06,0.62,0.0))-rs*1.45, k);
+  dU = sminK(dU, length(p-vec3(-0.30,0.62,0.0))-rs*1.45, k);
+  dU = sminK(dU, length(p-vec3(-0.68,-0.80,0.0))-rs*0.9, k*1.5);
+  // 4 : stem, crossbar, diagonal, bead ends
+  float d4 = sdSeg3(p, vec3(0.62,0.66,0.0), vec3(0.62,-0.62,0.0), rs);
+  d4 = sminK(d4, sdSeg3(p, vec3(0.02,-0.20,0.0), vec3(1.18,-0.20,0.0), rs), k);
+  d4 = sminK(d4, sdSeg3(p, vec3(0.62,0.66,0.0), vec3(0.02,-0.20,0.0), rs), k);
+  d4 = sminK(d4, length(p-vec3(1.20,-0.20,0.0))-rs*1.35, k);
+  d4 = sminK(d4, length(p-vec3(0.62,-0.70,0.0))-rs*1.5, k);
+  float dL = sminK(dU, d4, k*0.8);
+  float sc = max(gPower, 0.5);
+  float dF = deBox(p*sc, 0)/sc;                      // sets gTrap (orbit trap) for colouring
+  float carve = clamp(gQW,0.0,1.0);
+  return max(dL, dF - (1.0-carve)*0.35);
+}
+
 // KIFS fold steps shared by the sponge / gasket / hybrid
 void mengerStep(inout vec3 p, inout float sc, vec3 O, mat2 R){
   p = abs(p);
@@ -790,6 +820,7 @@ float evalType(int ty, vec3 p){
   else if(ty==17) d = deBristor(p);
   else if(ty==18) d = deQJ3(p);
   else if(ty==19) d = deShip2(p,0);
+  else if(ty==21) d = deLogo(p);
   else            d = deShip2(p,1);
   return d;
 }
@@ -1692,6 +1723,7 @@ const TYPES = [
   {name:'Cubic Quaternion Julia', size:1.2, cam:4.0, bound:1.6, info:'<b>Cubic quaternion Julia</b> — q → q³ + c over the quaternions. Three-fold lobes instead of the quadratic set\'s two; c drifts through 4D with the mids and treble.'},
   {name:'Burning Ship 3D',    size:1.2, cam:5.8,  bound:1.9,  info:'<b>3D Burning Ship</b> — the exact Mandelbulb-method formula from the reference post: spherical power step with the polar axis along y, then <code>|·|</code> on every component <i>after</i> adding c. Craggy, ridged, almost geological.'},
   {name:'Burning Ship Julia 3D', size:1.2, cam:5.8, bound:1.9, info:'<b>3D Burning Ship Julia</b> — the same map started at the point with a fixed constant c (wandering with the music).'},
+  {name:'U4 · fractal logotype', size:1.2, cam:5.6, bound:1.7, info:'<b>U4 logotype</b> — liquid-metal letters (smooth-merged 3D tubes and beads) intersected with a <i>negative Mandelbox</i>. <code>Fractal carve</code> slides from smooth letters to fully carved; <code>Fractal zoom</code> and <code>Box scale</code> change what gets carved. A real 3D solid: orbit it.'},
 ];
 // cosine palettes: a + b·cos(2π(c·t + d))
 const PALS = [
@@ -2025,6 +2057,7 @@ const PSCHEMA={
   10:[['scale','Offset',0.7,1.4,0.01],TWIST], 11:[['scale','Fold box',0.7,1.4,0.01],TWIST], 12:[['qw','Slice w',-1,1,0.01]],
   13:[['scale','Offset',0.8,1.4,0.01],TWIST], 14:[['power','Fold scale (φ² ≈ 2.618)',2,3.5,0.01],['scale','Vertex offset',0.5,1.6,0.01],TWIST,['qw','End-sphere radius',0.3,2,0.01]],
   15:[['scale','Box scale',-2.8,-1.5,0.01]], 16:[['scale','Box scale',1.8,2.8,0.01],...JC3], 17:[],
+  21:[['qw','Fractal carve',0,1,0.01],['power','Fractal zoom',1,5,0.05],['scale','Box scale',-2.8,-1.5,0.01],['fold','Letter melt',0,0.5,0.01]],
   18:[...JC3,['qw','Quaternion w',-1,1,0.01]], 19:[['power','Power',2,4,0.01]], 20:[['power','Power',2,4,0.01],...JC3]
 };
 const pins={};                       // pins[type][key] = value: an explicit user value that overrides music/animation for that parameter
@@ -2231,6 +2264,7 @@ function params(ty){
     case 20: P.power=clamp(2.4+0.3*Math.sin(t*0.11)+0.6*b,2,4); P.jc=[0.12+0.1*Math.cos(t*0.2+m),0.25+0.12*Math.sin(t*0.27),0.1+0.12*Math.cos(t*0.17)+0.1*b]; break;
     case 18: P.jc=[-0.3+0.15*Math.cos(t*0.2)+0.12*b, 0.25+0.2*Math.sin(t*0.27)+0.1*m, 0.15*Math.sin(t*0.19)]; P.qw=0.1+0.2*Math.sin(t*0.13)+0.2*h; break;
     case 15: P.scale=-clamp(1.7+0.35*Math.sin(t*0.11)+0.6*b,1.5,2.8); break;
+    case 21: P.scale=-clamp(1.7+0.2*Math.sin(t*0.11)+0.35*b,1.5,2.8); P.power=2.2+0.08*Math.sin(t*0.07); P.qw=0.7+0.12*Math.sin(t*0.09); break;
     case 16: P.scale=clamp(2.0+0.2*Math.sin(t*0.1)+0.5*b,1.8,2.8); P.jc=[0.7*Math.cos(t*0.13+m),0.5*Math.sin(t*0.17),0.45*Math.cos(t*0.11)+0.3*b]; break;
   }
   const RC=REACT[$('sReact').value]||REACT.bal;
