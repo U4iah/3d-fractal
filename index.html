@@ -8,6 +8,8 @@
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Fractal Pulse">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Syne:wght@800&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Fractal Pulse — music-reactive 3D fractals</title>
@@ -228,6 +230,73 @@
   /* no backdrop blur: blurring a live WebGL canvas every frame is very costly on laptop GPUs, so panels are near-opaque instead */
   #ui{background:linear-gradient(180deg,rgba(18,16,26,.97),rgba(11,10,16,.97))!important} #strip{background:rgba(12,11,17,.96)!important} #ctl{background:rgba(12,11,17,.92)!important} #pad{background:rgba(12,11,17,.6)!important}
 </style>
+<style id="figure">
+  /* ───── FIGURE FP·I — the instrument drawn as a signal-flow figure (design DNA from the U4 Engine handoff) ─────
+     one ink, one ground, one heat. Nodes are drawn objects over real buttons; conduits are recomputed from live DOM boxes. */
+  :root{--ink:#efe6d6;--ink-2:rgba(239,230,214,.62);--ink-3:rgba(239,230,214,.32);--on-ink:#0b090c;--ember:#ff6a1a;--amber:#ffb65c;--violet:#a968ff;
+    --serif:"Instrument Serif","Iowan Old Style",ui-serif,Georgia,serif;--display:"Syne","Arial Black",system-ui,sans-serif;--mono:"DM Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;--signal:var(--ember)}
+  :root[data-theme="paper"]{--ink:#0d0b0e;--ink-2:rgba(13,11,14,.68);--ink-3:rgba(13,11,14,.4);--on-ink:#f1eadb;--ember:#e2500a;--amber:#b9650c;--violet:#6a2fd0;--fg:#16121a;--dim:#5a5366;--panel:rgba(236,229,214,.97);--accent:#6a2fd0}
+  #figure{position:fixed;inset:0;pointer-events:none;z-index:2}
+  #figure>*{pointer-events:auto}
+  #conduits{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .node{position:absolute;z-index:2;background:none;border:0;padding:0;color:var(--ink);text-align:left;cursor:pointer}
+  .node .num{position:absolute;left:-18px;top:-16px;font:italic 400 19px/1 var(--serif);color:var(--ink)}
+  .node .cap{display:block;margin-top:7px;font:500 9.5px/1.3 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+  .node .cap b{color:var(--ink);font-weight:500}
+  .node:focus-visible{outline:2px solid var(--ember);outline-offset:8px;border-radius:12px}
+  .node.is-pinged{animation:ping .9s cubic-bezier(.3,1.8,.5,1)}
+  @keyframes ping{0%{transform:scale(1)}30%{transform:scale(1.18) rotate(-3deg)}100%{transform:scale(1)}}
+  .n-src{left:4.2%;top:21%}.n-fml{left:3.6%;top:45%}.n-mat{left:4.4%;top:66%}.n-dir{left:4%;top:9%}.n-arc{right:calc(var(--panelW,0px) + 3%);bottom:calc(92px + env(safe-area-inset-bottom))}
+  .well{position:relative;display:block;width:clamp(64px,5.6vw,88px);aspect-ratio:1;border-radius:50%;background:var(--ink);color:var(--on-ink);display:grid;place-items:center;font:italic 400 28px/1 var(--serif)}
+  .well::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1.5px dashed var(--ink-2);animation:spin 40s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .well.is-live{background:var(--ember);animation:breathe 2.4s ease-in-out infinite}
+  @keyframes breathe{50%{transform:scale(1.06)}}
+  .blob{display:inline-grid;place-items:center;min-height:44px;padding:0 24px;font:800 12px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--on-ink)}
+  .blob i{font:italic 400 18px/1 var(--serif);text-transform:none;letter-spacing:0}
+  .chip{display:inline-block;padding:11px 16px;background:var(--ink);color:var(--on-ink);border-radius:3px;font:500 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;transform:rotate(-.9deg);transition:transform .3s cubic-bezier(.3,1.8,.5,1)}
+  .node:hover .chip{transform:rotate(.6deg) scale(1.06)}
+  .n-dir .blob.is-on{color:#0b090c}.n-dir .dot{position:absolute;right:-4px;top:-4px;width:12px;height:12px;border-radius:50%;background:var(--bg,#000);border:2px solid var(--ink)}
+  .n-dir.is-live .dot{background:var(--ember);border-color:#000;box-shadow:0 0 10px var(--ember)}
+  .legend{position:fixed;left:calc(18px + env(safe-area-inset-left));bottom:calc(20px + env(safe-area-inset-bottom));margin:0;padding:0;list-style:none;font:500 9.5px/1.85 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);z-index:2;display:none}
+  .legend li{cursor:pointer;white-space:nowrap;transition:color .2s,transform .3s}.legend li:hover{color:var(--ink);transform:translateX(5px)}
+  .legend i{font:italic 400 14px/1 var(--serif);color:var(--ink);margin-right:4px;text-transform:none}.legend b{display:block;font:italic 400 14px/1 var(--serif);text-transform:none;letter-spacing:0;color:var(--ink);margin-bottom:5px}
+  .shard{display:block;width:46px;height:46px;border-radius:50%;background:#15131d center/cover;border:2px solid var(--ink);margin:0 0 -10px auto;padding:0;cursor:pointer;position:relative;transition:transform .3s cubic-bezier(.3,1.8,.5,1)}
+  .shard:nth-child(3n){border-radius:46% 54% 50% 50%/55% 45% 55% 45%}.shard:hover{transform:scale(1.14)}.shard.cur{border-color:var(--ember)}
+  /* organ buttons (goo) */
+  .organ{position:relative;isolation:isolate;display:inline-grid;place-items:center;min-height:34px;padding:0 18px;color:var(--on-ink);--fill:var(--ink);transition:transform .3s cubic-bezier(.3,2.2,.5,1)}
+  .organ:active{transform:scale(.9)}
+  .organ[data-shape="circle"]{width:40px;padding:0}
+  .organ--quiet{color:var(--ink)}.organ--quiet .organ__goo{opacity:.22}
+  .organ.on,.organ.is-on{--fill:var(--ember);color:#0b090c}
+  .organ.live{--fill:var(--ember);color:#0b090c}
+  .organ__goo{position:absolute;z-index:-1;pointer-events:none;overflow:visible}
+  .organ__goo *{fill:var(--fill);transition:fill .3s}
+  .spore{position:fixed;z-index:50;width:7px;height:7px;border-radius:50%;background:var(--ember);pointer-events:none}
+  /* the instrument bar: organs + the fractal core */
+  #strip{background:none!important;border:0!important;box-shadow:none;gap:10px;padding:8px 14px}
+  #strip button.organ{background:none;border:0;box-shadow:none!important;text-transform:uppercase;font:500 10.5px/1 var(--mono);letter-spacing:.16em;min-width:0;min-height:36px;padding:0 15px;color:var(--ink)}
+  #strip button.organ .organ__goo{opacity:.2}
+  #strip button.organ.on,#strip button.organ.live{color:#0b090c}#strip button.organ.on .organ__goo,#strip button.organ.live .organ__goo{opacity:1}
+  #strip .sep{display:none}
+  #sFreeze{position:relative;width:96px;height:96px;margin:-30px 4px -2px;border-radius:50%;padding:0;background:none;border:0;display:grid;place-items:center;perspective:600px;transition:transform .5s cubic-bezier(.3,1.8,.5,1)}
+  #sFreeze:hover{transform:scale(1.07)}#sFreeze:active{transform:scale(.94)}
+  #sFreeze canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;box-shadow:0 0 0 2px var(--ink),0 0 40px color-mix(in srgb,var(--ember) 50%,transparent)}
+  #sFreeze .lbl{position:relative;font:800 11px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:#fff4e6;text-shadow:0 0 12px #000,0 0 3px #000}
+  #sFreeze.on canvas{filter:saturate(.35) brightness(.8)}
+  .orbit{position:absolute;inset:-17%;border-radius:50%;border:1.5px solid var(--ink-2);pointer-events:none;animation:orbit var(--t,9s) linear infinite}
+  .orbit i{position:absolute;top:50%;left:-6px;width:12px;height:12px;margin-top:-6px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#fff3df,var(--amber) 28%,var(--ember) 55%,#3a0f00 100%);box-shadow:0 0 10px var(--ember)}
+  .orbit--a{--rx:68deg;--ry:12deg;--t:8s}.orbit--b{--rx:74deg;--ry:-38deg;--t:13s;inset:-28%}
+  @keyframes orbit{from{transform:rotateY(var(--ry)) rotateX(var(--rx)) rotateZ(0)}to{transform:rotateY(var(--ry)) rotateX(var(--rx)) rotateZ(360deg)}}
+  #sFreeze:hover .orbit{animation-duration:calc(var(--t)/3.5)}
+  #fpBg{position:absolute;inset:0;width:100%;height:100%;z-index:-1}
+  #start{overflow:hidden}
+  @media (min-width:901px) and (pointer:fine){ .legend{display:block} body.panelOpen{--panelW:340px} body:not(.panelOpen) .legend{display:block} }
+  @media (max-width:900px),(pointer:coarse){ #figure{display:none} #strip{gap:2px;padding:6px 4px calc(8px + env(safe-area-inset-bottom));background:var(--panel)!important;border-top:1px solid var(--hair)!important}
+    #strip button.organ{padding:0 8px;min-height:40px;font-size:9.5px;letter-spacing:.08em} #sFreeze{width:72px;height:72px;margin:-26px 0 -2px} #sFreeze .lbl{font-size:9px} }
+  body.clean #figure,body.clean .legend{opacity:0;pointer-events:none}
+  @media (prefers-reduced-motion:reduce){.well,.well::after,.orbit,.node.is-pinged{animation:none!important}}
+</style>
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -256,15 +325,24 @@
   <p style="margin:14px 0 0;font-size:11px;color:var(--dim)">drag &amp; drop an audio file anytime</p>
 </div></div>
 
+<div id="figure">
+  <canvas id="conduits"></canvas>
+  <button class="node n-dir" id="nDir" data-open="Performance" title="Wake or rest the Director (auto camera, looks, kaleidoscope)"><span class="num">1</span><span class="dot"></span><span class="blob organ" data-shape="pill" id="nDirBody">◈ Director</span><span class="cap" id="capDir">resting</span></button>
+  <button class="node n-src" id="nSrc" data-open="Audio" title="Audio source: import audio or video, mic, tab, demo"><span class="num">2</span><span class="well" id="wellSrc">♪</span><span class="cap" id="capSrc">source · <b>silence</b></span></button>
+  <button class="node n-fml" id="nFml" data-open="Fractal" title="Choose the fractal"><span class="num">3</span><span class="blob organ" data-shape="pill" id="nFmlBody"><i id="fmlName">Mandelbulb</i></span><span class="cap">formula</span></button>
+  <button class="node n-mat" id="nMat" data-open="Theme" title="Theme and material"><span class="num">4</span><span class="chip" id="matChip">Neon</span><span class="cap">matter</span></button>
+  <div class="node n-arc" id="nArc" role="group" aria-label="Recent specimens"><span class="num" style="left:auto;right:-4px;top:-22px">6</span><div id="shards"></div><span class="cap" style="text-align:right;margin-left:auto">archive · <b id="capArc">0</b></span></div>
+</div>
+<ol class="legend" id="legend"><b>Fig. FP·I</b>
+  <li data-n="nDir"><i>1</i>director <span>auto camera, looks</span></li><li data-n="nSrc"><i>2</i>source <span>audio / video / mic</span></li><li data-n="nFml"><i>3</i>formula <span>the fractal</span></li><li data-n="nMat"><i>4</i>matter <span>theme, material</span></li><li data-n="sFreeze"><i>5</i>core <span>freeze · resume</span></li><li data-n="nArc"><i>6</i>archive <span>your specimens</span></li></ol>
 <nav id="strip" aria-label="Workspaces and transport">
-  <button id="sFreeze" title="Freeze / resume (Z)" aria-label="Freeze or resume">❄</button>
-  <button id="sRec" title="Record a structured take (movement as data)" aria-label="Record take">●</button>
-  <button id="sPlay" title="Play the saved take" aria-label="Play take">▶</button>
-  <button id="sCap" title="Capture a specimen of exactly what you see" aria-label="Capture specimen">💎</button>
+  <button id="sRec" class="organ" data-shape="pill" title="Record a structured take (movement as data)" aria-label="Record take">● rec</button>
+  <button id="sPlay" class="organ" data-shape="pill" title="Play the saved take" aria-label="Play take"><span id="sPlayLbl">▶</span></button>
+  <button id="sFreeze" title="Freeze / resume (Z)" aria-label="Freeze or resume"><canvas id="coreCv" width="192" height="192"></canvas><span class="orbit orbit--a"><i></i></span><span class="orbit orbit--b"><i></i></span><span class="lbl" id="coreLbl">freeze</span></button>
+  <button id="sCap" class="organ" data-shape="pill" title="Capture a specimen of exactly what you see" aria-label="Capture specimen">◆ capture</button>
   <span class="sep"></span>
-  <button class="ws" data-ws="explore">Explore</button><button class="ws" data-ws="sculpt">Sculpt</button><button class="ws" data-ws="perform">Perform</button><button class="ws" data-ws="forge">Forge</button>
-  <span class="sep"></span>
-  <button id="sClean" title="Clean view (H): hide every control, keep your work" aria-label="Clean view">◻</button>
+  <button class="ws organ" data-shape="pill" data-ws="explore">Explore</button><button class="ws organ" data-shape="pill" data-ws="sculpt">Sculpt</button><button class="ws organ" data-shape="pill" data-ws="perform">Perform</button><button class="ws organ" data-shape="pill" data-ws="forge">Forge</button>
+  <button id="sClean" class="organ" data-shape="circle" title="Clean view (H): hide every control, keep your work" aria-label="Clean view">◻</button>
 </nav>
 <button id="cleanBack" aria-label="Show controls">✕</button>
 <div id="ui">
@@ -3011,7 +3089,7 @@ function chromeTick(){
   const c=controlSummary(); const el=$('ctl'); if(el.textContent!==c.text) el.textContent=c.text; el.classList.toggle('amber',c.amber);
   const sp=loadedSpec&&specimens.find(x=>x.id===loadedSpec.id); $('idSpec').textContent=sp?`${specCode(sp)} · ${sp.name}`:`temporary look · ${TYPES[shown].name}`;
   const dirty=!!(sp&&stateDiffers(exportState(),loadedSpec.state)); $('idDirty').hidden=!dirty;
-  $('sFreeze').classList.toggle('on',frozen); $('sRec').classList.toggle('live',!!takeRec); $('sPlay').classList.toggle('live',!!playing); $('sPlay').textContent=playing?'■':'▶';
+  $('sFreeze').classList.toggle('on',frozen); $('sRec').classList.toggle('live',!!takeRec); $('sPlay').classList.toggle('live',!!playing); $('sPlayLbl').textContent=playing?'■':'▶';
   document.querySelectorAll('#strip .ws').forEach(b=>b.classList.toggle('on',b.dataset.ws===workspace&&!$('ui').classList.contains('hidden')));
   document.querySelectorAll('#modePills span').forEach(p=>{ const m=p.dataset.m; p.classList.toggle('on',m==='play'?!!playing:m==='rectake'?!!takeRec:m==='recvid'?!!rec:(!playing&&!takeRec&&!rec)); });
   const cmp=$('bCompare'); if(cmp) cmp.disabled=!sp;
@@ -3022,6 +3100,85 @@ function chromeTick(){
 const roFmt=(el)=>{ const v=+el.value, st=+el.step||1; const d=st>=1?0:(st>=0.1?1:(st>=0.01?2:3)); return v.toFixed(d); };
 const readouts=[]; document.querySelectorAll('#ui input[type=range]').forEach(el=>{ if(el.id==='takeScrub') return; const o=document.createElement('output'); o.className='ro'; el.after(o); readouts.push([el,o]); const up=()=>{ o.textContent=roFmt(el); }; el.addEventListener('input',up); up(); });
 setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEach(([el,o])=>{ const t=roFmt(el); if(o.textContent!==t) o.textContent=t; }); }catch(e){ console.warn('chrome',e); } },250);
+
+// ═════════════════════ FIGURE FP·I (engine from the U4 Engine kit, adapted to a single file) ═════════════════════
+(function figureLayer(){
+  const NS='http://www.w3.org/2000/svg', PAD=24, still=matchMedia('(prefers-reduced-motion: reduce)').matches, all=new Set(); let uid=0;
+  const edge=(o,s)=>{ const {w,h}=o; if(o.shape==='circle'){ const a=s*Math.PI*2; return [w/2+Math.cos(a)*w/2,h/2+Math.sin(a)*h/2,Math.cos(a),Math.sin(a)]; } let d=s*2*(w+h); if(d<w) return [d,0,0,-1]; if((d-=w)<h) return [w,d,1,0]; if((d-=h)<w) return [w-d,h,0,1]; return [0,h-(d-w),-1,0]; };
+  function organ(el){ if(el._organ) return; const shape=el.dataset.shape||'pill', svg=document.createElementNS(NS,'svg'); svg.classList.add('organ__goo'); const id='goo'+(uid++);
+    svg.innerHTML=`<defs><filter id="${id}" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceGraphic" stdDeviation="5"/><feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -10"/></filter></defs><g filter="url(#${id})"><rect/></g>`;
+    el.prepend(svg); el.classList.add('organ'); const g=svg.querySelector('g'), rect=svg.querySelector('rect'); const o={el,svg,rect,shape,w:0,h:0,sats:[],e:0.18,kick:0,hover:false,px:0,py:0,tx:0,ty:0,pr:0};
+    o.pointer=document.createElementNS(NS,'circle'); g.append(o.pointer);
+    const layout=()=>{ const w=el.offsetWidth,h=el.offsetHeight; if(!w||(w===o.w&&h===o.h)) return; o.w=w;o.h=h; Object.assign(svg.style,{left:-PAD+'px',top:-PAD+'px',width:(w+PAD*2)+'px',height:(h+PAD*2)+'px'}); svg.setAttribute('viewBox',`${-PAD} ${-PAD} ${w+PAD*2} ${h+PAD*2}`);
+      const rx=shape==='circle'?Math.min(w,h)/2:shape==='square'?9:h/2; for(const [k,v] of Object.entries({x:0,y:0,width:w,height:h,rx})) rect.setAttribute(k,v);
+      const n=still?0:Math.max(4,Math.min(9,Math.round((w+h)/30))); while(o.sats.length<n){ const c=document.createElementNS(NS,'circle'); g.append(c); o.sats.push({c,s:Math.random(),v:(0.018+Math.random()*0.03)*(Math.random()<0.5?-1:1),r:5+Math.random()*Math.min(7,h/5),ph:Math.random()*6.28}); } };
+    new ResizeObserver(layout).observe(el); layout();
+    el.addEventListener('pointerenter',()=>{o.hover=true;}); el.addEventListener('pointerleave',()=>{o.hover=false;});
+    el.addEventListener('pointermove',ev=>{ const b=el.getBoundingClientRect(); o.tx=Math.max(-16,Math.min(o.w+16,(ev.clientX-b.left)*(o.w/(b.width||1)))); o.ty=Math.max(-16,Math.min(o.h+16,(ev.clientY-b.top)*(o.h/(b.height||1)))); });
+    el.addEventListener('pointerdown',ev=>{ o.kick=1; burst(ev.clientX,ev.clientY); }); el._organ=o; all.add(o); }
+  function burst(x,y){ if(still) return; for(let i=0;i<7;i++){ const sp=document.createElement('i'); sp.className='spore'; document.body.append(sp); const a=Math.random()*6.28,d=30+Math.random()*55; sp.animate([{transform:`translate(${x}px,${y}px) scale(1)`,opacity:1},{transform:`translate(${x+Math.cos(a)*d}px,${y+Math.sin(a)*d+18}px) scale(0)`,opacity:0}],{duration:450+Math.random()*300,easing:'cubic-bezier(.1,.7,.3,1)'}).onfinish=()=>sp.remove(); } }
+  let lastOrg=0; function organTick(now){ requestAnimationFrame(organTick); if(document.hidden||now-lastOrg<30) return; lastOrg=now; const t=now/1000;
+    for(const o of all){ if(!o.el.isConnected){ all.delete(o); continue; } if(!o.w||o.el.offsetParent===null) continue; o.e+=((o.hover?1:0.18)-o.e)*0.12; o.kick*=0.9;
+      for(const sa of o.sats){ sa.s=(sa.s+sa.v*(0.06+o.e*0.22+o.kick*0.5)+1)%1; const [x,y,nx,ny]=edge(o,sa.s); const r=sa.r*(0.7+0.45*o.e+0.5*o.kick); const out=-r*0.55+r*(0.35*o.e+1.3*o.kick)+Math.sin(t*2.2+sa.ph)*2.2; sa.c.setAttribute('cx',x+nx*out); sa.c.setAttribute('cy',y+ny*out); sa.c.setAttribute('r',r); }
+      o.px+=(o.tx-o.px)*0.22; o.py+=(o.ty-o.py)*0.22; o.pr+=((o.hover?11:0)-o.pr)*0.18; o.pointer.setAttribute('cx',o.px); o.pointer.setAttribute('cy',o.py); o.pointer.setAttribute('r',Math.max(0,o.pr)); } }
+  if(!still) requestAnimationFrame(organTick);
+  document.querySelectorAll('#strip button:not(#sFreeze), #figure .blob').forEach(organ);
+  window.FPOrgan=organ;
+
+  // ── the fractal core (freeze button face): a breathing Julia set; heat follows the music ──
+  const cc=$('coreCv'), cg=cc&&cc.getContext('webgl',{antialias:false,alpha:false}); let heat=0;
+  if(cg){ const mk=(t,src)=>{ const sh=cg.createShader(t); cg.shaderSource(sh,src); cg.compileShader(sh); return sh; }; const pr=cg.createProgram();
+    cg.attachShader(pr,mk(cg.VERTEX_SHADER,'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}'));
+    cg.attachShader(pr,mk(cg.FRAGMENT_SHADER,`precision highp float;uniform vec2 r;uniform float t;uniform float heat;void main(){vec2 uv=(gl_FragCoord.xy/r-.5)*2.;float a=t*(.22+heat*.9);vec2 z=uv*(1.3-.35*heat)*mat2(cos(a*.3),-sin(a*.3),sin(a*.3),cos(a*.3));vec2 c=vec2(-.78+.09*cos(a),.15+.11*sin(a*1.3));float it=0.;for(int i=0;i<64;i++){z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c;if(dot(z,z)>16.)break;it+=1.;}float s=sqrt(it/64.);vec3 col=mix(vec3(.03,.0,.07),vec3(1.,.40,.08),s);col=mix(col,vec3(1.,.92,.72),pow(s,4.));col+=vec3(.42,.18,.95)*pow(1.-s,3.)*(.3+.5*heat);col*=1.-.55*pow(length(uv),3.);gl_FragColor=vec4(col,1.);}`));
+    cg.linkProgram(pr); if(cg.getProgramParameter(pr,cg.LINK_STATUS)){ cg.useProgram(pr); cg.bindBuffer(cg.ARRAY_BUFFER,cg.createBuffer()); cg.bufferData(cg.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),cg.STATIC_DRAW); cg.enableVertexAttribArray(0); cg.vertexAttribPointer(0,2,cg.FLOAT,false,0,0); cg.viewport(0,0,192,192);
+      const L=n=>cg.getUniformLocation(pr,n); const t0=performance.now(); let last=0;
+      const coreFrame=now=>{ requestAnimationFrame(coreFrame); if(document.hidden||cc.offsetParent===null||now-last<66) return; last=now;   // ~15 fps is plenty for a 96px button
+        const tgt=frozen?0:Math.min(1,(A.live?0.35+A.energy*0.9:0.12)); heat+=(tgt-heat)*0.2; cg.uniform2f(L('r'),192,192); cg.uniform1f(L('t'),still?20:(now-t0)/1000); cg.uniform1f(L('heat'),heat); cg.drawArrays(cg.TRIANGLES,0,3); };
+      requestAnimationFrame(coreFrame); } }
+
+  // ── node behaviour ──
+  const openSection=(h2)=>{ const secs=[...document.querySelectorAll('#ui .wsec')]; const sec=secs.find(x=>x.querySelector('h2')&&x.querySelector('h2').textContent.trim().replace(/^§\d+\s*/,'')===h2); if(!sec) return;
+    const wss=(sec.dataset.ws||'explore').split(' '); const ws=wss.includes(workspace)?workspace:wss[0]; setWorkspace(ws); $('ui').classList.remove('hidden'); sec.classList.remove('collapsed'); setTimeout(()=>sec.scrollIntoView({block:'start',behavior:still?'auto':'smooth'}),30); };
+  const ping=el=>{ el.classList.remove('is-pinged'); void el.offsetWidth; el.classList.add('is-pinged'); setTimeout(()=>el.classList.remove('is-pinged'),950); };
+  document.querySelectorAll('.node[data-open]').forEach(n=>n.addEventListener('click',()=>{ if(n.id==='nDir'){ const c=$('cDirector'); c.checked=!c.checked; c.dispatchEvent(new Event('change')); save(); toast(c.checked?'◈ The Director is awake: auto camera, looks and kaleidoscope':'The Director rests',2000); } openSection(n.dataset.open); }));
+  document.querySelectorAll('#legend li').forEach(li=>li.addEventListener('click',()=>{ const el=$(li.dataset.n); if(el){ ping(el); if(el.focus) el.focus(); } }));
+  $('nArc').addEventListener('click',e=>{ if(!e.target.closest('.shard')) openSection('Specimens'); });
+  // captions and live states
+  window.figureTick=function(){ const live=!!(A.live&&!frozen), src=demoTimer?'demo beat':(mediaInfo&&lastFileName?lastFileName.replace(/\.[^.]+$/,'').slice(0,18):(mediaStream?'live input':(A.live?'audio':'silence')));
+    $('capSrc').innerHTML='source · <b></b>'; $('capSrc').querySelector('b').textContent=src; $('wellSrc').classList.toggle('is-live',live);
+    $('fmlName').textContent=TYPES[shown].name; $('matChip').textContent=(THEMES[theme]||{}).name||'';
+    const dOn=$('cDirector').checked||$('cShow').checked; $('nDir').classList.toggle('is-live',dOn&&!frozen); $('nDirBody').classList.toggle('is-on',dOn); $('capDir').textContent=$('cShow').checked?'show mode':(dOn?(frozen?'paused · frozen':'conducting'):'resting');
+    $('coreLbl').textContent=frozen?'resume':'freeze'; $('capArc').textContent=specimens.length;
+    const box=$('shards'); const want=specimens.slice(0,4).map(x=>x.id+(x.thumb?1:0)+(loadedSpec&&loadedSpec.id===x.id?'c':'')).join('|'); if(box._k!==want){ box._k=want; box.innerHTML=''; specimens.slice(0,4).forEach(sp=>{ const b=document.createElement('button'); b.className='shard'+(loadedSpec&&loadedSpec.id===sp.id?' cur':''); if(sp.thumb) b.style.backgroundImage='url('+sp.thumb+')'; b.title=sp.name; b.onclick=ev=>{ ev.stopPropagation(); selectSpecimen(sp.id); restoreSpecimen(sp); }; box.appendChild(b); }); } };
+  setInterval(()=>{ if(!document.hidden) try{ figureTick(); }catch(e){} },300);
+})();
+
+// ── conduits: calligraphic ribbons recomputed from live DOM boxes; pulses travel only while music really flows ──
+(function conduits(){
+  const cv=$('conduits'); if(!cv) return; const ctx=cv.getContext('2d'), still=matchMedia('(prefers-reduced-motion: reduce)').matches; let W=0,H=0,ink='#efe6d6',ember='#ff6a1a',n=0,last=0;
+  const DIR={l:[-1,0],r:[1,0],t:[0,-1],b:[0,1]};
+  const box=el=>{ const r=el.getBoundingClientRect(); return {x:r.left,y:r.top,w:r.width,h:r.height}; };
+  const at=(b,side,f=0.5)=>{ const d=DIR[side]; const p=side==='l'?[b.x,b.y+b.h*f]:side==='r'?[b.x+b.w,b.y+b.h*f]:side==='t'?[b.x+b.w*f,b.y]:[b.x+b.w*f,b.y+b.h]; return {x:p[0],y:p[1],dx:d[0],dy:d[1]}; };
+  function ribbon(a,b,w0,wm,w1,t,seed,alpha=1){ const dist=Math.hypot(b.x-a.x,b.y-a.y),k=dist*0.46,wob=still?0:Math.sin(t*0.55+seed)*dist*0.035;
+    const c0={x:a.x+a.dx*k-a.dy*wob,y:a.y+a.dy*k+a.dx*wob}, c1={x:b.x+b.dx*k+b.dy*wob,y:b.y+b.dy*k-b.dx*wob}; const N=30,L=[],R=[],mid=[];
+    for(let i=0;i<=N;i++){ const u=i/N,v=1-u; const x=v*v*v*a.x+3*v*v*u*c0.x+3*v*u*u*c1.x+u*u*u*b.x, y=v*v*v*a.y+3*v*v*u*c0.y+3*v*u*u*c1.y+u*u*u*b.y;
+      let tx=3*v*v*(c0.x-a.x)+6*v*u*(c1.x-c0.x)+3*u*u*(b.x-c1.x), ty=3*v*v*(c0.y-a.y)+6*v*u*(c1.y-c0.y)+3*u*u*(b.y-c1.y); const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl;
+      const w=(wm+(w0-wm)*Math.pow(v,2.6)+(w1-wm)*Math.pow(u,2.6))/2; L.push([x-ty*w,y+tx*w]); R.push([x+ty*w,y-tx*w]); mid.push([x,y]); }
+    ctx.globalAlpha=alpha; ctx.beginPath(); ctx.moveTo(L[0][0],L[0][1]); for(const p of L) ctx.lineTo(p[0],p[1]); for(let i=N;i>=0;i--) ctx.lineTo(R[i][0],R[i][1]); ctx.closePath(); ctx.fill(); ctx.globalAlpha=1; return mid; }
+  function pulses(path,t,speed,count,size=3){ if(still) return; ctx.save(); ctx.fillStyle=ember; ctx.shadowColor=ember; ctx.shadowBlur=14; for(let i=0;i<count;i++){ const u=((t*speed+i/count)%1)*(path.length-1),j=Math.floor(u),f=u-j,p=path[j],q=path[Math.min(j+1,path.length-1)]; ctx.beginPath(); ctx.arc(p[0]+(q[0]-p[0])*f,p[1]+(q[1]-p[1])*f,size,0,6.283); ctx.fill(); } ctx.restore(); }
+  function frame(now){ requestAnimationFrame(frame); if(document.hidden||cv.offsetParent===null||now-last<33) return; last=now;
+    const d=1, w=innerWidth,h=innerHeight; if(w!==W||h!==H){ W=w;H=h; cv.width=w*d; cv.height=h*d; }
+    if(n++%30===0){ const cs=getComputedStyle(document.documentElement); ink=cs.getPropertyValue('--ink').trim()||ink; ember=cs.getPropertyValue('--ember').trim()||ember; }
+    const t=now/1000; ctx.clearRect(0,0,W,H); ctx.fillStyle=ink; const live=!!(A.live&&!frozen)||playing;
+    const src=box($('wellSrc')),fml=box($('nFmlBody')),mat=box($('matChip')),dir=box($('nDirBody')),core=box($('sFreeze')),arc=box($('nArc'));
+    ribbon(at(dir,'b'),at(src,'t'),9,2,7,t,1,0.7);
+    const a1=ribbon(at(src,'b'),at(fml,'t'),12,3,9,t,2), a2=ribbon(at(fml,'b'),at(mat,'t'),9,2.5,10,t,3);
+    const a3=ribbon(at(mat,'b'),at(core,'l',0.5),10,2,15,t,4);                 // matter flows into the core
+    const a4=ribbon(at(core,'r'),at({x:arc.x,y:arc.y+arc.h,w:arc.w,h:0},'b',0.8),14,2.5,8,t,5,0.8);   // the core feeds the archive
+    if($('cDirector').checked||$('cShow').checked){ ctx.setLineDash([3,6]); ctx.strokeStyle=ink; ctx.globalAlpha=0.4; ctx.beginPath(); const f=at(fml,'r'); ctx.moveTo(at(dir,'r').x,at(dir,'r').y); ctx.quadraticCurveTo(f.x+70,at(dir,'r').y+60,f.x,f.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1; }
+    if(live){ pulses(a1,t,0.45,2); pulses(a2,t+0.3,0.45,2); pulses(a3,t+0.6,0.4,3,3.6); pulses(a4,t,0.3,2,3); } else pulses(a3,t,0.07,1,2.4); }
+  requestAnimationFrame(frame);
+})();
 // panel + strip behaviour
 const syncPanel=()=>document.body.classList.toggle('panelOpen',!$('ui').classList.contains('hidden'));
 new MutationObserver(syncPanel).observe($('ui'),{attributes:true,attributeFilter:['class']}); syncPanel();
