@@ -169,4 +169,14 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G12 Ref 10 applies the exact demon-faces state',Object.entries(want).every(([k,v])=>Math.abs(r.a[k]-v)<0.002),JSON.stringify(r.a));
     rec('G12 shipped demon-faces specimen imports and restores the same state',r.n===1&&r.added===1&&Object.entries(want).every(([k,v])=>Math.abs(r.b[k]-v)<0.002),JSON.stringify(r.b));
     rec('G12 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G13: U4 fractal logotype (type 21) ──
+  { const p=await page(b,'scale=0.1&q=0&type=0'); await p.evaluate(()=>document.getElementById('bSilent').click());
+    const r=await p.evaluate(async()=>{ const sm=$('sTrans').value; $('sTrans').value='cut'; const ref=REFS.find(x=>/U4 liquid gold/.test(x.n)); applyState(ref.s); $('sTrans').value=sm; await new Promise(r=>setTimeout(r,1200));
+      const grab=async(qw)=>{ pins[21]=pins[21]||{}; pins[21].qw=qw; await new Promise(r=>setTimeout(r,500)); const o=await renderStill({W:480,H:270,ss:1,transparent:true,floor:'none'}); if(o.error) return {err:o.error}; const d=o.canvas.getContext('2d').getImageData(0,0,480,270).data; let minx=1e9,maxx=-1,miny=1e9,maxy=-1,n=0; for(let y=0;y<270;y++) for(let x=0;x<480;x++){ if(d[(y*480+x)*4+3]>128){ n++; if(x<minx)minx=x; if(x>maxx)maxx=x; if(y<miny)miny=y; if(y>maxy)maxy=y; } } return {n,w:maxx-minx,h:maxy-miny,sum:d.reduce((a,v,i)=>a+(i%4<3?v:0),0)}; };
+      const smooth=await grab(0), relief=await grab(0.6), carved=await grab(-0.8);
+      return {type:shown,name:TYPES[21].name,smooth,relief,carved}; });
+    rec('G13 logotype is selectable and renders a solid wider than tall',r.type===21&&!r.smooth.err&&r.smooth.n>5000&&r.smooth.w/r.smooth.h>1.4,JSON.stringify(r.smooth));
+    rec('G13 fractal skin changes the surface; carving removes material, relief keeps the letters whole',r.relief.sum!==r.smooth.sum&&r.carved.n<r.smooth.n&&r.relief.n>r.smooth.n*0.85&&r.relief.w/r.relief.h>1.4,JSON.stringify({smooth:r.smooth.n,relief:r.relief.n,carved:r.carved.n}));
+    rec('G13 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };
