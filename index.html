@@ -588,8 +588,9 @@ float deLogo(vec3 p){
   float dU = sdSeg3(p, vec3(-1.06,0.58,0.0), vec3(-1.06,-0.12,0.0), rs);
   dU = sminK(dU, sdSeg3(p, vec3(-0.30,0.58,0.0), vec3(-0.30,-0.12,0.0), rs), k);
   vec2 q = p.xy - c.xy;
-  float ring = length(vec2(length(q)-0.38, p.z)) - rs;
-  dU = sminK(dU, (p.y<c.y) ? ring : 1e3, k);
+  float ring = (q.y<0.0) ? length(vec2(length(q)-0.38, p.z)) - rs                          // lower half-torus ...
+                         : length(vec3(q - vec2(sign(q.x)*0.38, 0.0), p.z)) - rs;           // ... ending in the stem caps, so there is no seam
+  dU = sminK(dU, ring, k);
   dU = sminK(dU, length(p-vec3(-1.06,0.62,0.0))-rs*1.45, k);
   dU = sminK(dU, length(p-vec3(-0.30,0.62,0.0))-rs*1.45, k);
   dU = sminK(dU, length(p-vec3(-0.68,-0.80,0.0))-rs*0.9, k*1.5);
@@ -601,7 +602,9 @@ float deLogo(vec3 p){
   d4 = sminK(d4, length(p-vec3(0.76,-0.70,0.0))-rs*1.5, k);
   float dL = sminK(dU, d4, k*0.8);
   float sc = max(gPower, 0.5);
-  float dF = deBox(p*sc, 0)/sc;                      // sets gTrap (orbit trap) for colouring
+  vec3 ps = p*sc, Lc = vec3(1.7);
+  ps = abs(mod(ps+Lc, 4.0*Lc) - 2.0*Lc) - Lc;       // mirror-tile the Mandelbox so the fractal covers the whole logotype
+  float dF = deBox(ps, 0)/sc;                        // sets gTrap (orbit trap) for colouring
   float sk = clamp(gQW,-1.0,1.0);
   if(sk>=0.0){ float h = 1.0 - clamp(dF/0.12,0.0,1.0); return dL - 0.11*sk*h*h; }      // relief: fractal structure swells out of the surface, letters stay whole
   return max(dL, dF - (1.0+sk)*0.35);                                                     // carve: the Mandelbox eats into the letters
