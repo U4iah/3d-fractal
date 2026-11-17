@@ -241,12 +241,13 @@
   #conduits{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   .node{position:absolute;z-index:2;background:none;border:0;padding:0;color:var(--ink);text-align:left;cursor:pointer}
   .node .num{position:absolute;left:-18px;top:-16px;font:italic 400 19px/1 var(--serif);color:var(--ink)}
-  .node .cap{display:block;margin-top:7px;font:500 9.5px/1.3 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+  .node .cap{position:absolute;left:calc(100% + 16px);top:50%;transform:translateY(-50%);display:block;margin:0;font:500 9.5px/1.3 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}
   .node .cap b{color:var(--ink);font-weight:500}
   .node:focus-visible{outline:2px solid var(--ember);outline-offset:8px;border-radius:12px}
   .node.is-pinged{animation:ping .9s cubic-bezier(.3,1.8,.5,1)}
   @keyframes ping{0%{transform:scale(1)}30%{transform:scale(1.18) rotate(-3deg)}100%{transform:scale(1)}}
   .n-src{left:4.2%;top:21%}.n-fml{left:3.6%;top:45%}.n-mat{left:4.4%;top:66%}.n-dir{left:4%;top:9%}.n-arc{right:calc(var(--panelW,0px) + 3%);bottom:calc(92px + env(safe-area-inset-bottom))}
+  .n-arc .cap{left:auto;right:calc(100% + 14px)}
   .well{position:relative;display:block;width:clamp(64px,5.6vw,88px);aspect-ratio:1;border-radius:50%;background:var(--ink);color:var(--on-ink);display:grid;place-items:center;font:italic 400 28px/1 var(--serif)}
   .well::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1.5px dashed var(--ink-2);animation:spin 40s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -258,8 +259,8 @@
   .node:hover .chip{transform:rotate(.6deg) scale(1.06)}
   .n-dir .blob.is-on{color:#0b090c}.n-dir .dot{position:absolute;right:-4px;top:-4px;width:12px;height:12px;border-radius:50%;background:var(--bg,#000);border:2px solid var(--ink)}
   .n-dir.is-live .dot{background:var(--ember);border-color:#000;box-shadow:0 0 10px var(--ember)}
-  .legend{position:fixed;left:calc(18px + env(safe-area-inset-left));bottom:calc(20px + env(safe-area-inset-bottom));margin:0;padding:0;list-style:none;font:500 9.5px/1.85 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);z-index:2;display:none}
-  .legend li{cursor:pointer;white-space:nowrap;transition:color .2s,transform .3s}.legend li:hover{color:var(--ink);transform:translateX(5px)}
+  .legend{position:fixed;right:calc(var(--panelW,0px) + 20px);top:78px;text-align:right;margin:0;padding:0;list-style:none;font:500 9.5px/1.85 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);z-index:2;display:none}
+  .legend li{cursor:pointer;white-space:nowrap;transition:color .2s,transform .3s}.legend li:hover{color:var(--ink);transform:translateX(-5px)}
   .legend i{font:italic 400 14px/1 var(--serif);color:var(--ink);margin-right:4px;text-transform:none}.legend b{display:block;font:italic 400 14px/1 var(--serif);text-transform:none;letter-spacing:0;color:var(--ink);margin-bottom:5px}
   .shard{display:block;width:46px;height:46px;border-radius:50%;background:#15131d center/cover;border:2px solid var(--ink);margin:0 0 -10px auto;padding:0;cursor:pointer;position:relative;transition:transform .3s cubic-bezier(.3,1.8,.5,1)}
   .shard:nth-child(3n){border-radius:46% 54% 50% 50%/55% 45% 55% 45%}.shard:hover{transform:scale(1.14)}.shard.cur{border-color:var(--ember)}
@@ -291,7 +292,7 @@
   #sFreeze:hover .orbit{animation-duration:calc(var(--t)/3.5)}
   #fpBg{position:absolute;inset:0;width:100%;height:100%;z-index:-1}
   #start{overflow:hidden}
-  @media (min-width:901px) and (pointer:fine){ .legend{display:block} body.panelOpen{--panelW:340px} body:not(.panelOpen) .legend{display:block} }
+  @media (min-width:901px) and (pointer:fine){ .legend{display:block} body.panelOpen{--panelW:340px} #title{display:none} }
   @media (max-width:900px),(pointer:coarse){ #figure{display:none} #strip{gap:2px;padding:6px 4px calc(8px + env(safe-area-inset-bottom));background:var(--panel)!important;border-top:1px solid var(--hair)!important}
     #strip button.organ{padding:0 8px;min-height:40px;font-size:9.5px;letter-spacing:.08em} #sFreeze{width:72px;height:72px;margin:-26px 0 -2px} #sFreeze .lbl{font-size:9px} }
   body.clean #figure,body.clean .legend{opacity:0;pointer-events:none}
@@ -3129,7 +3130,7 @@ setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEac
   const cc=$('coreCv'), cg=cc&&cc.getContext('webgl',{antialias:false,alpha:false}); let heat=0;
   if(cg){ const mk=(t,src)=>{ const sh=cg.createShader(t); cg.shaderSource(sh,src); cg.compileShader(sh); return sh; }; const pr=cg.createProgram();
     cg.attachShader(pr,mk(cg.VERTEX_SHADER,'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}'));
-    cg.attachShader(pr,mk(cg.FRAGMENT_SHADER,`precision highp float;uniform vec2 r;uniform float t;uniform float heat;void main(){vec2 uv=(gl_FragCoord.xy/r-.5)*2.;float a=t*(.22+heat*.9);vec2 z=uv*(1.3-.35*heat)*mat2(cos(a*.3),-sin(a*.3),sin(a*.3),cos(a*.3));vec2 c=vec2(-.78+.09*cos(a),.15+.11*sin(a*1.3));float it=0.;for(int i=0;i<64;i++){z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c;if(dot(z,z)>16.)break;it+=1.;}float s=sqrt(it/64.);vec3 col=mix(vec3(.03,.0,.07),vec3(1.,.40,.08),s);col=mix(col,vec3(1.,.92,.72),pow(s,4.));col+=vec3(.42,.18,.95)*pow(1.-s,3.)*(.3+.5*heat);col*=1.-.55*pow(length(uv),3.);gl_FragColor=vec4(col,1.);}`));
+    cg.attachShader(pr,mk(cg.FRAGMENT_SHADER,`precision highp float;uniform vec2 r;uniform float t;uniform float heat;void main(){vec2 uv=(gl_FragCoord.xy/r-.5)*2.;float a=t*(.22+heat*.9);vec2 z=uv*(1.3-.35*heat)*mat2(cos(a*.3),-sin(a*.3),sin(a*.3),cos(a*.3));vec2 c=vec2(-.78+.09*cos(a),.15+.11*sin(a*1.3));float it=0.;for(int i=0;i<64;i++){z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c;if(dot(z,z)>16.)break;it+=1.;}float s=sqrt(it/64.);vec3 col=mix(vec3(.02,.0,.06),vec3(1.,.36,.06),pow(s,1.15));col=mix(col,vec3(1.,.86,.55),pow(s,7.));col+=vec3(.42,.18,.95)*pow(1.-s,3.)*(.3+.5*heat);col*=1.-.55*pow(length(uv),3.);gl_FragColor=vec4(col,1.);}`));
     cg.linkProgram(pr); if(cg.getProgramParameter(pr,cg.LINK_STATUS)){ cg.useProgram(pr); cg.bindBuffer(cg.ARRAY_BUFFER,cg.createBuffer()); cg.bufferData(cg.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),cg.STATIC_DRAW); cg.enableVertexAttribArray(0); cg.vertexAttribPointer(0,2,cg.FLOAT,false,0,0); cg.viewport(0,0,192,192);
       const L=n=>cg.getUniformLocation(pr,n); const t0=performance.now(); let last=0;
       const coreFrame=now=>{ requestAnimationFrame(coreFrame); if(document.hidden||cc.offsetParent===null||now-last<66) return; last=now;   // ~15 fps is plenty for a 96px button
