@@ -1,0 +1,81 @@
+{
+ "format": "fractal-pulse-specimen",
+ "v": 1,
+ "id": "sp-mwk5tdm0-cfo4",
+ "name": "Demon faces \u00b7 Mandelbox (negative), Clay",
+ "notes": "Found by U4 on 2026-11-17. Same fractal/theme/settings as Ref 7 but seen side-on (az 5.221, el 0.043, zoom 0.729). Import via Forge > Specimens > Import.",
+ "collection": "Found by U4",
+ "created": "2026-11-17T03:55:37.128Z",
+ "modified": "2026-11-17T03:55:37.128Z",
+ "parent": null,
+ "implementation": {
+  "app": "fractal-pulse",
+  "appVersion": "fp-2026.11.14",
+  "shaderRev": 1,
+  "formula": {
+   "index": 15,
+   "name": "Mandelbox (negative)",
+   "rev": 1
+  },
+  "scene2d": null
+ },
+ "source": {
+  "kind": "live"
+ },
+ "audio": {
+  "live": false,
+  "bass": 1,
+  "mid": 0,
+  "high": 0,
+  "beat": 0,
+  "snare": 0,
+  "hat": 0,
+  "bright": 0.5,
+  "pitch": 0.5,
+  "bpm": 0,
+  "drop": 0,
+  "energy": 0.333
+ },
+ "state": {
+  "v": 1,
+  "type": 15,
+  "theme": 3,
+  "palIdx": 0,
+  "realIdx": 4,
+  "hue": 0,
+  "az": 5.221,
+  "el": 0.043,
+  "zoom": 0.729,
+  "shape": 1,
+  "detail": 0,
+  "sparkle": 0,
+  "warp": 0.1,
+  "kal": 0,
+  "bloom": 0.3,
+  "glow": 0,
+  "trail": 0,
+  "react": "bal",
+  "ang": [
+   0.3,
+   0.5,
+   0.1
+  ],
+  "flow": 0,
+  "flowVar": 0,
+  "sym": 12,
+  "pins": {},
+  "iter": 12,
+  "cutAt": 0,
+  "twist": 0,
+  "bend": 0,
+  "mat": {
+   "on": 0,
+   "rough": 0.5,
+   "metal": 0
+  },
+  "cut": 0,
+  "frozen": 1,
+  "T": 52.483
+ },
+ "thumb": null
+}

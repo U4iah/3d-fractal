@@ -3131,6 +3131,8 @@ const REFS=[
   {n:'Ref 7 · mandala (negative box)', s:{type:15,theme:3,palIdx:0,realIdx:4,hue:0,shape:1.0,detail:0,sparkle:0,warp:0.1,kal:0,bloom:0.3,glow:0,trail:0,sym:12,az:0.3,el:1.5,zoom:0.4, ang:[0.3,0.5,0.1]}},
   {n:'Ref 8 · mandala (Mandelbox 16)', s:{type:5, theme:3,palIdx:0,realIdx:4,hue:0,shape:1.1,detail:0,sparkle:0,warp:0.1,kal:0,bloom:0.3,glow:0,trail:0,sym:16,az:0.3,el:1.5,zoom:0.4, ang:[0.3,0.5,0.1]}},
   {n:'Ref 9 · mandala frost',          s:{type:5, theme:3,palIdx:0,realIdx:7,hue:0,shape:1.0,detail:0,sparkle:0,warp:0.1,kal:0,bloom:0.3,glow:0,trail:0,sym:12,az:0.3,el:1.5,zoom:0.25,ang:[0.3,0.5,0.1]}},
+  // found by U4 (2026-11-17): the same negative Mandelbox as Ref 7 seen side-on, where demon-like faces appear. Exact captured state, kept as-is
+  {n:'Ref 10 · demon faces (negative box, side-on)', s:{type:15,theme:3,palIdx:0,realIdx:4,hue:0,shape:1,detail:0,sparkle:0,warp:0.1,kal:0,bloom:0.3,glow:0,trail:0,sym:12,iter:12,az:5.221,el:0.043,zoom:0.729,ang:[0.3,0.5,0.1]}},
 ];
 const refBox=$('refs'); REFS.forEach(r=>{ const b=document.createElement('button'); b.textContent=r.n; b.onclick=()=>{ applyState(r.s); toast(r.n); }; refBox.appendChild(b); });
 const SLOT_KEY='fractalPulseSlots';

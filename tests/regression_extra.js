@@ -159,4 +159,14 @@ module.exports=async function({b,page,rec,errText,URL}){
       return {sheetAboveStrip:ui.bottom<=st.top+1,stripFull:Math.abs(st.width-innerWidth)<2,noHScroll:document.documentElement.scrollWidth<=innerWidth+1,viewKept:az===a0&&el===e0&&zoomMul===z0,btnH:Math.min(...[...document.querySelectorAll('#strip button')].map(x=>x.getBoundingClientRect().height))}; });
     rec('G11 phone: sheet sits above the strip, strip spans the width, no horizontal scroll, buttons ≥40px, view untouched',m.sheetAboveStrip&&m.stripFull&&m.noHScroll&&m.viewKept&&m.btnH>=40,JSON.stringify(m));
     rec('G11 no console errors (phone)',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G12: U4's "demon faces" find is preserved exactly ──
+  { const p=await page(b,'scale=0.1&q=0&type=0'); const spec=require('fs').readFileSync(require('path').join(__dirname,'..','specimens','demon-faces.fps.json'),'utf8');
+    await p.evaluate(()=>document.getElementById('bSilent').click());
+    const r=await p.evaluate(async(txt)=>{ const ref=REFS.find(x=>/demon faces/.test(x.n)); applyState(ref.s); const a={type:shown,theme,az:+az.toFixed(3),el:+el.toFixed(3),zoom:+zoomMul.toFixed(3),sym:+$('sSym').value,iter:+$('sIterB').value,bloom:+$('sBloom').value};
+      const n0=specimens.length; const n=importSpecimens(txt); const sp=specimens[0]; restoreSpecimen(sp); const b={type:shown,theme,az:+az.toFixed(3),el:+el.toFixed(3),zoom:+zoomMul.toFixed(3),sym:+$('sSym').value,iter:+$('sIterB').value}; return {a,b,n,name:sp.name,added:specimens.length-n0}; },spec);
+    const want={type:15,theme:3,az:5.221,el:0.043,zoom:0.729,sym:12,iter:12};
+    rec('G12 Ref 10 applies the exact demon-faces state',Object.entries(want).every(([k,v])=>Math.abs(r.a[k]-v)<0.002),JSON.stringify(r.a));
+    rec('G12 shipped demon-faces specimen imports and restores the same state',r.n===1&&r.added===1&&Object.entries(want).every(([k,v])=>Math.abs(r.b[k]-v)<0.002),JSON.stringify(r.b));
+    rec('G12 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };
