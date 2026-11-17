@@ -342,7 +342,7 @@
 
 <div id="start"><canvas id="fpBg"></canvas><div class="card">
   <h1>Fractal Pulse</h1>
-  <p>Twenty-two real distance-estimated 3D fractals — bulbs, quaternions, boxes, sponges, kleinian foam — folding, warping and spinning to your music in real time.</p>
+  <p>Twenty-three real distance-estimated 3D fractals — bulbs, quaternions, boxes, sponges, kleinian foam — folding, warping and spinning to your music in real time.</p>
   <div class="grid">
     <button id="bDemo">▶ Built-in demo beat</button>
     <label class="btn">♪ Import audio / video<input id="fFile" type="file" accept="audio/*,video/*,.mp3,.wav,.wave,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.mp4,.m4v,.mov,.webm,.mka" hidden></label>
@@ -717,6 +717,29 @@ float deLogo(vec3 p){
   return max(dL, dF - off);                                                               // carve: the Mandelbox eats into the letters
 }
 
+
+// 22 : "Cathedral of Becoming". A Menger-style sponge whose tunnels are gothic pointed arches (ogives), recursing into smaller cathedrals,
+// twisted a little at every level (the spiral stair), and tapered into a spire. A building that is also a fractal.
+// gFoldA = spiral twist per level, gScale = arch width multiplier, gPower = spire taper (0..1).
+float ogive(vec2 q, float w){ q.y = max(q.y, 0.0); return max(length(vec2(q.x-w, q.y))-2.0*w, length(vec2(q.x+w, q.y))-2.0*w); }   // pointed-arch tunnel profile; negative inside the opening
+float deCathedral(vec3 p){
+  p.y *= 0.72;                                                    // taller than wide
+  float taper = clamp(1.0 + 0.55*gPower*p.y, 0.35, 1.7); p.xz /= taper;   // narrower towards the top
+  float d = max(max(abs(p.x),abs(p.z)), abs(p.y)) - 1.0, s = 1.0, tr = 1e9;
+  float w = clamp(0.3333*gScale, 0.2, 0.46);
+  for(int m=0; m<4+uZero; m++){
+    float ang = gFoldA + 0.35;
+    p.xz = rot2(ang)*p.xz;                                         // each level turns: a spiral stair of recursion
+    vec3 a = mod(p*s + 1.0, 2.0) - 1.0;
+    float hz = ogive(vec2(a.x, a.y+0.12), w), hx = ogive(vec2(a.z, a.y+0.12), w), hy = length(a.xz) - w*0.85;
+    float H = min(hz, min(hx, hy));
+    d = max(d, -H/s);
+    tr = min(tr, dot(a,a)); s *= 3.0;
+  }
+  gTrap = tr;
+  return d*0.55;
+}
+
 // KIFS fold steps shared by the sponge / gasket / hybrid
 void mengerStep(inout vec3 p, inout float sc, vec3 O, mat2 R){
   p = abs(p);
@@ -932,6 +955,7 @@ float evalType(int ty, vec3 p){
   else if(ty==18) d = deQJ3(p);
   else if(ty==19) d = deShip2(p,0);
   else if(ty==21) d = deLogo(p);
+  else if(ty==22) d = deCathedral(p);
   else            d = deShip2(p,1);
   return d;
 }
@@ -1835,6 +1859,7 @@ const TYPES = [
   {name:'Burning Ship 3D',    size:1.2, cam:5.8,  bound:1.9,  info:'<b>3D Burning Ship</b> — the exact Mandelbulb-method formula from the reference post: spherical power step with the polar axis along y, then <code>|·|</code> on every component <i>after</i> adding c. Craggy, ridged, almost geological.'},
   {name:'Burning Ship Julia 3D', size:1.2, cam:5.8, bound:1.9, info:'<b>3D Burning Ship Julia</b> — the same map started at the point with a fixed constant c (wandering with the music).'},
   {name:'U4 · fractal logotype', size:1.2, cam:5.6, bound:1.7, info:'<b>U4 logotype</b> — liquid-metal letters (smooth-merged 3D tubes and beads) intersected with a <i>negative Mandelbox</i>. <code>Fractal skin</code> slides from carved (−) through smooth to raised fractal relief (+); <code>Fractal zoom</code> and <code>Box scale</code> change what gets carved. A real 3D solid: orbit it.'},
+  {name:'Cathedral of Becoming', size:1.2, cam:5.2, bound:2.1, info:'<b>Cathedral of Becoming</b> — a Menger-style sponge whose tunnels are gothic <i>pointed arches</i>, recursing into smaller cathedrals. Each level turns slightly (a spiral stair) and the whole tapers into a spire. <code>Spiral</code>, <code>Arch width</code> and <code>Spire taper</code> reshape the architecture.'},
 ];
 // cosine palettes: a + b·cos(2π(c·t + d))
 const PALS = [
@@ -2168,6 +2193,7 @@ const PSCHEMA={
   10:[['scale','Offset',0.7,1.4,0.01],TWIST], 11:[['scale','Fold box',0.7,1.4,0.01],TWIST], 12:[['qw','Slice w',-1,1,0.01]],
   13:[['scale','Offset',0.8,1.4,0.01],TWIST], 14:[['power','Fold scale (φ² ≈ 2.618)',2,3.5,0.01],['scale','Vertex offset',0.5,1.6,0.01],TWIST,['qw','End-sphere radius',0.3,2,0.01]],
   15:[['scale','Box scale',-2.8,-1.5,0.01]], 16:[['scale','Box scale',1.8,2.8,0.01],...JC3], 17:[],
+  22:[['fold','Spiral twist per level',-0.8,0.8,0.005],['scale','Arch width',0.6,1.4,0.01],['power','Spire taper',0,1.5,0.01]],
   21:[['qw','Fractal skin (− carve · + relief)',-1,1,0.01],['power','Fractal zoom',1,5,0.05],['scale','Box scale',-2.8,-1.5,0.01],['fold','Letter melt',0,0.5,0.01]],
   18:[...JC3,['qw','Quaternion w',-1,1,0.01]], 19:[['power','Power',2,4,0.01]], 20:[['power','Power',2,4,0.01],...JC3]
 };
@@ -2375,6 +2401,7 @@ function params(ty){
     case 20: P.power=clamp(2.4+0.3*Math.sin(t*0.11)+0.6*b,2,4); P.jc=[0.12+0.1*Math.cos(t*0.2+m),0.25+0.12*Math.sin(t*0.27),0.1+0.12*Math.cos(t*0.17)+0.1*b]; break;
     case 18: P.jc=[-0.3+0.15*Math.cos(t*0.2)+0.12*b, 0.25+0.2*Math.sin(t*0.27)+0.1*m, 0.15*Math.sin(t*0.19)]; P.qw=0.1+0.2*Math.sin(t*0.13)+0.2*h; break;
     case 15: P.scale=-clamp(1.7+0.35*Math.sin(t*0.11)+0.6*b,1.5,2.8); break;
+    case 22: P.fold=0.12+0.05*Math.sin(t*0.1)+0.06*b; P.scale=1+0.06*Math.sin(t*0.07); P.power=0.55; break;
     case 21: P.scale=-clamp(1.7+0.2*Math.sin(t*0.11)+0.35*b,1.5,2.8); P.power=2.2+0.08*Math.sin(t*0.07); P.qw=0.6+0.12*Math.sin(t*0.09); break;
     case 16: P.scale=clamp(2.0+0.2*Math.sin(t*0.1)+0.5*b,1.8,2.8); P.jc=[0.7*Math.cos(t*0.13+m),0.5*Math.sin(t*0.17),0.45*Math.cos(t*0.11)+0.3*b]; break;
   }
