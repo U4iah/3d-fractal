@@ -179,4 +179,13 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G13 logotype is selectable and renders a solid wider than tall',r.type===21&&!r.smooth.err&&r.smooth.n>5000&&r.smooth.w/r.smooth.h>1.4,JSON.stringify(r.smooth));
     rec('G13 fractal skin changes the surface; carving removes material, relief keeps the letters whole',r.relief.sum!==r.smooth.sum&&r.carved.n<r.smooth.n*0.997&&r.relief.n>r.smooth.n*0.85&&r.relief.w/r.relief.h>1.4,JSON.stringify({smooth:r.smooth.n,relief:r.relief.n,carved:r.carved.n}));
     rec('G13 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G14: Cathedral of Becoming (type 22) ──
+  { const p=await page(b,'scale=0.1&q=0&type=0'); await p.evaluate(()=>document.getElementById('bSilent').click());
+    const r=await p.evaluate(async()=>{ const sm=$('sTrans').value; $('sTrans').value='cut'; applyState(REFS.find(x=>/Cathedral of Becoming \(clay\)/.test(x.n)).s); $('sTrans').value=sm; await new Promise(r=>setTimeout(r,1200));
+      const grab=async(sp)=>{ pins[22]={fold:sp}; await new Promise(r=>setTimeout(r,500)); const o=await renderStill({W:400,H:320,ss:1,transparent:true,floor:'none'}); if(o.error) return {err:o.error}; const d=o.canvas.getContext('2d').getImageData(0,0,400,320).data; let n=0,holes=0,sum=0; for(let i=3;i<d.length;i+=4){ if(d[i]>128){ n++; sum+=d[i-3]+d[i-2]+d[i-1]; } } return {n,sum}; };
+      const a=await grab(0.0), c=await grab(0.4); return {type:shown,name:TYPES[22].name,a,c}; });
+    rec('G14 cathedral renders a solid with openings (not a filled block)',r.type===22&&!r.a.err&&r.a.n>8000&&r.a.n<400*320*0.97,JSON.stringify(r.a));
+    rec('G14 spiral twist reshapes the architecture',r.c.sum!==r.a.sum&&Math.abs(r.c.n-r.a.n)>50,JSON.stringify({a:r.a,c:r.c}));
+    rec('G14 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };

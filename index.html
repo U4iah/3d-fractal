@@ -1859,7 +1859,7 @@ const TYPES = [
   {name:'Burning Ship 3D',    size:1.2, cam:5.8,  bound:1.9,  info:'<b>3D Burning Ship</b> — the exact Mandelbulb-method formula from the reference post: spherical power step with the polar axis along y, then <code>|·|</code> on every component <i>after</i> adding c. Craggy, ridged, almost geological.'},
   {name:'Burning Ship Julia 3D', size:1.2, cam:5.8, bound:1.9, info:'<b>3D Burning Ship Julia</b> — the same map started at the point with a fixed constant c (wandering with the music).'},
   {name:'U4 · fractal logotype', size:1.2, cam:5.6, bound:1.7, info:'<b>U4 logotype</b> — liquid-metal letters (smooth-merged 3D tubes and beads) intersected with a <i>negative Mandelbox</i>. <code>Fractal skin</code> slides from carved (−) through smooth to raised fractal relief (+); <code>Fractal zoom</code> and <code>Box scale</code> change what gets carved. A real 3D solid: orbit it.'},
-  {name:'Cathedral of Becoming', size:1.2, cam:5.2, bound:2.1, info:'<b>Cathedral of Becoming</b> — a Menger-style sponge whose tunnels are gothic <i>pointed arches</i>, recursing into smaller cathedrals. Each level turns slightly (a spiral stair) and the whole tapers into a spire. <code>Spiral</code>, <code>Arch width</code> and <code>Spire taper</code> reshape the architecture.'},
+  {name:'Cathedral of Becoming', size:1.2, cam:7.0, bound:2.4, info:'<b>Cathedral of Becoming</b> — a Menger-style sponge whose tunnels are gothic <i>pointed arches</i>, recursing into smaller cathedrals. Each level turns slightly (a spiral stair) and the whole tapers into a spire. <code>Spiral</code>, <code>Arch width</code> and <code>Spire taper</code> reshape the architecture.'},
 ];
 // cosine palettes: a + b·cos(2π(c·t + d))
 const PALS = [
@@ -3403,6 +3403,9 @@ const REFS=[
   {n:'Ref 10 · demon faces (negative box, side-on)', s:{type:15,theme:3,palIdx:0,realIdx:4,hue:0,shape:1,detail:0,sparkle:0,warp:0.1,kal:0,bloom:0.3,glow:0,trail:0,sym:12,iter:12,az:5.221,el:0.043,zoom:0.729,ang:[0.3,0.5,0.1]}},
   // fractal-made imagery: the U4 logotype, a real 3D solid whose surface is a mirror-tiled Mandelbox (see the type's Fractal skin slider)
   {n:'Ref 11 · U4 liquid gold (fractal logotype)', s:{type:21,theme:1,palIdx:0,realIdx:2,hue:0,shape:0,detail:0,sparkle:0,warp:0,kal:0,bloom:0.3,glow:0,trail:0,sym:0,az:0,el:0.05,zoom:0.8,ang:[0,0,0],pins:{21:{qw:0.6}}}},
+  // a building that is also a fractal: gothic ogive sponge (type 22), inspired by the Codex U4 'Cathedral of Becoming'
+  {n:'Ref 12 · Cathedral of Becoming (clay)', s:{type:22,theme:3,palIdx:0,realIdx:4,hue:0,shape:0,detail:0,sparkle:0,warp:0,kal:0,bloom:0.3,glow:0,trail:0,sym:0,az:0.9,el:-0.1,zoom:1.0,ang:[0,0,0]}},
+  {n:'Ref 13 · Cathedral of Becoming (gold)', s:{type:22,theme:1,palIdx:0,realIdx:2,hue:0,shape:0,detail:0,sparkle:0,warp:0,kal:0,bloom:0.3,glow:0,trail:0,sym:0,az:0.4,el:0.12,zoom:0.85,ang:[0,0,0]}},
 ];
 const refBox=$('refs'); REFS.forEach(r=>{ const b=document.createElement('button'); b.textContent=r.n; b.onclick=()=>{ applyState(r.s); toast(r.n); }; refBox.appendChild(b); });
 const SLOT_KEY='fractalPulseSlots';
