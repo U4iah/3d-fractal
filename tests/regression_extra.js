@@ -26,7 +26,7 @@ module.exports=async function({b,page,rec,errText,URL}){
     const bad=await p.evaluate(()=>{ const bad=[]; for(let ty=0;ty<TYPES.length;ty++){ for(const [k,label,min,max] of (PSCHEMA[ty]||[])){ const v=min+(max-min)*0.37; pins[ty]={[k]:v}; const P=params(ty); const got=pinVal(P,ty,k); if(!(Math.abs(got-v)<1e-9)) bad.push(ty+':'+k); delete pins[ty]; } } return bad; });
     rec('G7 every formula-parameter key plumbs through params()',bad.length===0,bad.join(','));
     const cov=await p.evaluate(()=>TYPES.map((_,i)=>(PSCHEMA[i]||[]).length).join(','));
-    rec('G7 parameter schema covers all 21 formulas',cov.split(',').length===21,cov);
+    rec('G7 parameter schema covers every formula',cov.split(',').length===22,cov);
     // state round-trip includes pins, geometry, frozen, T
     const rt=await p.evaluate(()=>{ pins[5]={scale:2.4}; document.getElementById('sIterB').value=18; document.getElementById('sCutAt').value=.3; document.getElementById('sTwist').value=.2; document.getElementById('cMatOv').checked=true; document.getElementById('sRough').value=.7; setFrozen(true,true); T=7.5; const st=exportState(); pins[5]=null; delete pins[5]; document.getElementById('sIterB').value=12; setFrozen(false,true); applyState(JSON.parse(JSON.stringify(st))); return {pin:pins[5]&&pins[5].scale,iter:+document.getElementById('sIterB').value,cut:+document.getElementById('sCutAt').value,mat:document.getElementById('cMatOv').checked,rough:+document.getElementById('sRough').value,frozen,T}; });
     rec('G7 state round-trip keeps pins/geometry/material/frozen/time',rt.pin===2.4&&rt.iter===18&&Math.abs(rt.cut-.3)<1e-9&&rt.mat&&Math.abs(rt.rough-.7)<1e-9&&rt.frozen&&Math.abs(rt.T-7.5)<1e-6,JSON.stringify(rt));
@@ -174,9 +174,9 @@ module.exports=async function({b,page,rec,errText,URL}){
   { const p=await page(b,'scale=0.1&q=0&type=0'); await p.evaluate(()=>document.getElementById('bSilent').click());
     const r=await p.evaluate(async()=>{ const sm=$('sTrans').value; $('sTrans').value='cut'; const ref=REFS.find(x=>/U4 liquid gold/.test(x.n)); applyState(ref.s); $('sTrans').value=sm; await new Promise(r=>setTimeout(r,1200));
       const grab=async(qw)=>{ pins[21]=pins[21]||{}; pins[21].qw=qw; await new Promise(r=>setTimeout(r,500)); const o=await renderStill({W:480,H:270,ss:1,transparent:true,floor:'none'}); if(o.error) return {err:o.error}; const d=o.canvas.getContext('2d').getImageData(0,0,480,270).data; let minx=1e9,maxx=-1,miny=1e9,maxy=-1,n=0; for(let y=0;y<270;y++) for(let x=0;x<480;x++){ if(d[(y*480+x)*4+3]>128){ n++; if(x<minx)minx=x; if(x>maxx)maxx=x; if(y<miny)miny=y; if(y>maxy)maxy=y; } } return {n,w:maxx-minx,h:maxy-miny,sum:d.reduce((a,v,i)=>a+(i%4<3?v:0),0)}; };
-      const smooth=await grab(0), relief=await grab(0.6), carved=await grab(-0.8);
+      const smooth=await grab(0), relief=await grab(0.6), carved=await grab(-0.9);
       return {type:shown,name:TYPES[21].name,smooth,relief,carved}; });
     rec('G13 logotype is selectable and renders a solid wider than tall',r.type===21&&!r.smooth.err&&r.smooth.n>5000&&r.smooth.w/r.smooth.h>1.4,JSON.stringify(r.smooth));
-    rec('G13 fractal skin changes the surface; carving removes material, relief keeps the letters whole',r.relief.sum!==r.smooth.sum&&r.carved.n<r.smooth.n&&r.relief.n>r.smooth.n*0.85&&r.relief.w/r.relief.h>1.4,JSON.stringify({smooth:r.smooth.n,relief:r.relief.n,carved:r.carved.n}));
+    rec('G13 fractal skin changes the surface; carving removes material, relief keeps the letters whole',r.relief.sum!==r.smooth.sum&&r.carved.n<r.smooth.n*0.985&&r.relief.n>r.smooth.n*0.85&&r.relief.w/r.relief.h>1.4,JSON.stringify({smooth:r.smooth.n,relief:r.relief.n,carved:r.carved.n}));
     rec('G13 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };

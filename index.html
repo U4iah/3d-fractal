@@ -607,7 +607,8 @@ float deLogo(vec3 p){
   float dF = deBox(ps, 0)/sc;                        // sets gTrap (orbit trap) for colouring
   float sk = clamp(gQW,-1.0,1.0);
   if(sk>=0.0){ float h = 1.0 - clamp(dF/0.12,0.0,1.0); return dL - 0.11*sk*h*h; }      // relief: fractal structure swells out of the surface, letters stay whole
-  return max(dL, dF - (1.0+sk)*0.35);                                                     // carve: the Mandelbox eats into the letters
+  float off = (1.0+sk)*(1.0+sk)*0.2;                                                      // dilation of the fractal solid: shrinks to 0 at full carve
+  return max(dL, dF - off);                                                               // carve: the Mandelbox eats into the letters
 }
 
 // KIFS fold steps shared by the sponge / gasket / hybrid
