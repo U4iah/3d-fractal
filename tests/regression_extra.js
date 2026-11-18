@@ -229,4 +229,14 @@ module.exports=async function({b,page,rec,errText,URL}){
     await p.click('#bMic',{timeout:30000}); await p.waitForFunction(()=>document.getElementById('start').classList.contains('gone')||document.getElementById('err').style.display!=='none',null,{timeout:30000});
     const m=await p.evaluate(()=>({gone:document.getElementById('start').classList.contains('gone'),err:document.getElementById('err').style.display!=='none'?document.getElementById('err').textContent:'',state:actx&&actx.state}));
     rec('G17 real click on Mic either starts listening or says clearly why not',m.gone||/Microphone/.test(m.err),JSON.stringify(m)); await p.context().close(); }
+
+  // ── G18: audio unlock on the first tap, even when the start screen is skipped ──
+  { const p=await page(b,'scale=0.1&q=0',{ctx:{viewport:{width:1440,height:900}}}); await p.waitForSelector('#bSilent',{state:'attached'}); await p.waitForFunction(()=>frame>2,null,{timeout:120000});
+    const before=await p.evaluate(()=>({actx:!!actx})); await p.click('#bSilent',{timeout:30000}); await p.waitForTimeout(600);
+    const mid=await p.evaluate(()=>({actx:!!actx,state:actx&&actx.state,unlock:typeof unlockAudio})); rec('G18 the first tap anywhere creates and unlocks the audio context (even "sculpt by hand")',!before.actx&&mid.actx&&mid.state==='running'&&mid.unlock==='function',JSON.stringify({before,mid}));
+    const r=await p.evaluate(async()=>{ actx.suspend(); await new Promise(r=>setTimeout(r,300)); const s1=actx.state; document.dispatchEvent(new Event('pointerup',{bubbles:true})); await new Promise(r=>setTimeout(r,500)); return {suspended:s1,after:actx.state}; });
+    rec('G18 a suspended context is woken again by the next tap',r.suspended==='suspended'&&r.after==='running',JSON.stringify(r));
+    const w=await p.evaluate(async()=>{ actx.suspend(); await new Promise(r=>setTimeout(r,200)); startDemo(); await new Promise(r=>setTimeout(r,2500)); const shown=document.getElementById('audioFix').classList.contains('show'); document.getElementById('audioFix').click(); await new Promise(r=>setTimeout(r,800)); return {shown,state:actx.state,fixHidden:!document.getElementById('audioFix').classList.contains('show')}; });
+    rec('G18 if audio is still asleep a one-tap wake button appears and works',w.state==='running'&&w.fixHidden,JSON.stringify(w));
+    rec('G18 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };

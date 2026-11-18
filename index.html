@@ -393,6 +393,8 @@
   @media (max-width:1099px),(pointer:coarse){ #skinBtn{display:none} }
   /* "I'm stuck in kaleidoscope / 2D": a clear way out, visible in every skin */
   #trapBtn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom));z-index:7;display:none;padding:11px 18px;border-radius:99px;border:1px solid var(--ember);background:rgba(11,13,16,.92);color:#ffe2b8;font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+  #audioFix{position:fixed;left:50%;transform:translateX(-50%);top:calc(56px + env(safe-area-inset-top));z-index:9;display:none;padding:14px 22px;border-radius:99px;border:2px solid var(--ember);background:#0b0d10;color:#ffe2b8;font:500 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;box-shadow:0 8px 24px rgba(0,0,0,.6)}
+  #audioFix.show{display:block}
   #trapBtn.show{display:block}#trapBtn:hover{background:var(--ember);color:#0b090c}#trapBtn kbd{margin-left:8px;opacity:.7;font:inherit}
   body.bench #trapBtn{left:calc(var(--hwL) + (100% - var(--hwL) - var(--hwR))/2);bottom:104px}
   @media (max-width:900px),(pointer:coarse){ #trapBtn{bottom:calc(74px + env(safe-area-inset-bottom))} }
@@ -439,6 +441,7 @@
   <aside class="bn-rail bn-right"><h3>Light &amp; matter</h3><div id="eLook"></div><h3 style="margin-top:6px">Ear</h3><div id="eMusic"></div></aside>
   <div class="bn-rack" id="bnRack" aria-label="Specimen slides"></div>
 </div>
+<button id="audioFix" aria-live="polite">Audio is asleep · tap to wake it</button>
 <button id="trapBtn" aria-live="polite">Back to plain 3D<kbd>X</kbd></button>
 <button id="skinBtn" title="Switch skin: Bench ⇄ Figure (B)" aria-label="Switch skin">◐</button>
 <div id="figure">
@@ -2080,6 +2083,11 @@ function ensureCtx(){
   if(actx.state!=='running') actx.resume().catch(()=>{});
 }
 // iOS suspends/interrupts the context on app switch, calls, Siri, lock: resume on the next touch / when visible again
+let lastSource='';
+// iPhone home-screen apps keep a late-created AudioContext asleep. Unlock on the FIRST tap anywhere (create it, play one silent sample, resume),
+// and again whenever it falls asleep, so choosing a source later always has a running context.
+function unlockAudio(){ try{ ensureCtx(); const b=actx.createBuffer(1,1,22050), sn=actx.createBufferSource(); sn.buffer=b; sn.connect(actx.destination); sn.start(0); actx.resume().catch(()=>{}); }catch(e){} }
+['touchend','pointerup','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>{ if(!actx||actx.state!=='running') unlockAudio(); },{capture:true,passive:true}));
 const wakeAudio=()=>{ if(actx && actx.state!=='running') actx.resume().catch(()=>{}); };
 ['pointerdown','touchend','keydown'].forEach(ev=>document.addEventListener(ev,wakeAudio,{passive:true}));
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') wakeAudio(); });
@@ -2094,13 +2102,14 @@ function done(){ hasAudio=true; $('start').classList.add('gone'); audioHealth();
 // after a source starts, say out loud if the browser is blocking audio or nothing is arriving (so it never fails silently)
 let ahT=0; function audioHealth(){ clearTimeout(ahT); ahT=setTimeout(()=>{ try{
     if(!actx){ showErr('Audio could not start: this browser has no Web Audio.'); return; }
-    if(actx.state!=='running'){ actx.resume().catch(()=>{}); showErr('The browser is blocking audio (state: '+actx.state+'). Click the page once, or allow sound for this site (the lock icon in the address bar).'); setTimeout(()=>{ $('err').style.display='none'; },9000); return; }
+    if(actx.state!=='running'){ actx.resume().catch(()=>{}); $('audioFix').classList.add('show'); return; }
+    $('audioFix').classList.remove('show');
     setTimeout(()=>{ const lvl=A.bass+A.mid+A.high; if(A.live&&lvl<0.02&&!demoTimer&&!(player&&!player.paused)){ toast('Audio is on but no sound is reaching the analyser. Check the source volume or pick another source.',5000); } },2500);
   }catch(e){ showErr('Audio check failed: '+e.message); } },900); }
 
 // built-in generative demo: 128 bpm kick / clap / hats / acid bass / arp / pad, with a breakdown every 8 bars so drops can be detected
 function startDemo(){
-  ensureCtx(); setAudioSession('playback'); stopSources();
+  lastSource='demo'; ensureCtx(); setAudioSession('playback'); stopSources();
   demoMaster = actx.createGain(); demoMaster.gain.value = 0.8;
   const delay = actx.createDelay(1); delay.delayTime.value = 60/128*0.75;
   const fb = actx.createGain(); fb.gain.value = 0.38;
@@ -2150,7 +2159,7 @@ function mediaError(info,code){ const how={1:'loading was aborted',2:'a read/net
   const tip=info.ext==='flac'?' FLAC is not supported by every iPhone/Safari version; WAV, MP3 or M4A always are.':(info.ext==='aif'||info.ext==='aiff'||info.ext==='caf'||info.ext==='mka')?' Try exporting WAV, MP3 or M4A instead.':' Try WAV, MP3 or M4A, or an MP4 with AAC audio.';
   return `Couldn't play “${info.name}”: ${how}.${tip}`; }
 function useFile(file){
-  if(!file) return;
+  if(!file) return; lastSource='file';
   ensureCtx(); setAudioSession('playback'); stopSources();
   const info=mediaProbe(file); lastFileName = file.name || '';
   if(!info.canPlay && info.ext && !EXT_MIME[info.ext]){ showErr(`“${info.name}” doesn't look like an audio or video file the browser can play. Try WAV, MP3, M4A or MP4.`); setTimeout(()=>$('err').style.display='none',6000); }
@@ -2164,7 +2173,7 @@ function useFile(file){
   done();
 }
 async function useMic(){
-  try{
+  lastSource='mic'; try{
     ensureCtx();
     setAudioSession('play-and-record');                      // must be set BEFORE getUserMedia on iOS
     const ms = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
@@ -3327,6 +3336,7 @@ function backTo3D(){ $('sKal').value=0; $('sSym').value=0; dirKal=0; chaosL=0; c
 window.backTo3D=backTo3D;
 addEventListener('keydown',e=>{ if(e.ctrlKey||e.metaKey||e.altKey||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return; if(e.key==='x'||e.key==='X') backTo3D(); });
 $('trapBtn').onclick=backTo3D;
+$('audioFix').onclick=()=>{ unlockAudio(); setTimeout(()=>{ if(actx&&actx.state==='running'){ $('audioFix').classList.remove('show'); if(lastSource==='demo'&&!demoTimer) startDemo(); else if(lastSource==='file'&&player.src) player.play().catch(()=>{}); else if(lastSource==='mic') useMic(); toast('Audio is awake',1500); } else { toast('Still asleep: check the silent switch and volume, then tap again',4000); } },250); };
 setInterval(()=>{ if(document.hidden) return; const r=trapReason(), b=$('trapBtn'); b.classList.toggle('show',!!r&&$('start').classList.contains('gone')); if(r) b.firstChild.textContent=r+' · back to plain 3D'; },300);
 // ── conduits: calligraphic ribbons recomputed from live DOM boxes; pulses travel only while music really flows ──
 (function conduits(){
