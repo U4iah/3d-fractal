@@ -327,7 +327,7 @@
 </style>
 <style id="bench">
   /* ───── SPECIMEN BENCH skin (desktop): an original instrument identity. Matte anodized rails, a brass-trimmed lens for the artwork,
-     encoders with LED arcs, specimens as glass slides in a rack, a twenty-sided die for chance. Toggle with K or the ◐ button. ───── */
+     encoders with LED arcs, specimens as glass slides in a rack, a twenty-sided die for chance. Toggle with B or the ◐ button. ───── */
   #skinBtn{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;width:34px;height:34px;border-radius:50%;padding:0;text-align:center;font-size:15px;background:rgba(15,14,21,.6);border:1px solid var(--hair);color:var(--ink)}
   #bench{display:none}
   body.bench{--bg:#0b0d10;--ink:#d7dde4;--on-ink:#0b0d10;--ink-2:rgba(215,221,228,.66);--ink-3:rgba(215,221,228,.34);--hair:rgba(215,221,228,.14);--fg:#d7dde4;--dim:#8a95a3;--panel:#12161b;--accent:#d2ac5f;--ember:#f0b84a;
@@ -391,6 +391,11 @@
   body.bench #sFreeze{margin:-24px 6px -4px}
   body.bench #ui{border-radius:12px 0 0 12px;top:10px;bottom:10px;z-index:5;box-shadow:-10px 0 40px rgba(0,0,0,.6)}
   @media (max-width:1099px),(pointer:coarse){ #skinBtn{display:none} }
+  /* "I'm stuck in kaleidoscope / 2D": a clear way out, visible in every skin */
+  #trapBtn{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom));z-index:7;display:none;padding:11px 18px;border-radius:99px;border:1px solid var(--ember);background:rgba(11,13,16,.92);color:#ffe2b8;font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+  #trapBtn.show{display:block}#trapBtn:hover{background:var(--ember);color:#0b090c}#trapBtn kbd{margin-left:8px;opacity:.7;font:inherit}
+  body.bench #trapBtn{left:calc(var(--hwL) + (100% - var(--hwL) - var(--hwR))/2);bottom:104px}
+  @media (max-width:900px),(pointer:coarse){ #trapBtn{bottom:calc(74px + env(safe-area-inset-bottom))} }
 </style>
 </head>
 <body>
@@ -434,7 +439,8 @@
   <aside class="bn-rail bn-right"><h3>Light &amp; matter</h3><div id="eLook"></div><h3 style="margin-top:6px">Ear</h3><div id="eMusic"></div></aside>
   <div class="bn-rack" id="bnRack" aria-label="Specimen slides"></div>
 </div>
-<button id="skinBtn" title="Switch skin: Bench ⇄ Figure (K)" aria-label="Switch skin">◐</button>
+<button id="trapBtn" aria-live="polite">Back to plain 3D<kbd>X</kbd></button>
+<button id="skinBtn" title="Switch skin: Bench ⇄ Figure (B)" aria-label="Switch skin">◐</button>
 <div id="figure">
   <canvas id="conduits"></canvas>
   <button class="node n-dir" id="nDir" data-open="Performance" title="Wake or rest the Director (auto camera, looks, kaleidoscope)"><span class="num">1</span><span class="dot"></span><span class="blob organ" data-shape="pill" id="nDirBody">◈ Director</span><span class="cap" id="capDir">resting</span></button>
@@ -535,6 +541,7 @@
   <div class="row"><span>Sensitivity</span><input id="sSens" type="range" min="0.3" max="2.5" step="0.01" value="1.2"></div>
   <div class="row"><span>Motion</span><input id="sMotion" type="range" min="0" max="2.5" step="0.01" value="1"></div>
   <div class="row"><span>Show mode</span><input id="cShow" type="checkbox"><small style="color:var(--dim)">autonomous VJ: fractals, themes, dives, chaos</small></div>
+  <div class="row"><span>Director kaleido</span><input id="cDirKal" type="checkbox"><small style="color:var(--dim)">let the Director/Show use kaleidoscope (off = always real 3D)</small></div>
   <div class="row"><span>Director</span><input id="cDirector" type="checkbox"><small style="color:var(--dim)">auto camera / look / kaleido</small></div>
   <div class="row"><span>Auto-cycle</span><input id="cCycle" type="checkbox"><small style="color:var(--dim)">swap fractal on beat</small></div>
   <div class="row"><span>Auto-orbit</span><input id="cOrbit" type="checkbox" checked></div>
@@ -2353,7 +2360,7 @@ function randomize(){
 $('bPal').onclick=()=>setPal(curPalPos()+1); $('bRand').onclick=randomize;
 
 // persistence
-const PERSIST=['sIterB','sCutAt','sTwist','sBend','cMatOv','sRough','sMetal','sSym','cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
+const PERSIST=['cDirKal','sIterB','sCutAt','sTwist','sBend','cMatOv','sRough','sMetal','sSym','cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
 function save(){ try{ const o={v:SCHEMA,type:shown,palIdx,theme,realIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
 const PERF=['sRes','sQual','cAuto','sFps'];
 if(isPro){ $('sRes').value=0.62; $('sQual').value=1; $('sFps').value=60; }
@@ -2506,7 +2513,7 @@ function director(dt){
   const gap = show ? (A.drop>0.9?3:10) : 14;
   if(dirOn && (A.onset || (!A.live && dirTimer>gap)) && dirTimer>gap){
     dirTimer=0; camMode=(Math.random()*3)|0;
-    dirKal=[0,0,4,6,8,12][(Math.random()*6)|0];
+    dirKal=$('cDirKal').checked?[0,0,4,6,8,12][(Math.random()*6)|0]:0;           // kaleidoscope is opt-in for the Director (it used to surprise people)
     if(Math.random()<0.5) setPal((Math.random()*8)|0);
     if(!$('cCycle').checked && Math.random()<(show?0.5:0.4)) setType(Math.random()*TYPES.length|0);
     if(show){
@@ -3307,6 +3314,13 @@ setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEac
   document.querySelectorAll('#start .card button, #start .card label.btn').forEach(el=>{ el.dataset.shape='pill'; window.FPOrgan(el); });
 })();
 
+// ── never trapped: kaleidoscope / mirror / 2D mode each announce themselves, and one tap (or X) returns to plain 3D ──
+function trapReason(){ const kv=+$('sKal').value; if(playing&&playLook&&playKal>=2) return 'Kaleidoscope from the playing take'; if(kv>=2) return 'Kaleidoscope '+kv+'×'; if(dirKal>=2) return 'Director kaleidoscope'; if(chaosL>0.6) return 'Chaos kaleidoscope'; if(+$('sSym').value>=2) return 'Mirror '+$('sSym').value+'×'; if(flowMode) return '2D scene (not 3D)'; return ''; }
+function backTo3D(){ $('sKal').value=0; $('sSym').value=0; dirKal=0; chaosL=0; chaosExt=0; chaosSpeed=0; if(flowMode) setFlow(false,true); if(playing&&playLook) playKal=0; $('cTakeLook').checked=playing?false:$('cTakeLook').checked; [$('sKal'),$('sSym')].forEach(x=>x.dispatchEvent(new Event('input',{bubbles:true}))); save(); toast('Back to plain 3D',1600); }
+window.backTo3D=backTo3D;
+addEventListener('keydown',e=>{ if(e.ctrlKey||e.metaKey||e.altKey||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return; if(e.key==='x'||e.key==='X') backTo3D(); });
+$('trapBtn').onclick=backTo3D;
+setInterval(()=>{ if(document.hidden) return; const r=trapReason(), b=$('trapBtn'); b.classList.toggle('show',!!r&&$('start').classList.contains('gone')); if(r) b.firstChild.textContent=r+' · back to plain 3D'; },300);
 // ── conduits: calligraphic ribbons recomputed from live DOM boxes; pulses travel only while music really flows ──
 (function conduits(){
   const cv=$('conduits'); if(!cv) return; const ctx=cv.getContext('2d'), still=matchMedia('(prefers-reduced-motion: reduce)').matches; let W=0,H=0,ink='#efe6d6',ember='#ff6a1a',n=0,last=0;
@@ -3340,7 +3354,7 @@ setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEac
   const setSkin=v=>{ skin=v; try{ localStorage.setItem('fpSkin',v); }catch(e){} apply(); toast(v==='bench'?'Specimen bench':'Figure skin',1400); };
   mq.addEventListener&&mq.addEventListener('change',apply); apply();
   $('skinBtn').onclick=()=>setSkin(skin==='bench'?'figure':'bench');
-  addEventListener('keydown',e=>{ if(e.ctrlKey||e.metaKey||e.altKey||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return; if(e.key==='k'||e.key==='K') setSkin(skin==='bench'?'figure':'bench'); });
+  addEventListener('keydown',e=>{ if(e.ctrlKey||e.metaKey||e.altKey||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return; if(e.key==='b'||e.key==='B') setSkin(skin==='bench'?'figure':'bench'); });
   // encoder: knurled cap, brass notch, LED arc for the value. Bound to a real slider (the slider stays the source of truth).
   const encs=[]; const A0=-135, A1=135, R=27, C=31;
   const pt=a=>{ const r=a*Math.PI/180; return [C+Math.sin(r)*R, C-Math.cos(r)*R]; };

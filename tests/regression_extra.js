@@ -200,7 +200,19 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G15 the die changes the sculpture and Undo brings it back',die.changed&&die.depth>=1&&die.undone,JSON.stringify(die));
     const sl=await p.evaluate(async()=>{ document.getElementById('bnSave').click(); await new Promise(r=>setTimeout(r,3500)); const n=specimens.length; await new Promise(r=>setTimeout(r,600)); const filled=document.querySelectorAll('.slide:not(.empty)').length; $('sMB').value=0.9; $('sMB').dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('.slide:not(.empty)').click(); await new Promise(r=>setTimeout(r,500)); return {n,filled,restored:+$('sMB').value,spec:document.getElementById('bnSpec').textContent}; });
     rec('G15 Save puts a specimen on a slide; clicking the slide restores it',sl.n>=1&&sl.filled>=1&&Math.abs(sl.restored-0.9)>0.01&&sl.spec!=='temporary look',JSON.stringify(sl));
-    const sk=await p.evaluate(async()=>{ const on=document.body.classList.contains('bench'); window.dispatchEvent(new KeyboardEvent('keydown',{key:'k'})); const off=!document.body.classList.contains('bench'); const canvasFull=Math.abs(document.getElementById('gl').getBoundingClientRect().width-innerWidth)<2; window.dispatchEvent(new KeyboardEvent('keydown',{key:'k'})); return {on,off,canvasFull,back:document.body.classList.contains('bench')}; });
-    rec('G15 K switches to the Figure skin (full-bleed artwork) and back',sk.on&&sk.off&&sk.canvasFull&&sk.back,JSON.stringify(sk));
+    const sk=await p.evaluate(async()=>{ const on=document.body.classList.contains('bench'); window.dispatchEvent(new KeyboardEvent('keydown',{key:'b'})); const off=!document.body.classList.contains('bench'); const canvasFull=Math.abs(document.getElementById('gl').getBoundingClientRect().width-innerWidth)<2; window.dispatchEvent(new KeyboardEvent('keydown',{key:'b'})); return {on,off,canvasFull,back:document.body.classList.contains('bench')}; });
+    rec('G15 B switches to the Figure skin (full-bleed artwork) and back',sk.on&&sk.off&&sk.canvasFull&&sk.back,JSON.stringify(sk));
     rec('G15 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G16: never trapped in kaleidoscope / 2D ──
+  { const p=await page(b,'scale=0.1&q=0&type=0',{ctx:{viewport:{width:1440,height:900}}}); await p.evaluate(()=>document.getElementById('bSilent').click()); await p.waitForFunction(()=>frame>3,null,{timeout:90000});
+    const r=await p.evaluate(async()=>{ const sleep=ms=>new Promise(r=>setTimeout(r,ms)); const vis=()=>document.getElementById('trapBtn').classList.contains('show'); const out={};
+      out.clean=!vis(); $('sKal').value=8; await sleep(500); out.kalShown=vis(); out.kalText=document.getElementById('trapBtn').textContent; document.getElementById('trapBtn').click(); await sleep(500); out.kalAfter=+$('sKal').value; out.kalHidden=!vis();
+      $('sSym').value=6; await sleep(500); out.symShown=vis(); window.dispatchEvent(new KeyboardEvent('keydown',{key:'x'})); await sleep(500); out.symAfter=+$('sSym').value;
+      setFlow(true,true); await sleep(500); out.flowShown=vis(); backTo3D(); await sleep(500); out.flowAfter=flowMode;
+      $('cDirKal').checked=false; $('cDirector').checked=true; let off=0; for(let i=0;i<60;i++){ dirTimer=99; A.onset=true; director(0.1); off=Math.max(off,dirKal); } out.dirOffMax=off;
+      $('cDirKal').checked=true; let on=0; for(let i=0;i<80;i++){ dirTimer=99; A.onset=true; director(0.1); on=Math.max(on,dirKal); } out.dirOnMax=on; $('cDirector').checked=false; return out; });
+    rec('G16 Back-to-3D appears for kaleidoscope, mirror and 2D mode, and each tap/X really clears it',r.clean&&r.kalShown&&/Kaleidoscope 8/.test(r.kalText)&&r.kalAfter===0&&r.kalHidden&&r.symShown&&r.symAfter===0&&r.flowShown&&r.flowAfter===false,JSON.stringify(r));
+    rec('G16 the Director never turns kaleidoscope on unless you allow it',r.dirOffMax===0&&r.dirOnMax>=4,JSON.stringify({off:r.dirOffMax,on:r.dirOnMax}));
+    rec('G16 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };
