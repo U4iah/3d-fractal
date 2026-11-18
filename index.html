@@ -424,7 +424,7 @@
     <button id="bTab">🖥 Tab / system audio</button>
   </div>
   <button id="bSilent" style="width:100%;margin-top:6px;text-align:center;padding:12px">✋ Sculpt by touch (no music)</button>
-  <p class="fig">Fig. FP·I · drag &amp; drop audio or video anytime</p>
+  <p class="fig">Fig. FP·I · drag &amp; drop audio or video anytime<br><span id="buildTag"></span></p>
 </div></div>
 
 <div id="bench" aria-label="Fractal Pulse specimen bench">
@@ -467,6 +467,7 @@
 <div id="ui">
   <div id="grab" title="Drag handle: tap to expand or shrink"></div>
   <h1>Fractal Pulse <span style="font-weight:400;color:var(--dim);letter-spacing:.06em;font-size:10px">· mathematical matter</span></h1>
+  <div class="sub" style="opacity:.6" id="buildTag2"></div>
   <div class="sub">drag spin · pinch zoom · twist rotate · <b>3 fingers = chaos</b> · double-tap pulse</div>
   <div id="wsTabs"><button data-ws="explore">Explore</button><button data-ws="sculpt">Sculpt</button><button data-ws="perform">Perform</button><button data-ws="forge">Forge</button></div>
   <h2>Fractal</h2>
@@ -3053,7 +3054,7 @@ $('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
-const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.14', SPEC_KEY='fractalPulseSpecimens';
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.17-audio', SPEC_KEY='fractalPulseSpecimens';
 let specimens=[], spSel=null, thumbReq=null;
 const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
 function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,
@@ -3330,6 +3331,7 @@ setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEac
   document.querySelectorAll('#start .card button, #start .card label.btn').forEach(el=>{ el.dataset.shape='pill'; window.FPOrgan(el); });
 })();
 
+$('buildTag').textContent='build '+APP_VERSION; $('buildTag2').textContent='build '+APP_VERSION+' · B skin · X back to 3D';
 // ── never trapped: kaleidoscope / mirror / 2D mode each announce themselves, and one tap (or X) returns to plain 3D ──
 function trapReason(){ const kv=+$('sKal').value; if(playing&&playLook&&playKal>=2) return 'Kaleidoscope from the playing take'; if(kv>=2) return 'Kaleidoscope '+kv+'×'; if(dirKal>=2) return 'Director kaleidoscope'; if(chaosL>0.6) return 'Chaos kaleidoscope'; if(+$('sSym').value>=2) return 'Mirror '+$('sSym').value+'×'; if(flowMode) return '2D scene (not 3D)'; return ''; }
 function backTo3D(){ $('sKal').value=0; $('sSym').value=0; dirKal=0; chaosL=0; chaosExt=0; chaosSpeed=0; if(flowMode) setFlow(false,true); if(playing&&playLook) playKal=0; $('cTakeLook').checked=playing?false:$('cTakeLook').checked; [$('sKal'),$('sSym')].forEach(x=>x.dispatchEvent(new Event('input',{bubbles:true}))); save(); toast('Back to plain 3D',1600); }

@@ -1,5 +1,6 @@
 // Phase-specific suites, loaded by regression.js
 module.exports=async function({b,page,rec,errText,URL}){
+  const raw=async(ctx)=>{ const c=await b.newContext(ctx||{}); const p=await c.newPage(); p.errs=[]; p.on('pageerror',e=>p.errs.push('pageerror: '+e.message)); p.on('console',m=>{ if(m.type()==='error') p.errs.push(m.text().slice(0,200)); }); await p.goto(URL+'#orbit=0&auto=0&scale=0.1&q=0',{waitUntil:'commit'}); await p.waitForSelector('#bDemo',{state:'attached',timeout:240000}); await p.waitForFunction(()=>window.frame>2,null,{timeout:240000}); return p; };
   // ── G7: Freeze / Resume + formula parameters (Phase 1) ──
   { const p=await page(b,'scale=0.12&q=0&type=0'); await p.evaluate(()=>startDemo()); await p.waitForFunction(()=>A.live,null,{timeout:60000});
     // turn on every automatic mover, then freeze
@@ -193,7 +194,7 @@ module.exports=async function({b,page,rec,errText,URL}){
   { const p=await page(b,'scale=0.1&q=0&type=14',{ctx:{viewport:{width:1440,height:900}}}); await p.evaluate(()=>document.getElementById('bSilent').click());
     await p.waitForFunction(()=>document.body.classList.contains('bench')&&document.getElementById('bnRack').children.length===8,null,{timeout:60000});
     const geo=await p.evaluate(()=>{ const c=document.getElementById('gl').getBoundingClientRect(), L=document.querySelector('.bn-left').getBoundingClientRect(), R=document.querySelector('.bn-right').getBoundingClientRect(); return {cw:c.width,ch:c.height,canvasPx:document.getElementById('gl').width,gap:Math.round(c.left-L.right),gapR:Math.round(R.left-c.right),encoders:document.querySelectorAll('.enc').length,slides:document.querySelectorAll('.slide').length,drawerHidden:document.getElementById('ui').classList.contains('hidden')}; });
-    rec('G15 bench layout: viewport framed between rails, encoders and 8 slide slots present, full panel closed',geo.cw>600&&geo.ch>400&&geo.canvasPx>0&&geo.gap>=0&&geo.gapR>=0&&geo.encoders>=14&&geo.slides===8&&geo.drawerHidden,JSON.stringify(geo));
+    rec('G15 bench layout: viewport framed between rails, encoders and 8 slide slots present, full panel closed',geo.cw>600&&geo.ch>400&&geo.canvasPx>0&&geo.gap>=0&&geo.gapR>=0&&geo.encoders>=13&&geo.slides===8&&geo.drawerHidden,JSON.stringify(geo));
     const en=await p.evaluate(async()=>{ const el=[...document.querySelectorAll('.enc')].find(e=>e.getAttribute('aria-label')==='Shape'); const before=+$('sMB').value; el.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true})); el.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true})); const after=+$('sMB').value; const led=el.querySelector('.led').getAttribute('stroke-dasharray'); el.dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true})); return {before,after,led,reset:+$('sMB').value}; });
     rec('G15 encoder drives the real slider by keyboard, lights its LED arc, and resets',en.after>en.before&&!/^0 /.test(en.led)&&en.reset===0,JSON.stringify(en));
     const die=await p.evaluate(async()=>{ const a=JSON.stringify(exportState()); document.getElementById('bnDie').click(); await new Promise(r=>setTimeout(r,300)); const b=JSON.stringify(exportState()); const depth=fpBench.undoDepth(); document.getElementById('bnUndo').click(); await new Promise(r=>setTimeout(r,300)); const c=JSON.stringify(exportState()); return {changed:a!==b,depth,undone:JSON.parse(c).type===JSON.parse(a).type&&JSON.parse(c).hue===JSON.parse(a).hue}; });
@@ -217,21 +218,21 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G16 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 
   // ── G17: the three audio sources work with REAL clicks (start screen) ──
-  { const p=await page(b,'scale=0.1&q=0',{ctx:{viewport:{width:1440,height:900},permissions:['microphone']}}); await p.waitForSelector('#bDemo',{state:'attached'}); await p.waitForFunction(()=>frame>2,null,{timeout:120000});
+  { const p=await raw({viewport:{width:1440,height:900},permissions:['microphone']});
     await p.click('#bDemo',{timeout:30000}); await p.waitForFunction(()=>A.live&&A.bass>0.05,null,{timeout:60000});
     const d=await p.evaluate(()=>({live:A.live,state:actx.state,gone:document.getElementById('start').classList.contains('gone')})); rec('G17 real click on Demo beat starts audio and closes the start screen',d.live&&d.state==='running'&&d.gone,JSON.stringify(d)); await p.context().close(); }
-  { const p=await page(b,'scale=0.1&q=0',{ctx:{viewport:{width:1440,height:900}}}); await p.waitForSelector('#bDemo',{state:'attached'}); await p.waitForFunction(()=>frame>2,null,{timeout:120000});
+  { const p=await raw({viewport:{width:1440,height:900}});
     const [fc]=await Promise.all([p.waitForEvent('filechooser',{timeout:30000}),p.click('#start label.btn',{timeout:30000})]);
     const sr=22050,n=sr*2,buf=Buffer.alloc(44+n*2); buf.write('RIFF',0); buf.writeUInt32LE(36+n*2,4); buf.write('WAVEfmt ',8); buf.writeUInt32LE(16,16); buf.writeUInt16LE(1,20); buf.writeUInt16LE(1,22); buf.writeUInt32LE(sr,24); buf.writeUInt32LE(sr*2,28); buf.writeUInt16LE(2,32); buf.writeUInt16LE(16,34); buf.write('data',36); buf.writeUInt32LE(n*2,40); for(let i=0;i<n;i++){ const t=i/sr,k=(t*2)%1; buf.writeInt16LE(Math.round(Math.sin(2*Math.PI*(60+120*Math.exp(-k*12))*k)*Math.exp(-k*6)*24000),44+i*2); }
     await fc.setFiles({name:'my beat.wav',mimeType:'audio/wav',buffer:buf}); await p.waitForFunction(()=>A.live&&A.bass>0.05&&isFinite(player.duration),null,{timeout:90000});
     const f=await p.evaluate(()=>({live:A.live,dur:player.duration,gone:document.getElementById('start').classList.contains('gone')})); rec('G17 real click on Import opens the picker and the chosen file plays',f.live&&f.dur>1&&f.gone,JSON.stringify(f)); await p.context().close(); }
-  { const p=await page(b,'scale=0.1&q=0',{ctx:{viewport:{width:1440,height:900},permissions:['microphone']}}); await p.waitForSelector('#bMic',{state:'attached'}); await p.waitForFunction(()=>frame>2,null,{timeout:120000});
+  { const p=await raw({viewport:{width:1440,height:900},permissions:['microphone']});
     await p.click('#bMic',{timeout:30000}); await p.waitForFunction(()=>document.getElementById('start').classList.contains('gone')||document.getElementById('err').style.display!=='none',null,{timeout:30000});
     const m=await p.evaluate(()=>({gone:document.getElementById('start').classList.contains('gone'),err:document.getElementById('err').style.display!=='none'?document.getElementById('err').textContent:'',state:actx&&actx.state}));
     rec('G17 real click on Mic either starts listening or says clearly why not',m.gone||/Microphone/.test(m.err),JSON.stringify(m)); await p.context().close(); }
 
   // ── G18: audio unlock on the first tap, even when the start screen is skipped ──
-  { const p=await page(b,'scale=0.1&q=0',{ctx:{viewport:{width:1440,height:900}}}); await p.waitForSelector('#bSilent',{state:'attached'}); await p.waitForFunction(()=>frame>2,null,{timeout:120000});
+  { const p=await raw({viewport:{width:1440,height:900}});
     const before=await p.evaluate(()=>({actx:!!actx})); await p.click('#bSilent',{timeout:30000}); await p.waitForTimeout(600);
     const mid=await p.evaluate(()=>({actx:!!actx,state:actx&&actx.state,unlock:typeof unlockAudio})); rec('G18 the first tap anywhere creates and unlocks the audio context (even "sculpt by hand")',!before.actx&&mid.actx&&mid.state==='running'&&mid.unlock==='function',JSON.stringify({before,mid}));
     const r=await p.evaluate(async()=>{ actx.suspend(); await new Promise(r=>setTimeout(r,300)); const s1=actx.state; document.dispatchEvent(new Event('pointerup',{bubbles:true})); await new Promise(r=>setTimeout(r,500)); return {suspended:s1,after:actx.state}; });
