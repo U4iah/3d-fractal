@@ -215,4 +215,18 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G16 Back-to-3D appears for kaleidoscope, mirror and 2D mode, and each tap/X really clears it',r.clean&&r.kalShown&&/Kaleidoscope 8/.test(r.kalText)&&r.kalAfter===0&&r.kalHidden&&r.symShown&&r.symAfter===0&&r.flowShown&&r.flowAfter===false,JSON.stringify(r));
     rec('G16 the Director never turns kaleidoscope on unless you allow it',r.dirOffMax===0&&r.dirOnMax>=4,JSON.stringify({off:r.dirOffMax,on:r.dirOnMax}));
     rec('G16 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G17: the three audio sources work with REAL clicks (start screen) ──
+  { const p=await page(b,'scale=0.1&q=0',{ctx:{viewport:{width:1440,height:900},permissions:['microphone']}}); await p.waitForSelector('#bDemo',{state:'attached'}); await p.waitForFunction(()=>frame>2,null,{timeout:120000});
+    await p.click('#bDemo',{timeout:30000}); await p.waitForFunction(()=>A.live&&A.bass>0.05,null,{timeout:60000});
+    const d=await p.evaluate(()=>({live:A.live,state:actx.state,gone:document.getElementById('start').classList.contains('gone')})); rec('G17 real click on Demo beat starts audio and closes the start screen',d.live&&d.state==='running'&&d.gone,JSON.stringify(d)); await p.context().close(); }
+  { const p=await page(b,'scale=0.1&q=0',{ctx:{viewport:{width:1440,height:900}}}); await p.waitForSelector('#bDemo',{state:'attached'}); await p.waitForFunction(()=>frame>2,null,{timeout:120000});
+    const [fc]=await Promise.all([p.waitForEvent('filechooser',{timeout:30000}),p.click('#start label.btn',{timeout:30000})]);
+    const sr=22050,n=sr*2,buf=Buffer.alloc(44+n*2); buf.write('RIFF',0); buf.writeUInt32LE(36+n*2,4); buf.write('WAVEfmt ',8); buf.writeUInt32LE(16,16); buf.writeUInt16LE(1,20); buf.writeUInt16LE(1,22); buf.writeUInt32LE(sr,24); buf.writeUInt32LE(sr*2,28); buf.writeUInt16LE(2,32); buf.writeUInt16LE(16,34); buf.write('data',36); buf.writeUInt32LE(n*2,40); for(let i=0;i<n;i++){ const t=i/sr,k=(t*2)%1; buf.writeInt16LE(Math.round(Math.sin(2*Math.PI*(60+120*Math.exp(-k*12))*k)*Math.exp(-k*6)*24000),44+i*2); }
+    await fc.setFiles({name:'my beat.wav',mimeType:'audio/wav',buffer:buf}); await p.waitForFunction(()=>A.live&&A.bass>0.05&&isFinite(player.duration),null,{timeout:90000});
+    const f=await p.evaluate(()=>({live:A.live,dur:player.duration,gone:document.getElementById('start').classList.contains('gone')})); rec('G17 real click on Import opens the picker and the chosen file plays',f.live&&f.dur>1&&f.gone,JSON.stringify(f)); await p.context().close(); }
+  { const p=await page(b,'scale=0.1&q=0',{ctx:{viewport:{width:1440,height:900},permissions:['microphone']}}); await p.waitForSelector('#bMic',{state:'attached'}); await p.waitForFunction(()=>frame>2,null,{timeout:120000});
+    await p.click('#bMic',{timeout:30000}); await p.waitForFunction(()=>document.getElementById('start').classList.contains('gone')||document.getElementById('err').style.display!=='none',null,{timeout:30000});
+    const m=await p.evaluate(()=>({gone:document.getElementById('start').classList.contains('gone'),err:document.getElementById('err').style.display!=='none'?document.getElementById('err').textContent:'',state:actx&&actx.state}));
+    rec('G17 real click on Mic either starts listening or says clearly why not',m.gone||/Microphone/.test(m.err),JSON.stringify(m)); await p.context().close(); }
 };

@@ -2090,7 +2090,13 @@ function stopSources(){
   player.pause(); player.style.display='none';
   if(demoMaster){ try{demoMaster.disconnect();}catch(e){} demoMaster=null; }
 }
-function done(){ hasAudio=true; $('start').classList.add('gone'); }
+function done(){ hasAudio=true; $('start').classList.add('gone'); audioHealth(); }
+// after a source starts, say out loud if the browser is blocking audio or nothing is arriving (so it never fails silently)
+let ahT=0; function audioHealth(){ clearTimeout(ahT); ahT=setTimeout(()=>{ try{
+    if(!actx){ showErr('Audio could not start: this browser has no Web Audio.'); return; }
+    if(actx.state!=='running'){ actx.resume().catch(()=>{}); showErr('The browser is blocking audio (state: '+actx.state+'). Click the page once, or allow sound for this site (the lock icon in the address bar).'); setTimeout(()=>{ $('err').style.display='none'; },9000); return; }
+    setTimeout(()=>{ const lvl=A.bass+A.mid+A.high; if(A.live&&lvl<0.02&&!demoTimer&&!(player&&!player.paused)){ toast('Audio is on but no sound is reaching the analyser. Check the source volume or pick another source.',5000); } },2500);
+  }catch(e){ showErr('Audio check failed: '+e.message); } },900); }
 
 // built-in generative demo: 128 bpm kick / clap / hats / acid bass / arp / pad, with a breakdown every 8 bars so drops can be detected
 function startDemo(){
@@ -2164,7 +2170,7 @@ async function useMic(){
     const ms = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     stopSources(); mediaStream = ms;
     srcNode = actx.createMediaStreamSource(mediaStream); srcNode.connect(analyser); done();
-  }catch(e){ setAudioSession('playback'); showErr('Microphone unavailable: '+e.message); setTimeout(()=>$('err').style.display='none',4000); }
+  }catch(e){ setAudioSession('playback'); const why=e&&e.name==='NotAllowedError'?'Microphone permission is blocked. Click the lock icon in the address bar and allow the microphone, then try again. (Inside an embedded page the host may block it: open the app in its own tab.)':e&&e.name==='NotFoundError'?'No microphone was found on this device.':(e&&e.message)||String(e); showErr('Microphone unavailable: '+why); setTimeout(()=>$('err').style.display='none',9000); }
 }
 async function useTab(){
   try{
@@ -2177,10 +2183,11 @@ async function useTab(){
     srcNode = actx.createMediaStreamSource(mediaStream); srcNode.connect(analyser); done();
   }catch(e){ showErr('Tab audio unavailable: '+e.message); setTimeout(()=>$('err').style.display='none',5000); }
 }
-['bDemo','bDemo2'].forEach(i=>$(i).onclick=startDemo);
+const guard=(fn,label)=>function(){ try{ return fn.apply(this,arguments); }catch(e){ showErr(label+' failed: '+(e&&e.message||e)); setTimeout(()=>$('err').style.display='none',9000); } };
+['bDemo','bDemo2'].forEach(i=>$(i).onclick=guard(startDemo,'The demo beat'));
 ['bMic','bMic2'].forEach(i=>$(i).onclick=useMic);
 ['bTab','bTab2'].forEach(i=>$(i).onclick=useTab);
-['fFile','fFile2'].forEach(i=>{ $(i).parentElement.addEventListener('click',()=>ensureCtx()); $(i).onchange=e=>useFile(e.target.files[0]); });
+['fFile','fFile2'].forEach(i=>{ $(i).parentElement.addEventListener('click',()=>ensureCtx()); $(i).onchange=guard(e=>useFile(e.target.files[0]),'Importing the file'); });
 $('bSilent').onclick=e=>{e.preventDefault(); $('start').classList.add('gone'); toast('Drag to spin · pinch to zoom · twist to rotate · put THREE fingers down for chaos · double-tap to pulse',6500);};
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault(); const f=e.dataTransfer.files[0]; if(f && /\.json$/i.test(f.name)){ loadTakeFile(f); return; } ensureCtx(); useFile(f);});   // audio and video files both work
