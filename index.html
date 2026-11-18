@@ -325,6 +325,77 @@
   #start .card #bSilent{display:grid;width:100%;--fill:var(--ember);color:#0b090c}
   #start .fig{font:500 9.5px/1.6 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3);margin-top:22px}
 </style>
+<style id="hardware">
+  /* ───── HARDWARE skin: the instrument as a pale hardware plug-in (desktop). Toggle with K or the ◐ button; the dark Figure skin is the other mode. ───── */
+  #skinBtn{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;width:34px;height:34px;border-radius:50%;padding:0;text-align:center;font-size:15px;background:rgba(15,14,21,.6);border:1px solid var(--hair);color:var(--ink)}
+  #hw{display:none}
+  body.hw{--bg:#e4e8ef;--ink:#2b303b;--on-ink:#f3f5f9;--ink-2:rgba(43,48,59,.66);--ink-3:rgba(43,48,59,.36);--ember:#ff6a1a;--amber:#d9570e;--fg:#2b303b;--dim:#677084;--panel:#eef1f6;--hair:rgba(43,48,59,.16);--accent:#2b303b;--hwL:268px;--hwR:318px;--hwT:68px;--hwB:92px;color-scheme:light;background:#e4e8ef}
+  html:has(body.hw){background:#e4e8ef}
+  body.hw #hw{display:block;position:fixed;inset:0;z-index:1;pointer-events:none;font-family:var(--mono);color:#2b303b}
+  body.hw #hw>*{pointer-events:auto}
+  body.hw canvas#gl{inset:auto;left:var(--hwL);top:var(--hwT);width:calc(100% - var(--hwL) - var(--hwR));height:calc(100% - var(--hwT) - var(--hwB));border-radius:14px;box-shadow:0 0 0 1px rgba(43,48,59,.16),inset 0 0 0 1px rgba(255,255,255,.4),0 8px 24px rgba(40,50,70,.18)}
+  body.hw #figure,body.hw .legend,body.hw #idchip,body.hw #title,body.hw canvas#hud,body.hw #freezeBtn,body.hw #menuBtn,body.hw #stat{display:none!important}
+  body.hw #ctl{left:calc(var(--hwL) + (100% - var(--hwL) - var(--hwR))/2);top:calc(var(--hwT) + 10px);background:rgba(243,245,249,.92)!important;color:#2b303b;border-color:var(--hair)}
+  body.hw #ctl.amber{color:#b8470a;border-color:var(--ember)}
+  body.hw #skinBtn{left:18px;right:auto;top:17px;bottom:auto;width:30px;height:30px;font-size:13px;background:#f3f5f9;color:#2b303b;box-shadow:0 2px 6px rgba(40,50,70,.2)}
+  .hw-top{position:absolute;left:12px;right:12px;top:10px;height:48px;display:flex;align-items:center;gap:22px;padding:0 14px;border-radius:12px;background:linear-gradient(180deg,#f6f8fb,#e9edf3);box-shadow:inset 0 1px 0 #fff,0 0 0 1px rgba(43,48,59,.1)}
+  .hw-brand{padding-left:40px;font:500 10px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:#4b5365;margin-right:auto}.hw-brand i{font:italic 400 15px/1 var(--serif);letter-spacing:0;text-transform:none;color:#2b303b;margin-left:6px}
+  .hw-sel{display:flex;align-items:center;gap:8px;font:500 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#4b5365}
+  .hw-field{min-width:150px;padding:9px 14px;border-radius:99px;background:#f6f8fb;box-shadow:inset 0 1px 3px rgba(40,50,70,.22),0 1px 0 #fff;font:500 11.5px/1 var(--mono);letter-spacing:.04em;text-transform:none;color:#2b303b;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+  .hw-pill,.hw-arr{border:0;border-radius:99px;background:linear-gradient(180deg,#fff,#dfe4ec);box-shadow:0 1px 3px rgba(40,50,70,.3),inset 0 1px 0 #fff;color:#2b303b;font:500 10px/1 var(--mono);letter-spacing:.14em;padding:8px 14px;cursor:pointer;text-transform:uppercase}
+  .hw-arr{padding:7px 9px;font-size:9px}.hw-pill:active,.hw-arr:active{transform:translateY(1px);box-shadow:0 0 1px rgba(40,50,70,.3),inset 0 1px 2px rgba(40,50,70,.2)}
+  .hw-pill:hover,.hw-arr:hover{background:linear-gradient(180deg,#fff,#e8ecf2)}
+  .hw-mod{position:absolute;border-radius:12px;background:linear-gradient(180deg,#f6f8fb,#e9edf3);box-shadow:inset 0 1px 0 #fff,0 0 0 1px rgba(43,48,59,.1);padding:12px 12px 10px}
+  .hw-mod h3{margin:0 0 8px;font:500 9.5px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:#4b5365;text-align:center}
+  .hw-rand{left:12px;top:68px;width:244px;height:262px}.hw-pads{right:12px;top:68px;width:294px;height:262px}
+  .hw-colL,.hw-colR{position:absolute;top:340px;bottom:92px;display:flex;flex-direction:column;gap:10px}.hw-colL{left:12px;width:244px}.hw-colR{right:12px;width:294px}
+  .hw-colL .hw-mod,.hw-colR .hw-mod{position:relative}.hw-grow{flex:1;min-height:0;display:flex;flex-direction:column}
+  .xy{position:relative;flex:1;min-height:70px;border-radius:9px;background:linear-gradient(180deg,#f6f8fb,#e3e8f0);box-shadow:inset 0 1px 4px rgba(40,50,70,.25),0 1px 0 #fff;touch-action:none;cursor:crosshair;overflow:hidden}
+  .xy::before,.xy::after{content:"";position:absolute;background:rgba(43,48,59,.12)}.xy::before{left:50%;top:6px;bottom:6px;width:1px}.xy::after{top:50%;left:6px;right:6px;height:1px}
+  .xy i{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:radial-gradient(circle at 36% 28%,#fff,#cdd4df);box-shadow:0 2px 5px rgba(40,50,70,.45),0 0 0 2px #2b303b;left:0;top:100%}
+  .xy span{position:absolute;left:8px;bottom:5px;font:500 8.5px/1 var(--mono);letter-spacing:.16em;color:#8a93a6;text-transform:uppercase}
+  .advbtn{display:block;width:100%;margin-top:auto}
+  .kgrid{display:grid;gap:6px 4px}.kgrid.c2{grid-template-columns:repeat(2,1fr)}.kgrid.c3{grid-template-columns:repeat(3,1fr)}
+  .knob{display:flex;flex-direction:column;align-items:center;gap:4px;touch-action:none;user-select:none;outline:none}
+  .knob .kb{position:relative;width:58px;height:58px}
+  .knob svg{position:absolute;inset:-6px;width:70px;height:70px;pointer-events:none}
+  .knob .cap{position:absolute;inset:7px;border-radius:50%;background:radial-gradient(circle at 36% 28%,#fff 0,#eef1f6 45%,#cdd4df 100%);box-shadow:0 4px 8px rgba(40,50,70,.38),inset 0 -2px 3px rgba(40,50,70,.18),inset 0 1px 1px #fff;cursor:ns-resize}
+  .knob .cap::after{content:"";position:absolute;inset:6px;border-radius:50%;box-shadow:inset 0 1px 2px rgba(40,50,70,.18)}
+  .knob .rot{position:absolute;inset:0;border-radius:50%}.knob .rot i{position:absolute;left:50%;top:5px;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:#1d2129;z-index:1}
+  .knob:focus-visible .cap{outline:2px solid var(--ember);outline-offset:3px}
+  .knob label{font:500 9px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#4b5365}
+  .knob output{font:500 9.5px/1 var(--mono);color:#8a93a6;min-height:10px}
+  .knob.active .cap{box-shadow:0 2px 4px rgba(40,50,70,.4),inset 0 -2px 3px rgba(40,50,70,.18),inset 0 1px 1px #fff,0 0 0 2px rgba(255,106,26,.55)}
+  .wheel{position:relative;width:112px;height:112px;margin:4px auto 6px;border-radius:50%;border:0;padding:0;background:radial-gradient(circle at 36% 28%,#fff,#e3e8f0 70%,#cbd2de);box-shadow:0 5px 10px rgba(40,50,70,.35),inset 0 -3px 5px rgba(40,50,70,.15),inset 0 1px 1px #fff;cursor:pointer;transition:transform .35s cubic-bezier(.3,1.8,.5,1)}
+  .wheel:hover{transform:rotate(30deg)}.wheel:active{transform:rotate(90deg) scale(.96)}
+  .wheel::before{content:"";position:absolute;inset:34px;border-radius:50%;background:#f4f6fa;box-shadow:inset 0 1px 3px rgba(40,50,70,.25),0 1px 0 #fff}
+  .wheel b{position:absolute;left:50%;top:50%;width:0;height:0;font:600 12px/1 var(--mono);color:#2b303b}.wheel b span{position:absolute;left:-5px;top:-5px}
+  .wheel:focus-visible{outline:2px solid var(--ember);outline-offset:4px}
+  .randrow{display:flex;justify-content:space-between;align-items:flex-end;padding:0 4px}.randrow .undo{display:flex;gap:6px}
+  .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:2px 4px}
+  .hpad{position:relative;aspect-ratio:1;border-radius:9px;border:0;padding:0;background:linear-gradient(180deg,#fdfeff,#e3e8f0) center/cover;box-shadow:0 2px 4px rgba(40,50,70,.3),inset 0 1px 0 #fff;cursor:pointer;font:500 9px/1 var(--mono);color:#8a93a6;transition:transform .15s}
+  .hpad:hover{transform:translateY(-1px)}.hpad:active{transform:translateY(1px)}
+  .hpad.empty{background:linear-gradient(180deg,#f6f8fb,#e6eaf1);box-shadow:inset 0 1px 3px rgba(40,50,70,.18),0 1px 0 #fff;outline:1px dashed rgba(43,48,59,.2);outline-offset:-5px}
+  .hpad.cur{box-shadow:0 0 0 2px #2b303b,0 2px 4px rgba(40,50,70,.3)}
+  .hpad .n{position:absolute;left:5px;top:4px;color:#fff;mix-blend-mode:difference}
+  .hw-note{margin-top:8px;text-align:center;font:500 9px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#8a93a6}
+  /* the transport bar becomes the bottom hardware strip */
+  body.hw #strip{left:calc(var(--hwL) + (100% - var(--hwL) - var(--hwR))/2);bottom:12px;padding:6px 10px;border-radius:14px;background:linear-gradient(180deg,#f6f8fb,#e9edf3)!important;box-shadow:inset 0 1px 0 #fff,0 0 0 1px rgba(43,48,59,.1),0 4px 12px rgba(40,50,70,.15)!important}
+  body.hw #strip .organ__goo{display:none}
+  body.hw #strip button.organ{border:0;border-radius:99px;background:linear-gradient(180deg,#fff,#dfe4ec);box-shadow:0 1px 3px rgba(40,50,70,.3),inset 0 1px 0 #fff;color:#2b303b;padding:0 16px;min-height:34px}
+  body.hw #strip button.organ[data-shape="circle"]{width:34px;padding:0}
+  body.hw #strip button.organ:active{transform:translateY(1px);box-shadow:inset 0 1px 3px rgba(40,50,70,.3)}
+  body.hw #strip button.organ.on{background:#2b303b;color:#f3f5f9}
+  body.hw #strip button.organ.live{background:var(--ember);color:#fff;box-shadow:0 0 0 2px rgba(255,106,26,.35)}
+  body.hw #sFreeze{margin:-22px 6px -4px}
+  body.hw #ui{border-radius:14px 0 0 14px;top:12px;bottom:12px;background:#eef1f6!important;box-shadow:-8px 0 30px rgba(40,50,70,.25);z-index:5}
+  body.hw #ui button,body.hw #ui select,body.hw #ui label.btn{background:#f6f8fb;border-color:rgba(43,48,59,.16);color:#2b303b}
+  body.hw #ui button.on{background:#2b303b!important;color:#f3f5f9!important}
+  body.hw #ui input[type=range]::-webkit-slider-thumb{background:#2b303b;box-shadow:0 0 0 1px #fff} body.hw #ui .ro{color:#d9570e}
+  body.hw #ui .spc .cap,body.hw #types.cards button .tn{color:#f3f5f9}
+  body.hw #toast{background:#2b303b;color:#f3f5f9}
+  @media (max-width:1099px),(pointer:coarse){ #skinBtn{display:none} }
+</style>
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -353,6 +424,19 @@
   <p class="fig">Fig. FP·I · drag &amp; drop audio or video anytime</p>
 </div></div>
 
+<div id="hw" aria-label="Fractal Pulse instrument panel">
+  <header class="hw-top">
+    <div class="hw-brand">Fractal Pulse<i>mathematical matter</i></div>
+    <div class="hw-sel"><span>Preset</span><button class="hw-pill" id="hwSave" title="Save the current sculpture as a specimen (frozen)">Save</button><b class="hw-field" id="hwPreset">temporary look</b><button class="hw-arr" id="hwPrev" title="Previous specimen">◀</button><button class="hw-arr" id="hwNext" title="Next specimen">▶</button></div>
+    <div class="hw-sel"><span>Matter</span><b class="hw-field" id="hwMatter">Mandelbulb</b><button class="hw-arr" id="hwMPrev" title="Previous fractal">◀</button><button class="hw-arr" id="hwMNext" title="Next fractal">▶</button></div>
+  </header>
+  <section class="hw-mod hw-rand"><h3>Randomize</h3><button class="wheel" id="hwWheel" aria-label="Randomize the sculpture"><b><span style="transform:rotate(0deg) translateY(-42px)">R</span><span style="transform:rotate(60deg) translateY(-42px)">A</span><span style="transform:rotate(120deg) translateY(-42px)">N</span><span style="transform:rotate(180deg) translateY(-42px)">D</span><span style="transform:rotate(240deg) translateY(-42px)">O</span><span style="transform:rotate(300deg) translateY(-42px)">M</span></b></button>
+    <div class="randrow"><div class="undo"><button class="hw-arr" id="hwUndo">Undo</button><button class="hw-arr" id="hwRedo">Redo</button></div><div id="kDev"></div></div></section>
+  <div class="hw-colL"><section class="hw-mod"><h3>Sculpt</h3><div class="kgrid c2" id="kSculpt"></div></section><section class="hw-mod"><h3>Music</h3><div class="kgrid c3" id="kMusic"></div></section><section class="hw-mod hw-grow"><h3>XY · shape / detail</h3><div class="xy" id="hwXY"><i></i><span>drag</span></div></section></div>
+  <section class="hw-mod hw-pads"><h3>Specimens</h3><div class="pgrid" id="hwPads"></div><div class="hw-note">tap a pad to load · tap an empty pad to capture</div></section>
+  <div class="hw-colR"><section class="hw-mod"><h3>Look</h3><div class="kgrid c3" id="kLook"></div></section><section class="hw-mod hw-grow"><h3>Advanced</h3><div class="hw-note" style="margin:0 0 8px">every parameter, formula pin, timeline, exports</div><button class="hw-pill advbtn" id="hwAdv">Open the full panel ▸▸▸</button><div class="hw-note" style="margin-top:auto">K skin · H clean view · Z freeze</div></section></div>
+</div>
+<button id="skinBtn" title="Switch skin: Hardware ⇄ Figure (K)" aria-label="Switch skin">◐</button>
 <div id="figure">
   <canvas id="conduits"></canvas>
   <button class="node n-dir" id="nDir" data-open="Performance" title="Wake or rest the Director (auto camera, looks, kaleidoscope)"><span class="num">1</span><span class="dot"></span><span class="blob organ" data-shape="pill" id="nDirBody">◈ Director</span><span class="cap" id="capDir">resting</span></button>
@@ -2551,7 +2635,7 @@ function frameBody(nowMs){
   let cw,ch,sw,sh;
   if(expo.active){ cw=sw=expo.bw; ch=sh=expo.bh; }                 // still export: render buffers sized for one tile; the visible canvas is left alone
   else{
-    const dpr=Math.min(devicePixelRatio||1,isPro?2:1.5); cw=Math.max(64,Math.floor(innerWidth*dpr)); ch=Math.max(64,Math.floor(innerHeight*dpr));
+    const dpr=Math.min(devicePixelRatio||1,isPro?2:1.5); cw=Math.max(64,Math.floor((canvas.clientWidth||innerWidth)*dpr)); ch=Math.max(64,Math.floor((canvas.clientHeight||innerHeight)*dpr));
     sw=Math.max(48,Math.floor(cw*resScale/16)*16); sh=Math.max(48,Math.floor(ch*resScale/16)*16);
     if(canvas.width!==cw||canvas.height!==ch){ canvas.width=cw; canvas.height=ch; }
   }
@@ -3250,6 +3334,61 @@ setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEac
     if($('cDirector').checked||$('cShow').checked){ ctx.setLineDash([3,6]); ctx.strokeStyle=ink; ctx.globalAlpha=0.4; ctx.beginPath(); const f=at(fml,'r'); ctx.moveTo(at(dir,'r').x,at(dir,'r').y); ctx.quadraticCurveTo(f.x+70,at(dir,'r').y+60,f.x,f.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1; }
     if(live){ pulses(a1,t,0.45,2); pulses(a2,t+0.3,0.45,2); pulses(a3,t+0.6,0.4,3,3.6); pulses(a4,t,0.3,2,3); } else pulses(a3,t,0.07,1,2.4); }
   requestAnimationFrame(frame);
+})();
+
+// ═════════════════════ HARDWARE skin: knobs, pads, preset bar, randomize wheel ═════════════════════
+(function hardwareSkin(){
+  const mq=matchMedia('(min-width:1100px) and (pointer:fine)'); let skin='hw'; try{ skin=localStorage.getItem('fpSkin')||'hw'; }catch(e){}
+  const apply=()=>{ const on=mq.matches&&skin==='hw'; document.body.classList.toggle('hw',on); if(on&&!window.__hwInit){ window.__hwInit=1; $('ui').classList.add('hidden'); } };
+  const setSkin=v=>{ skin=v; try{ localStorage.setItem('fpSkin',v); }catch(e){} apply(); toast(v==='hw'?'Hardware skin':'Figure skin',1400); };
+  mq.addEventListener&&mq.addEventListener('change',apply); apply();
+  $('skinBtn').onclick=()=>setSkin(skin==='hw'?'figure':'hw');
+  addEventListener('keydown',e=>{ if(e.ctrlKey||e.metaKey||e.altKey||e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return; if(e.key==='k'||e.key==='K') setSkin(skin==='hw'?'figure':'hw'); });
+  // rotary knob bound to a real slider (the slider stays the source of truth)
+  const knobs=[];
+  function knob(host,{id,label,get,set,min,max,def,fmt}){ const inp=id?$(id):null; min=inp?+inp.min:min; max=inp?+inp.max:max; def=inp?+inp.defaultValue:def; get=get||(()=>+inp.value); set=set||(v=>{ inp.value=v; inp.dispatchEvent(new Event('input',{bubbles:true})); });
+    const el=document.createElement('div'); el.className='knob'; el.tabIndex=0; el.setAttribute('role','slider'); el.setAttribute('aria-label',label); el.setAttribute('aria-valuemin',min); el.setAttribute('aria-valuemax',max);
+    let ticks=''; for(let i=0;i<=10;i++){ const a=(-135+i*27)*Math.PI/180, r1=32,r2=i%5===0?27:29.5; ticks+=`<line x1="${35+Math.sin(a)*r1}" y1="${35-Math.cos(a)*r1}" x2="${35+Math.sin(a)*r2}" y2="${35-Math.cos(a)*r2}" stroke="#8a93a6" stroke-width="1.2"/>`; }
+    el.innerHTML=`<div class="kb"><svg viewBox="0 0 70 70">${ticks}</svg><div class="cap"><div class="rot"><i></i></div></div></div><label></label><output></output>`; el.querySelector('label').textContent=label; host.appendChild(el);
+    const rot=el.querySelector('.rot'), out=el.querySelector('output'); const f=fmt||(v=>v.toFixed((max-min)>20?0:2));
+    const paint=()=>{ const v=get(), n=clamp((v-min)/(max-min||1),0,1); rot.style.transform=`rotate(${-135+n*270}deg)`; out.textContent=f(v); el.setAttribute('aria-valuenow',v); };
+    let y0=0,v0=0,drag=false; const cap=el.querySelector('.cap');
+    const move=e=>{ if(!drag) return; const k=e.shiftKey?0.25:1; set(clamp(v0+(y0-e.clientY)/170*(max-min)*k,min,max)); paint(); };
+    cap.addEventListener('pointerdown',e=>{ drag=true; y0=e.clientY; v0=get(); el.classList.add('active'); cap.setPointerCapture(e.pointerId); e.preventDefault(); });
+    cap.addEventListener('pointermove',move); const end=()=>{ drag=false; el.classList.remove('active'); }; cap.addEventListener('pointerup',end); cap.addEventListener('pointercancel',end);
+    cap.addEventListener('dblclick',()=>{ set(def); paint(); });
+    el.addEventListener('wheel',e=>{ e.preventDefault(); set(clamp(get()-Math.sign(e.deltaY)*(max-min)/40,min,max)); paint(); },{passive:false});
+    el.addEventListener('keydown',e=>{ const st=(max-min)/40; if(e.key==='ArrowUp'||e.key==='ArrowRight'){ set(clamp(get()+st,min,max)); paint(); e.preventDefault(); } else if(e.key==='ArrowDown'||e.key==='ArrowLeft'){ set(clamp(get()-st,min,max)); paint(); e.preventDefault(); } else if(e.key==='Home'){ set(def); paint(); } });
+    paint(); knobs.push({paint,isDrag:()=>drag}); return el; }
+  [['sMB','Shape'],['sMM','Detail'],['sMH','Sparkle'],['sWarp','Warp']].forEach(([id,l])=>knob($('kSculpt'),{id,label:l}));
+  [['sBloom','Bloom'],['sGlow','Glow'],['sTrail','Trails'],['sHue','Hue'],['sKal','Kaleido'],['sSym','Symmetry']].forEach(([id,l])=>{ if($(id)) knob($('kLook'),{id,label:l}); });
+  [['sSens','Sens'],['sMotion','Motion'],['sFps','Cap']].forEach(([id,l])=>{ if($(id)) knob($('kMusic'),{id,label:l}); });
+  $('hwAdv').onclick=()=>{ $('ui').classList.toggle('hidden'); };
+  // XY: x = shape, y = detail (the same pair the touch pad drives)
+  { const xy=$('hwXY'), dot=xy.querySelector('i'); const sync=()=>{ dot.style.left=(+$('sMB').value/1.2*100)+'%'; dot.style.top=((1-+$('sMM').value/1.2)*100)+'%'; }; const set=e=>{ const r=xy.getBoundingClientRect(); const x=clamp((e.clientX-r.left)/r.width,0,1), y=clamp((e.clientY-r.top)/r.height,0,1); $('sMB').value=(x*1.2).toFixed(3); $('sMM').value=((1-y)*1.2).toFixed(3); $('sMB').dispatchEvent(new Event('input',{bubbles:true})); $('sMM').dispatchEvent(new Event('input',{bubbles:true})); sync(); };
+    xy.addEventListener('pointerdown',e=>{ xy.setPointerCapture(e.pointerId); set(e); xy._d=1; }); xy.addEventListener('pointermove',e=>{ if(xy._d) set(e); }); xy.addEventListener('pointerup',()=>{ xy._d=0; }); xy.addEventListener('pointercancel',()=>{ xy._d=0; }); window.__xySync=sync; sync(); }
+  // randomize wheel with deviance + undo/redo
+  let dev=0.4; knob($('kDev'),{label:'Deviance',min:0,max:1,def:0.4,get:()=>dev,set:v=>{ dev=v; }});
+  const H={u:[],r:[]}; const snap=()=>JSON.parse(JSON.stringify(exportState()));
+  const restore=st=>{ const m=$('sTrans').value; $('sTrans').value='cut'; try{ applyState(st); } finally{ $('sTrans').value=m; } };
+  const randomizeHW=()=>{ H.u.push(snap()); if(H.u.length>40) H.u.shift(); H.r.length=0; let st=snap(); const n=1+Math.floor(dev*3); for(let i=0;i<n;i++) st=mutateState(st,null); if(dev>0.65&&Math.random()<dev-0.4){ st.type=Math.random()*TYPES.length|0; st.pins={}; } restore(st); toast('Randomized · deviance '+dev.toFixed(2),1200); };
+  $('hwWheel').onclick=randomizeHW;
+  $('hwUndo').onclick=()=>{ if(!H.u.length){ toast('Nothing to undo',900); return; } H.r.push(snap()); restore(H.u.pop()); };
+  $('hwRedo').onclick=()=>{ if(!H.r.length){ toast('Nothing to redo',900); return; } H.u.push(snap()); restore(H.r.pop()); };
+  window.fpHW={undoDepth:()=>H.u.length,randomize:randomizeHW};
+  // preset bar
+  $('hwSave').onclick=()=>{ saveSpecimen(false); toast('Saved as a specimen',1500); };
+  const stepSpec=d=>{ if(!specimens.length){ toast('No specimens yet: tap Save',1400); return; } const i=loadedSpec?specimens.findIndex(x=>x.id===loadedSpec.id):-1; const sp=specimens[(i+d+specimens.length)%specimens.length]; H.u.push(snap()); selectSpecimen(sp.id); restoreSpecimen(sp); };
+  $('hwPrev').onclick=()=>stepSpec(1); $('hwNext').onclick=()=>stepSpec(-1);
+  $('hwMPrev').onclick=()=>setType(shown-1); $('hwMNext').onclick=()=>setType(shown+1);
+  // pads: your first twelve specimens
+  const padsEl=$('hwPads'); let padKey='';
+  function paintPads(){ const key=specimens.slice(0,12).map(x=>x.id+(x.thumb?1:0)).join()+'|'+(loadedSpec?loadedSpec.id:''); if(key===padKey) return; padKey=key; padsEl.innerHTML='';
+    for(let i=0;i<12;i++){ const sp=specimens[i], b=document.createElement('button'); b.className='hpad'+(sp?'':' empty')+(sp&&loadedSpec&&loadedSpec.id===sp.id?' cur':''); b.innerHTML='<span class="n">'+(i+1)+'</span>';
+      if(sp){ if(sp.thumb) b.style.backgroundImage='url('+sp.thumb+')'; b.title=sp.name; b.onclick=()=>{ H.u.push(snap()); selectSpecimen(sp.id); restoreSpecimen(sp); }; } else { b.title='Capture the current sculpture into a new specimen'; b.onclick=()=>{ saveSpecimen(true); toast('Captured',1300); }; }
+      padsEl.appendChild(b); } }
+  setInterval(()=>{ if(document.hidden||!document.body.classList.contains('hw')) return; try{ paintPads(); knobs.forEach(k=>{ if(!k.isDrag()) k.paint(); }); window.__xySync&&window.__xySync();
+    const sp=loadedSpec&&specimens.find(x=>x.id===loadedSpec.id); $('hwPreset').textContent=sp?sp.name+(stateDiffers(exportState(),loadedSpec.state)?' •':''):'temporary look'; $('hwMatter').textContent=TYPES[shown].name; }catch(e){} },250);
 })();
 // panel + strip behaviour
 const syncPanel=()=>document.body.classList.toggle('panelOpen',!$('ui').classList.contains('hidden'));
