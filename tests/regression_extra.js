@@ -1,6 +1,6 @@
 // Phase-specific suites, loaded by regression.js
 module.exports=async function({b,page,rec,errText,URL}){
-  const raw=async(ctx)=>{ const c=await b.newContext(ctx||{}); const p=await c.newPage(); p.errs=[]; p.on('pageerror',e=>p.errs.push('pageerror: '+e.message)); p.on('console',m=>{ if(m.type()==='error') p.errs.push(m.text().slice(0,200)); }); await p.goto(URL+'#orbit=0&auto=0&scale=0.1&q=0',{waitUntil:'commit'}); await p.waitForSelector('#bDemo',{state:'attached',timeout:240000}); await p.waitForFunction(()=>window.frame>2,null,{timeout:240000}); return p; };
+  const raw=async(ctx)=>{ const c=await b.newContext(ctx||{}); const p=await c.newPage(); p.errs=[]; p.on('pageerror',e=>p.errs.push('pageerror: '+e.message)); p.on('console',m=>{ if(m.type()==='error') p.errs.push(m.text().slice(0,200)); }); await p.goto(URL+'#orbit=0&auto=0&scale=0.1&q=0',{waitUntil:'commit'}); await p.waitForSelector('#bDemo',{state:'attached',timeout:240000}); await p.waitForFunction(()=>frame>2,null,{timeout:240000}); return p; };
   // ── G7: Freeze / Resume + formula parameters (Phase 1) ──
   { const p=await page(b,'scale=0.12&q=0&type=0'); await p.evaluate(()=>startDemo()); await p.waitForFunction(()=>A.live,null,{timeout:60000});
     // turn on every automatic mover, then freeze
@@ -264,4 +264,19 @@ module.exports=async function({b,page,rec,errText,URL}){
     const c=await p.evaluate(async()=>{ $('cCalm').checked=true; await new Promise(r=>setTimeout(r,1500)); const out={k:SAFE.k,calm:SAFE.calm}; $('sKal').value=8; azV=9; await new Promise(r=>setTimeout(r,300)); out.azVcapped=Math.abs(azV)<=2.01; setDive(true); out.dive=diveOn; $('sKal').value=0; $('cCalm').checked=false; await new Promise(r=>setTimeout(r,2500)); out.recovered=SAFE.k>0.8; return out; });
     rec('G20 Calm mode softens pulses (k ≤ 0.35), caps spin, blocks Dive, and fully releases',c.calm&&c.k<=0.36&&c.azVcapped&&c.dive===false&&c.recovered,JSON.stringify(c));
     rec('G20 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G21: Pareidolia lab ──
+  { const p=await page(b,'scale=0.1&q=0&type=15',{ctx:{viewport:{width:1280,height:800}}});
+    const m=await p.evaluate(()=>{ const N=64; const mk=(f)=>{ const img=new ImageData(N,N); for(let y=0;y<N;y++) for(let x=0;x<N;x++){ const v=f(x,y); const i=(y*N+x)*4; img.data[i]=img.data[i+1]=img.data[i+2]=v; img.data[i+3]=255; } return img; };
+      const sq=mk((x,y)=>(x>8&&x<56&&y>8&&y<56)?255:0), sym=mk((x,y)=>Math.abs(x-31.5)<10+((y%16)<8?6:0)?255:20), asym=mk((x,y)=>(x*7+y*13)%11<4?255:0);
+      const L=n=>fpLab.edgeMask(new Float32Array(Array.from(n.data).filter((_,i)=>i%4===0).map(v=>v/255)),N,N);
+      const line=new Uint8Array(N*N); for(let x=4;x<60;x++) line[32*N+x]=1; const filled=new Uint8Array(N*N).fill(1);
+      return {dimLine:+fpLab.boxDim(line,N,N).toFixed(2),dimFilled:+fpLab.boxDim(filled,N,N).toFixed(2),symHigh:fpLab.imageStats(sym).mirror,symLow:fpLab.imageStats(asym).mirror,contrastFlat:fpLab.imageStats(mk(()=>128)).contrast,contrastBars:fpLab.imageStats(mk((x)=>x<32?0:255)).contrast}; });
+    rec('G21 measures: box-count dimension ≈1 for a line and ≈2 for a filled area; mirror symmetry ranks symmetric above asymmetric; contrast sensible',m.dimLine>0.8&&m.dimLine<1.25&&m.dimFilled>1.8&&m.symHigh>0.8&&m.symLow<0.6&&m.contrastFlat===0&&m.contrastBars>0.4,JSON.stringify(m));
+    const r=await p.evaluate(async()=>{ document.getElementById('bSilent').click(); await new Promise(r=>setTimeout(r,1500)); document.getElementById('lbSecs').value=3; const before=labData.length; labStart(); const total=LB.run.conds.length; let done=0;
+      for(let i=0;i<total;i++){ await new Promise(r=>setTimeout(r,200)); const btn=document.querySelector('#lbBtns [data-k='+(i%2?'face':'architecture')+']'); btn.click(); LB.run.sel; await new Promise(r=>setTimeout(r,3200)); document.getElementById('lbNext').click(); await new Promise(r=>setTimeout(r,900)); done++; }
+      const s=labData[labData.length-1]; const rows=s?s.rows:[]; return {total,sessions:labData.length-before,rows:rows.length,reported:rows.filter(x=>x.reported.face||x.reported.architecture).length,measured:rows.every(x=>x.measured&&isFinite(x.measured.boxDim)&&x.measured.boxDim>0&&x.measured.boxDim<2.2),syms:[...new Set(rows.map(x=>x.condition.mirrorOrder))].sort(),separated:rows.every(x=>x.reported&&x.measured&&x.condition),overlayHidden:!document.getElementById('lbOverlay').classList.contains('show'),summary:labSummary().split('
+')[0]}; });
+    rec('G21 a blind session runs end to end, stores reports separately from measurements, and restores the view',r.total>=6&&r.sessions===1&&r.rows===r.total&&r.reported===r.total&&r.measured&&r.separated&&r.overlayHidden&&r.syms.length===3,JSON.stringify(r));
+    rec('G21 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };

@@ -399,6 +399,13 @@
   body.bench #trapBtn{left:calc(var(--hwL) + (100% - var(--hwL) - var(--hwR))/2);bottom:104px}
   @media (max-width:900px),(pointer:coarse){ #trapBtn{bottom:calc(74px + env(safe-area-inset-bottom))} }
 </style>
+<style id="lab">
+  #lbOverlay{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom));z-index:8;display:none;width:min(94vw,520px);padding:12px 14px;border-radius:14px;background:rgba(11,13,16,.94);border:1px solid var(--hair);color:var(--ink);font:12px/1.3 var(--mono)}
+  #lbOverlay.show{display:block}#lbHead{font:italic 400 18px/1 var(--serif);margin-bottom:8px}
+  #lbBtns{display:flex;flex-wrap:wrap;gap:6px}#lbBtns button{padding:9px 12px;border-radius:99px;background:transparent;border:1px solid var(--hair);color:var(--ink);font:inherit;cursor:pointer}#lbBtns button.on{background:var(--ink);color:var(--on-ink)}
+  .lbrow{display:flex;align-items:center;gap:10px;margin-top:10px}.lbrow input[type=range]{flex:1}.lbmain{flex:1;padding:11px;border-radius:8px;background:var(--ink);color:var(--on-ink);border:0;font:inherit;cursor:pointer}.lbmain:disabled{opacity:.4}
+  body.bench #lbOverlay{left:calc(var(--hwL) + (100% - var(--hwL) - var(--hwR))/2);bottom:204px}
+</style>
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -440,6 +447,12 @@
     <div id="eChance"></div><h3 style="margin-top:6px">Signal</h3><canvas id="bnMeter" width="170" height="120" style="width:100%;flex:1;min-height:60px;border-radius:6px;background:#06080a;box-shadow:inset 0 2px 5px rgba(0,0,0,.9)"></canvas></aside>
   <aside class="bn-rail bn-right"><h3>Light &amp; matter</h3><div id="eLook"></div><h3 style="margin-top:6px">Ear</h3><div id="eMusic"></div></aside>
   <div class="bn-rack" id="bnRack" aria-label="Specimen slides"></div>
+</div>
+<div id="lbOverlay" role="dialog" aria-label="Pareidolia trial">
+  <div id="lbHead">Trial</div>
+  <div id="lbBtns"><button data-k="face">Face</button><button data-k="creature">Creature</button><button data-k="architecture">Architecture</button><button data-k="other">Other structure</button><button data-k="nothing">Nothing</button></div>
+  <div class="lbrow"><span>How strongly?</span><input id="lbStrength" type="range" min="1" max="5" step="1" value="3"><output id="lbStrOut">3</output></div>
+  <div class="lbrow"><button id="lbNext" class="lbmain">Next ▸</button><button id="lbAbort">Stop</button></div>
 </div>
 <button id="audioFix" aria-live="polite">Audio is asleep · tap to wake it</button>
 <button id="trapBtn" aria-live="polite">Back to plain 3D<kbd>X</kbd></button>
@@ -630,6 +643,13 @@
   <canvas id="epCan" width="384" height="184" style="width:384px;max-width:100%;image-rendering:pixelated;border:1px solid rgba(255,255,255,.2);margin-top:6px;display:block;background:#000"></canvas>
   <canvas id="epBig" width="384" height="184" style="width:100%;image-rendering:pixelated;border:1px solid rgba(255,255,255,.2);margin-top:6px;display:block;background:#000"></canvas>
   <div id="epInfo" style="color:var(--dim);font-size:11px;margin-top:4px">Makes the image file only. Nothing is sent to a label; uploading to hardware is a separate, unverified step.</div>
+  <h2>Pareidolia lab</h2>
+  <div class="note">A blind self-report experiment on <b>this</b> fractal. Each trial shows one configuration (mirror type, view angle, roll) for a few seconds in random order, without telling you which. Tell it what you see; it logs your answer next to measured image statistics. Small samples only describe <b>you</b>; findings about 2D noise do not automatically hold for 3D fractals.</div>
+  <div class="row"><span>View (s)</span><input id="lbSecs" type="range" min="3" max="20" step="1" value="8"></div>
+  <div class="row"><span>Vary</span><label><input id="lbSym" type="checkbox" checked> mirror</label><label><input id="lbAz" type="checkbox" checked> angle</label><label><input id="lbRoll" type="checkbox" checked> roll</label></div>
+  <div class="grid"><button id="lbStart">▶ Start blind trials</button><button id="lbShow">Show results</button></div>
+  <div id="lbResults" class="note">No sessions yet.</div>
+  <div class="grid"><button id="lbCopy">Copy all data (JSON)</button><button id="lbClear">Clear data</button></div>
   <h2>Capture</h2>
   <div class="grid">
     <button id="bRec">● Record clip</button>
@@ -2733,6 +2753,7 @@ function frameBody(nowMs){
   if(takeRec) takeSample(now);
   if(frame%8===0) refreshSculptParams();
   if(thumbReq) doThumb();
+  if(pixReq) doPix();
   guardProbe(now);
   frame++;
 }
@@ -3096,8 +3117,8 @@ function makeSpecimen(o){
   return {format:'fractal-pulse-specimen',v:1,id:specNewId(),name:(o.name||'').trim()||(TYPES[nrm(st.type|0,TYPES.length)].name+' · '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})),
     notes:o.notes||'',collection:(o.collection||'').trim()||'Unsorted',created:now,modified:now,parent:o.parent||null,
     implementation:implBlock(st),source:o.source||{kind:'live'},audio:o.audio||audioSnap(),state:st,thumb:o.thumb||null}; }
-function doThumb(){ const cb=thumbReq; thumbReq=null; if(!cb) return; try{ const w=192,h=Math.max(48,Math.round(192*canvas.height/canvas.width)); const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(canvas,0,0,w,h); cb(c.toDataURL('image/jpeg',0.72)); }catch(e){ cb(null); } }
-function grabThumb(cb){ let done=false; const fin=t=>{ if(done) return; done=true; cb(t); }; thumbReq=fin; setTimeout(()=>{ if(thumbReq===fin){ thumbReq=null; } fin(null); },2500); }
+function doThumb(){ const q=thumbReq; thumbReq=null; if(!q||!q.length) return; let d=null; try{ const w=192,h=Math.max(48,Math.round(192*canvas.height/canvas.width)); const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(canvas,0,0,w,h); d=c.toDataURL('image/jpeg',0.72); }catch(e){ d=null; } q.forEach(cb=>{ try{ cb(d); }catch(e){} }); }   // one capture answers every waiting request
+function grabThumb(cb){ let done=false; const fin=t=>{ if(done) return; done=true; cb(t); }; (thumbReq=thumbReq||[]).push(fin); setTimeout(()=>{ if(thumbReq){ const i=thumbReq.indexOf(fin); if(i>=0){ thumbReq.splice(i,1); if(!thumbReq.length) thumbReq=null; } } fin(null); },2500); }
 function addSpecimen(sp){ specimens.unshift(sp); persistSpecimens(); renderSpecimens(); selectSpecimen(sp.id); }
 function saveSpecimen(freeze,extra){
   const o=Object.assign({name:$('spName').value,collection:$('spColl').value,freeze},extra||{}); const sp=makeSpecimen(o);
@@ -3173,7 +3194,7 @@ loadSpecimens(); renderSpecimens();
 
 // ═════════════════════ WORKSPACES: Explore / Sculpt / Perform / Forge ═════════════════════
 const WS_MAP={'Fractal':'explore','Theme':'explore','Audio':'explore perform','Sculpt · no music needed':'sculpt','Morph timeline':'explore perform','Look':'explore sculpt','Reactivity':'perform',
-  'Comfort & safety':'explore perform forge','Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
+  'Comfort & safety':'explore perform forge','Pareidolia lab':'forge','Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
 (function groupWorkspaces(){
   const ui=$('ui'); let cur=null;
   [...ui.children].forEach(el=>{
@@ -3371,6 +3392,46 @@ function guardProbe(now){
 }
 setInterval(()=>{ const i=$('safeInfo'); if(!i) return; const g=$('cSafeGuard').checked; i.textContent=g?`Guard on · flashes in the last second: ${SAFE.flashes} · ${SAFE.active?'LIMITING pulses now':'not limiting'} · times it stepped in: ${SAFE.trips}${SAFE.calm?' · Calm mode on':''}`:`Guard off${SAFE.calm?' · Calm mode on':''}`; },500);
 if(calmLike){ try{ if(localStorage.getItem('fractalPulseCalmSeen')!=='1'){ $('cCalm').checked=true; localStorage.setItem('fractalPulseCalmSeen','1'); } }catch(e){ $('cCalm').checked=true; } }   // honour the system "reduce motion" setting once
+// ═════════════════════ PAREIDOLIA LAB (blind self-report trials + measured image statistics) ═════════════════════
+// What you REPORT (face / creature / architecture / other / nothing, strength) is stored separately from what is MEASURED (settings, mirror symmetry of the image,
+// edge density, contrast, 2D box-counting dimension of the edge map). Box counting is done on the rendered 2D view, because for perceived 3D complexity
+// 2D-projection measures tracked human judgements better than direct 3D ones (SHREC2026); nothing here claims 2D findings transfer to 3D fractals.
+let pixReq=null;
+function grabPixels(n,cb){ pixReq={n,cb}; setTimeout(()=>{ if(pixReq&&pixReq.cb===cb){ pixReq=null; cb(null); } },2500); }
+function doPix(){ const r=pixReq; pixReq=null; if(!r) return; try{ const n=r.n, c=document.createElement('canvas'); c.width=c.height=n; const x=c.getContext('2d',{willReadFrequently:true}); const m=Math.min(canvas.width,canvas.height); x.drawImage(canvas,(canvas.width-m)/2,(canvas.height-m)/2,m,m,0,0,n,n); r.cb(x.getImageData(0,0,n,n)); }catch(e){ r.cb(null); } }
+const lumaOf=img=>{ const d=img.data,L=new Float32Array(img.width*img.height); for(let i=0;i<L.length;i++) L[i]=(0.2126*d[i*4]+0.7152*d[i*4+1]+0.0722*d[i*4+2])/255; return L; };
+function sobel(L,w,h){ const E=new Float32Array(w*h); for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){ const i=y*w+x; const gx=-L[i-w-1]-2*L[i-1]-L[i+w-1]+L[i-w+1]+2*L[i+1]+L[i+w+1], gy=-L[i-w-1]-2*L[i-w]-L[i-w+1]+L[i+w-1]+2*L[i+w]+L[i+w+1]; E[i]=Math.hypot(gx,gy); } return E; }
+function edgeMask(L,w,h,frac=0.3){ const E=sobel(L,w,h); let mx=0; for(const v of E) if(v>mx) mx=v; const M=new Uint8Array(w*h); if(mx<1e-6) return M; for(let i=0;i<M.length;i++) M[i]=E[i]>=mx*frac?1:0; return M; }
+function boxDim(M,w,h){ const sizes=[2,4,8,16,32], pts=[]; for(const s of sizes){ let c=0; for(let by=0;by<h;by+=s) for(let bx=0;bx<w;bx+=s){ let hit=0; for(let y=by;y<by+s&&!hit;y++) for(let x=bx;x<bx+s;x++) if(M[y*w+x]){ hit=1; break; } c+=hit; } if(c>0) pts.push([Math.log(1/s),Math.log(c)]); }
+  if(pts.length<3) return 0; const n=pts.length, sx=pts.reduce((a,p)=>a+p[0],0), sy=pts.reduce((a,p)=>a+p[1],0), sxx=pts.reduce((a,p)=>a+p[0]*p[0],0), sxy=pts.reduce((a,p)=>a+p[0]*p[1],0); return (n*sxy-sx*sy)/(n*sxx-sx*sx||1); }
+function mirrorSym(L,w,h){ let sa=0,sb=0,saa=0,sbb=0,sab=0,n=0; for(let y=0;y<h;y++) for(let x=0;x<(w>>1);x++){ const a=L[y*w+x], b=L[y*w+(w-1-x)]; sa+=a; sb+=b; saa+=a*a; sbb+=b*b; sab+=a*b; n++; } const cov=sab/n-(sa/n)*(sb/n), va=saa/n-(sa/n)**2, vb=sbb/n-(sb/n)**2; return va>1e-9&&vb>1e-9?cov/Math.sqrt(va*vb):0; }
+function rmsContrast(L){ let s=0,ss=0; for(const v of L){ s+=v; ss+=v*v; } const m=s/L.length; return Math.sqrt(Math.max(0,ss/L.length-m*m)); }
+function imageStats(img){ const L=lumaOf(img), w=img.width, h=img.height, M=edgeMask(L,w,h); let e=0; for(const v of M) e+=v; return {mirror:+mirrorSym(L,w,h).toFixed(3),contrast:+rmsContrast(L).toFixed(3),edgeDensity:+(e/M.length).toFixed(3),boxDim:+boxDim(M,w,h).toFixed(3)}; }
+const LAB_KEY='fractalPulseLab';
+let labData=[]; try{ labData=JSON.parse(localStorage.getItem(LAB_KEY)||'[]')||[]; }catch(e){}
+const labSave=()=>{ try{ localStorage.setItem(LAB_KEY,JSON.stringify(labData.slice(-40))); }catch(e){} };
+function labConditions(o){ const syms=o.sym?[0,2,12]:[+$('sSym').value||0], azs=o.az?[0,Math.PI/2]:[0], rolls=o.roll?[0,Math.PI]:[0]; const out=[]; syms.forEach(sy=>azs.forEach(a=>rolls.forEach(r=>out.push({sym:sy,azOff:a,roll:r})))); for(let i=out.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [out[i],out[j]]=[out[j],out[i]]; } return out; }
+const LB={run:null};
+function labApply(base,c){ const m=$('sTrans').value; $('sTrans').value='cut'; try{ const st=JSON.parse(JSON.stringify(base)); st.sym=c.sym; st.az=base.az+c.azOff; st.ang=(base.ang||[0,0,0]).slice(); st.ang[2]=(st.ang[2]||0)+c.roll; st.frozen=1; applyState(st); } finally{ $('sTrans').value=m; } }
+function labShow(i){ const r=LB.run; const c=r.conds[i]; r.i=i; r.t0=performance.now(); r.sel={}; document.querySelectorAll('#lbBtns button').forEach(b=>b.classList.remove('on')); $('lbHead').textContent=`Trial ${i+1} of ${r.conds.length}`; $('lbStrength').value=3; $('lbStrOut').textContent='3'; $('lbNext').disabled=true; labApply(r.base,c); setTimeout(()=>{ if(LB.run===r&&r.i===i) $('lbNext').disabled=false; },Math.max(1500,Math.min(3000,r.secs*250))); }
+function labFinish(done){ const r=LB.run; LB.run=null; $('lbOverlay').classList.remove('show'); const m=$('sTrans').value; $('sTrans').value='cut'; try{ applyState(r.base); } finally{ $('sTrans').value=m; } setFrozen(!!r.base.frozen,true); if(done){ labData.push({id:'lab-'+Date.now().toString(36),created:new Date().toISOString(),app:APP_VERSION,formula:TYPES[r.base.type|0].name,secs:r.secs,rows:r.rows}); labSave(); labRender(); toast('Session saved: '+r.rows.length+' trials',2500); } }
+function labStart(){ if(LB.run) return; const base=captureState(true); const conds=labConditions({sym:$('lbSym').checked,az:$('lbAz').checked,roll:$('lbRoll').checked}); if(conds.length<2){ toast('Tick at least one thing to vary',2200); return; }
+  LB.run={base,conds,i:0,rows:[],secs:+$('lbSecs').value,sel:{},t0:0}; $('ui').classList.add('hidden'); setFrozen(true,true); $('lbOverlay').classList.add('show'); labShow(0); }
+function labNext(){ const r=LB.run; if(!r) return; const c=r.conds[r.i]; $('lbNext').disabled=true;
+  grabPixels(128,img=>{ const rep={face:!!r.sel.face,creature:!!r.sel.creature,architecture:!!r.sel.architecture,other:!!r.sel.other,nothing:!!r.sel.nothing||!Object.values(r.sel).some(Boolean),strength:+$('lbStrength').value};
+    r.rows.push({trial:r.i+1,condition:{mirrorOrder:c.sym,azOffsetDeg:+(c.azOff*180/Math.PI).toFixed(0),rollDeg:+(c.roll*180/Math.PI).toFixed(0)},geometry:{az:+az.toFixed(3),el:+el.toFixed(3),zoom:+zoomMul.toFixed(3),iterations:+$('sIterB').value,sym:+$('sSym').value,formula:TYPES[shown].name,theme:THEMES[theme].name},measured:img?imageStats(img):null,reported:rep,viewMs:Math.round(performance.now()-r.t0)});
+    if(r.i+1>=r.conds.length) labFinish(true); else labShow(r.i+1); }); }
+function labSummary(){ const rows=[]; labData.forEach(s=>s.rows.forEach(x=>rows.push(x))); if(!rows.length) return 'No sessions yet.'; const by={}; rows.forEach(x=>{ const k=x.condition.mirrorOrder; (by[k]=by[k]||[]).push(x); });
+  const pct=(a,f)=>Math.round(100*a.filter(f).length/a.length)+'%'; let out=`${rows.length} trials in ${labData.length} session(s). Your own reports, not a population result.\n`; Object.keys(by).sort((a,b)=>a-b).forEach(k=>{ const a=by[k]; const m=a.filter(x=>x.measured); const sym=m.length?(m.reduce((s,x)=>s+x.measured.mirror,0)/m.length).toFixed(2):'-'; const d=m.length?(m.reduce((s,x)=>s+x.measured.boxDim,0)/m.length).toFixed(2):'-'; out+=`mirror ${k===0?'none':k+'-fold'}: n=${a.length} · face ${pct(a,x=>x.reported.face)} · creature ${pct(a,x=>x.reported.creature)} · architecture ${pct(a,x=>x.reported.architecture)} · nothing ${pct(a,x=>x.reported.nothing)} · measured left-right symmetry ${sym} · 2D dimension ${d}\n`; }); return out; }
+function labRender(){ $('lbResults').style.whiteSpace='pre-wrap'; $('lbResults').textContent=labSummary(); }
+$('lbStart').onclick=labStart; $('lbShow').onclick=labRender; $('lbNext').onclick=labNext; $('lbAbort').onclick=()=>labFinish(false);
+$('lbStrength').addEventListener('input',()=>{ $('lbStrOut').textContent=$('lbStrength').value; });
+document.querySelectorAll('#lbBtns button').forEach(b=>b.onclick=()=>{ const r=LB.run; if(!r) return; const k=b.dataset.k; if(k==='nothing'){ r.sel={nothing:true}; document.querySelectorAll('#lbBtns button').forEach(x=>x.classList.toggle('on',x===b)); return; } delete r.sel.nothing; r.sel[k]=!r.sel[k]; b.classList.toggle('on',r.sel[k]); document.querySelector('#lbBtns [data-k=nothing]').classList.remove('on'); });
+$('lbCopy').onclick=()=>copyText(JSON.stringify({format:'fractal-pulse-pareidolia-lab',v:1,app:APP_VERSION,caveat:'Self-reported perceptions are stored separately from measured image statistics. Small samples describe one viewer.',sessions:labData},null,1),'Lab data');
+$('lbClear').onclick=()=>armBtn($('lbClear'),'Clear data',()=>{ labData=[]; labSave(); labRender(); });
+labRender();
+window.fpLab={imageStats,boxDim,mirrorSym,edgeMask,rmsContrast,summary:labSummary};
+
 // ── never trapped: kaleidoscope / mirror / 2D mode each announce themselves, and one tap (or X) returns to plain 3D ──
 function trapReason(){ const kv=+$('sKal').value; if(playing&&playLook&&playKal>=2) return 'Kaleidoscope from the playing take'; if(kv>=2) return 'Kaleidoscope '+kv+'×'; if(dirKal>=2) return 'Director kaleidoscope'; if(chaosL>0.6) return 'Chaos kaleidoscope'; if(+$('sSym').value>=2) return 'Mirror '+$('sSym').value+'×'; if(flowMode) return '2D scene (not 3D)'; return ''; }
 function backTo3D(){ $('sKal').value=0; $('sSym').value=0; dirKal=0; chaosL=0; chaosExt=0; chaosSpeed=0; if(flowMode) setFlow(false,true); if(playing&&playLook) playKal=0; $('cTakeLook').checked=playing?false:$('cTakeLook').checked; [$('sKal'),$('sSym')].forEach(x=>x.dispatchEvent(new Event('input',{bubbles:true}))); save(); toast('Back to plain 3D',1600); }
