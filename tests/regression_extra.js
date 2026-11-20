@@ -1,6 +1,6 @@
 // Phase-specific suites, loaded by regression.js
 module.exports=async function({b,page,rec,errText,URL}){
-  const raw=async(ctx)=>{ const c=await b.newContext(ctx||{}); const p=await c.newPage(); p.errs=[]; p.on('pageerror',e=>p.errs.push('pageerror: '+e.message)); p.on('console',m=>{ if(m.type()==='error') p.errs.push(m.text().slice(0,200)); }); await p.goto(URL+'#orbit=0&auto=0&scale=0.1&q=0',{waitUntil:'commit'}); await p.waitForSelector('#bDemo',{state:'attached',timeout:240000}); await p.waitForFunction(()=>frame>2,null,{timeout:240000}); return p; };
+  const raw=async(ctx)=>{ const c=await b.newContext(ctx||{}); const p=await c.newPage(); p.errs=[]; p.on('pageerror',e=>p.errs.push('pageerror: '+e.message)); p.on('console',m=>{ if(m.type()==='error') p.errs.push(m.text().slice(0,200)); }); await p.goto(URL+'#orbit=0&auto=0&scale=0.1&q=0',{waitUntil:'commit'}); await p.waitForSelector('#bDemo',{state:'attached',timeout:240000}); await p.waitForFunction(()=>typeof frame!=='undefined'&&frame>2,null,{timeout:240000}); return p; };
   // ── G7: Freeze / Resume + formula parameters (Phase 1) ──
   { const p=await page(b,'scale=0.12&q=0&type=0'); await p.evaluate(()=>startDemo()); await p.waitForFunction(()=>A.live,null,{timeout:60000});
     // turn on every automatic mover, then freeze
