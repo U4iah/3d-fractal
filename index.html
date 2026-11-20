@@ -406,6 +406,13 @@
   .lbrow{display:flex;align-items:center;gap:10px;margin-top:10px}.lbrow input[type=range]{flex:1}.lbmain{flex:1;padding:11px;border-radius:8px;background:var(--ink);color:var(--on-ink);border:0;font:inherit;cursor:pointer}.lbmain:disabled{opacity:.4}
   body.bench #lbOverlay{left:calc(var(--hwL) + (100% - var(--hwL) - var(--hwR))/2);bottom:204px}
 </style>
+<style id="labnav">
+  body.bench .bn-right{overflow:auto}body.bench #eLook,body.bench #eMusic{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+  body.bench .bn-right .enc{grid-template-columns:1fr;justify-items:center;text-align:center;gap:2px;padding:2px 0}body.bench .bn-right .enc .dial{width:54px;height:54px}body.bench .bn-right .enc svg{width:54px;height:54px}
+  body.bench .bn-right .enc .txt output{font-size:14px;margin-top:3px}
+  .labBtns{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:2px 4px 6px}.labBtns .bn-btn{padding:9px 6px;font-size:9px;letter-spacing:.1em;white-space:normal;line-height:1.2}
+  .n-lab{left:4.4%;top:82%}
+</style>
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -445,7 +452,7 @@
     <div class="dieBox"><button class="die" id="bnDie" aria-label="Roll the die: randomize the sculpture"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><polygon points="32,3 57,17 57,47 32,61 7,47 7,17" fill="rgba(210,172,95,.08)"/><polygon points="32,17 46,41 18,41" /><line x1="32" y1="3" x2="32" y2="17"/><line x1="57" y1="17" x2="46" y2="41"/><line x1="57" y1="47" x2="46" y2="41"/><line x1="32" y1="61" x2="46" y2="41"/><line x1="32" y1="61" x2="18" y2="41"/><line x1="7" y1="47" x2="18" y2="41"/><line x1="7" y1="17" x2="18" y2="41"/><line x1="7" y1="17" x2="32" y2="17"/><line x1="57" y1="17" x2="32" y2="17"/><text x="32" y="36" text-anchor="middle" font-size="11" font-family="Georgia,serif" font-style="italic" fill="currentColor" stroke="none">20</text></svg></button>
       <div class="un"><button class="bn-btn" id="bnUndo">Undo</button><button class="bn-btn" id="bnRedo">Redo</button></div></div>
     <div id="eChance"></div><h3 style="margin-top:6px">Signal</h3><canvas id="bnMeter" width="170" height="120" style="width:100%;flex:1;min-height:60px;border-radius:6px;background:#06080a;box-shadow:inset 0 2px 5px rgba(0,0,0,.9)"></canvas></aside>
-  <aside class="bn-rail bn-right"><h3>Light &amp; matter</h3><div id="eLook"></div><h3 style="margin-top:6px">Ear</h3><div id="eMusic"></div></aside>
+  <aside class="bn-rail bn-right"><h3>Light &amp; matter</h3><div id="eLook"></div><h3 style="margin-top:6px">Ear</h3><div id="eMusic"></div><h3 style="margin-top:6px">Lab</h3><div class="labBtns"><button class="bn-btn" data-sec="Pareidolia lab">Pareidolia lab</button><button class="bn-btn" data-sec="Render video · offline, fixed time">Render video</button><button class="bn-btn" data-sec="3D mesh export · experimental">3D mesh</button><button class="bn-btn" data-sec="Comfort & safety">Comfort</button></div></aside>
   <div class="bn-rack" id="bnRack" aria-label="Specimen slides"></div>
 </div>
 <div id="lbOverlay" role="dialog" aria-label="Pareidolia trial">
@@ -463,10 +470,11 @@
   <button class="node n-src" id="nSrc" data-open="Audio" title="Audio source: import audio or video, mic, tab, demo"><span class="num">2</span><span class="well" id="wellSrc">♪</span><span class="cap" id="capSrc">source · <b>silence</b></span></button>
   <button class="node n-fml" id="nFml" data-open="Fractal" title="Choose the fractal"><span class="num">3</span><span class="blob organ" data-shape="pill" id="nFmlBody"><i id="fmlName">Mandelbulb</i></span><span class="cap">formula</span></button>
   <button class="node n-mat" id="nMat" data-open="Theme" title="Theme and material"><span class="num">4</span><span class="chip" id="matChip">Neon</span><span class="cap">matter</span></button>
+  <button class="node n-lab" id="nLab" data-open="Pareidolia lab" title="Lab: pareidolia experiments, offline video, mesh export, comfort"><span class="num">7</span><span class="chip">Lab</span><span class="cap">experiments</span></button>
   <div class="node n-arc" id="nArc" role="group" aria-label="Recent specimens"><span class="num" style="left:auto;right:-4px;top:-22px">6</span><div id="shards"></div><span class="cap" style="text-align:right;margin-left:auto">archive · <b id="capArc">0</b></span></div>
 </div>
 <ol class="legend" id="legend"><b>Fig. FP·I</b>
-  <li data-n="nDir"><i>1</i>director <span>auto camera, looks</span></li><li data-n="nSrc"><i>2</i>source <span>audio / video / mic</span></li><li data-n="nFml"><i>3</i>formula <span>the fractal</span></li><li data-n="nMat"><i>4</i>matter <span>theme, material</span></li><li data-n="sFreeze"><i>5</i>core <span>freeze · resume</span></li><li data-n="nArc"><i>6</i>archive <span>your specimens</span></li></ol>
+  <li data-n="nDir"><i>1</i>director <span>auto camera, looks</span></li><li data-n="nSrc"><i>2</i>source <span>audio / video / mic</span></li><li data-n="nFml"><i>3</i>formula <span>the fractal</span></li><li data-n="nMat"><i>4</i>matter <span>theme, material</span></li><li data-n="sFreeze"><i>5</i>core <span>freeze · resume</span></li><li data-n="nArc"><i>6</i>archive <span>your specimens</span></li><li data-n="nLab"><i>7</i>lab <span>experiments, video, mesh</span></li></ol>
 <nav id="strip" aria-label="Workspaces and transport">
   <button id="sRec" class="organ" data-shape="pill" title="Record a structured take (movement as data)" aria-label="Record take">● rec</button>
   <button id="sPlay" class="organ" data-shape="pill" title="Play the saved take" aria-label="Play take"><span id="sPlayLbl">▶</span></button>
@@ -650,6 +658,25 @@
   <div class="grid"><button id="lbStart">▶ Start blind trials</button><button id="lbShow">Show results</button></div>
   <div id="lbResults" class="note">No sessions yet.</div>
   <div class="grid"><button id="lbCopy">Copy all data (JSON)</button><button id="lbClear">Clear data</button></div>
+  <h2>Render video · offline, fixed time</h2>
+  <div class="note">Renders a take (or a turntable of the current specimen) one exact frame at a time on a virtual clock, so the result does not depend on how fast your device is. Output is an <b>image sequence</b> (folder or zip files) plus a manifest and the ffmpeg line that adds your soundtrack. Real-time clip recording stays in Capture. Video is not encoded in the browser.</div>
+  <div class="row"><span>Source</span><select id="ofMode"><option value="take">The loaded take</option><option value="turntable">Turntable of this specimen</option></select></div>
+  <div class="row" id="ofTakeRows"><span>From / to (s)</span><input id="ofFrom" type="number" min="0" step="0.5" value="0" style="width:70px"><input id="ofTo" type="number" min="1" step="0.5" value="10" style="width:70px"></div>
+  <div class="row" id="ofSecsRow" style="display:none"><span>Length (s)</span><input id="ofSecs" type="number" min="1" max="120" step="1" value="10" style="width:70px"></div>
+  <div class="row"><span>Size</span><select id="ofSize"><option value="1280x720">1280 × 720</option><option value="1920x1080">1920 × 1080</option><option value="1080x1920">1080 × 1920 (portrait)</option><option value="1080x1080">1080 × 1080</option><option value="960x540">960 × 540 (fast)</option></select></div>
+  <div class="row"><span>Frame rate</span><select id="ofFps"><option value="30">30 fps</option><option value="60">60 fps</option><option value="24">24 fps</option></select></div>
+  <div class="row"><span>Image type</span><select id="ofFmt"><option value="png">PNG (lossless, large)</option><option value="jpeg">JPEG (smaller)</option></select></div>
+  <div class="row"><span>Output</span><select id="ofOut"><option value="folder">A folder (desktop Chrome/Edge)</option><option value="zip">Zip files in segments</option></select><input id="ofSeg" type="number" min="10" max="2000" step="10" value="120" title="frames per zip" style="width:64px"></div>
+  <input id="ofFromFrame" type="hidden" value="0">
+  <div class="grid"><button id="ofTest">Test 10 frames (estimate)</button><button id="ofRender">▶ Render</button></div><button id="ofCancel" style="width:100%;margin-top:5px">■ Cancel</button>
+  <div id="ofInfo" class="note" style="white-space:pre-wrap">Not started.</div>
+  <h2>3D mesh export · experimental</h2>
+  <div class="note"><b>Experimental.</b> Samples this fractal's distance field on a grid and extracts a surface you can save as OBJ or STL. It is an approximation: detail finer than one voxel is lost and thin features can vanish. The result is a closed offset shell of the fractal and is <b>not</b> checked for printing (no wall thickness or overhang analysis). A ray-marched picture is not a mesh.</div>
+  <div class="row"><span>Grid</span><select id="mhGrid"><option value="48">48³ (quick)</option><option value="64">64³</option><option value="96" selected>96³</option><option value="128">128³</option><option value="160">160³ (slow)</option></select></div>
+  <div class="row"><span>Offset (voxels)</span><input id="mhIso" type="range" min="0.3" max="2.5" step="0.1" value="0.8"></div>
+  <div class="row"><span>Size (mm)</span><input id="mhMM" type="number" min="1" max="500" value="60" style="width:70px"><label><input id="mhZ" type="checkbox"> Z-up (printers)</label></div>
+  <div class="grid"><button id="mhBuild">Build mesh</button><button id="mhCancel">■ Cancel</button><button id="mhOBJ" disabled>Save .OBJ</button><button id="mhSTL" disabled>Save .STL</button></div>
+  <div id="mhInfo" class="note">No mesh yet.</div>
   <h2>Capture</h2>
   <div class="grid">
     <button id="bRec">● Record clip</button>
@@ -2038,10 +2065,10 @@ function compile(type, src, label){
   if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) showErr(label+' shader error:\n'+gl.getShaderInfoLog(s));
   return s;
 }
-function makeProg(fsId, label){
+function makeProg(fsId, label, srcOverride){
   const p = gl.createProgram();
   gl.attachShader(p, compile(gl.VERTEX_SHADER, $('vs').textContent, 'vertex'));
-  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, $(fsId).textContent, label));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, srcOverride||$(fsId).textContent, label));
   gl.linkProgram(p);
   if(!gl.getProgramParameter(p, gl.LINK_STATUS)) showErr(label+' link error:\n'+gl.getProgramInfoLog(p));
   const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
@@ -2581,12 +2608,13 @@ let resScale=+$('sRes').value, last=performance.now()/1000, ema=16.7, frame=0, l
 const vsArr=[]; let vsyncMs=16.7, lastRaf=0;
 function frameFn(t){
   requestAnimationFrame(frameFn);
+  if(off.active) return;                 // the offline renderer drives frames on its own clock
   try{ frameBody(t); }catch(e){ if(!frameFn.bad){ frameFn.bad=1; console.error(e); showErr('Render error (continuing): '+e.message); setTimeout(()=>$('err').style.display='none',6000); } }
 }
 function frameBody(nowMs){
   { const rd=nowMs-lastRaf; lastRaf=nowMs; if(rd>2&&rd<150){ vsArr.push(rd); if(vsArr.length>90) vsArr.shift(); if(vsArr.length>=20 && frame%10===0){ const so=[...vsArr].sort((a,b)=>a-b); vsyncMs=so[Math.floor(so.length*0.25)]; } } }
   const capHz=+$('sFps').value;
-  if(capHz>0 && nowMs-lastRender < 1000/capHz-2) return;   // frame-rate cap (saves battery / heat)
+  if(!off.active && capHz>0 && nowMs-lastRender < 1000/capHz-2) return;   // frame-rate cap (saves battery / heat)
   lastRender=nowMs;
   const tgt=Math.max(1000/(capHz||60), vsyncMs);       // never chase a target faster than the display actually refreshes (Low Power Mode = 30 Hz)
   const now=nowMs/1000, rawDt=now-last, dt=Math.min(0.1,rawDt); last=now;
@@ -2600,6 +2628,7 @@ function frameBody(nowMs){
     }
     resScale=Math.min(resScale,manual);
   } else resScale=manual;
+  if(off.active) resScale=1;
   analyse(dt,now);
   // CHAOS: 3+ fingers (or an external controller) ramps a storm of audio-like energy, kicks, warp, hue spin and kaleidoscope
   { const nF=ptrs.size;
@@ -2686,7 +2715,9 @@ function frameBody(nowMs){
 
   // targets
   let cw,ch,sw,sh;
-  if(expo.active){ cw=sw=expo.bw; ch=sh=expo.bh; }                 // still export: render buffers sized for one tile; the visible canvas is left alone
+  if(expo.active){ cw=sw=expo.bw; ch=sh=expo.bh; }
+  else if(off.active){ cw=sw=off.W; ch=sh=off.H; if(canvas.width!==cw||canvas.height!==ch){ canvas.width=cw; canvas.height=ch; } }
+  else if(mesh.active){ cw=sw=ch=sh=mesh.n; }                 // still export: render buffers sized for one tile; the visible canvas is left alone
   else{
     const dpr=Math.min(devicePixelRatio||1,isPro?2:1.5); cw=Math.max(64,Math.floor((canvas.clientWidth||innerWidth)*dpr)); ch=Math.max(64,Math.floor((canvas.clientHeight||innerHeight)*dpr));
     sw=Math.max(48,Math.floor(cw*resScale/16)*16); sh=Math.max(48,Math.floor(ch*resScale/16)*16);
@@ -2703,7 +2734,7 @@ function frameBody(nowMs){
     const fp=flowProg(flowVar);
     fp.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uDrop:A.drop});
   } else {
-  progScene.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
+  (mesh.active?mesh.prog:progScene).set({uSliceZ:mesh.z,uGridStep:mesh.step,uGridOrigin:mesh.origin,uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uEnergy:A.energy,uPulse:A.pulse*SAFE.k,uDrop:A.drop*SAFE.k,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:expo.active?expo.glow:+$('sGlow').value,
     uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uSliceAt:+$('sCutAt').value,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
@@ -2712,6 +2743,7 @@ function frameBody(nowMs){
   }
   gl.drawArrays(gl.TRIANGLES,0,3);
   rendered=true;
+  if(mesh.active){ const cb=mesh.onSlice; mesh.onSlice=null; if(cb) cb(); frame++; return; }   // mesh export samples the field only; no post-processing
   if(diving && diveSim && useFloat && (divePh==='in'||divePh==='hold') && frame%6===0){      // read ONE pixel of depth, re-anchor the focus onto the surface
     const pxl=Math.min(sw-1,Math.max(0,Math.floor(sw*(0.5+diveAim[0])))), pyl=Math.min(sh-1,Math.max(0,Math.floor(sh*(0.5+diveAim[1]))));
     gl.getError(); gl.readPixels(pxl,pyl,1,1,gl.RGBA,gl.FLOAT,dBuf);
@@ -2816,7 +2848,7 @@ $('cSlice').addEventListener('change',()=>recEv('slider',['cSlice',$('cSlice').c
 
 function takeStartRec(){
   if(playing) playStop();
-  const song=(lastFileName && isFinite(player.duration)) ? {name:lastFileName,duration:+player.duration.toFixed(2),kind:mediaInfo&&mediaInfo.kind,mime:mediaInfo&&mediaInfo.mime,size:mediaInfo&&mediaInfo.size,reference:'original media is NOT embedded; the take stores the musical analysis recorded while it played'} : null;
+  const song=(lastFileName && isFinite(player.duration)) ? {name:lastFileName,duration:+player.duration.toFixed(2),songOffset:+(+player.currentTime||0).toFixed(3),kind:mediaInfo&&mediaInfo.kind,mime:mediaInfo&&mediaInfo.mime,size:mediaInfo&&mediaInfo.size,reference:'original media is NOT embedded; the take stores the musical analysis recorded while it played'} : null;
   takeRec={t0:nowS(),lastS:-9,frames:[],events:[],obs:[],onsetPending:false,start:exportState(),song};
   $('bTakeRec').textContent='■ Stop recording'; $('bTakeRec').classList.add('on'); toast('Recording take…',1500);
 }
@@ -2843,7 +2875,7 @@ function playStart(){
   playing=true; pl={t0:nowS(),fi:0,ei:0,oi:0,onset:false,r:null,r2:null,f:0};
   $('bTakePlay').textContent='■ Stop take'; $('bTakePlay').classList.add('on');
   $('takeScrub').style.display='block'; $('takeScrub').max=take.duration; playSeek(0);
-  if(take.song && lastFileName && isFinite(player.duration) && Math.abs(player.duration-take.song.duration)<1.5){ try{ player.currentTime=0; player.play(); }catch(e){} }
+  if(!off.active && take.song && lastFileName && isFinite(player.duration) && Math.abs(player.duration-take.song.duration)<1.5){ try{ player.currentTime=0; player.play(); }catch(e){} }
 }
 function playStop(){ playing=false; pl=null; $('bTakePlay').textContent='▶ Play take'; $('bTakePlay').classList.remove('on'); $('takeScrub').style.display='none'; try{ player.pause(); }catch(e){} }
 function applyStartState(){
@@ -2875,7 +2907,7 @@ function playSeek(t,now){
   while(pl.oi<take.observations.length && take.observations[pl.oi][0]<=t) pl.oi++;
   while(pl.fi+1<take.frames.length && take.frames[pl.fi+1][0]<=t) pl.fi++;
   $('sTrans').value=mode;
-  if(take.song && lastFileName && isFinite(player.duration)){ try{ player.currentTime=t; }catch(e){} }
+  if(!off.active && take.song && lastFileName && isFinite(player.duration)){ try{ player.currentTime=t; }catch(e){} }
 }
 function playTick(now){
   if(!playing) return;
@@ -3194,7 +3226,7 @@ loadSpecimens(); renderSpecimens();
 
 // ═════════════════════ WORKSPACES: Explore / Sculpt / Perform / Forge ═════════════════════
 const WS_MAP={'Fractal':'explore','Theme':'explore','Audio':'explore perform','Sculpt · no music needed':'sculpt','Morph timeline':'explore perform','Look':'explore sculpt','Reactivity':'perform',
-  'Comfort & safety':'explore perform forge','Pareidolia lab':'forge','Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
+  'Comfort & safety':'explore perform forge','Pareidolia lab':'forge','Render video · offline, fixed time':'forge','3D mesh export · experimental':'forge','Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
 (function groupWorkspaces(){
   const ui=$('ui'); let cur=null;
   [...ui.children].forEach(el=>{
@@ -3331,7 +3363,7 @@ setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEac
       requestAnimationFrame(coreFrame); } }
 
   // ── node behaviour ──
-  const openSection=(h2)=>{ const secs=[...document.querySelectorAll('#ui .wsec')]; const sec=secs.find(x=>x.querySelector('h2')&&x.querySelector('h2').textContent.trim().replace(/^§\d+\s*/,'')===h2); if(!sec) return;
+  const openSection=window.fpOpenSection=(h2)=>{ const secs=[...document.querySelectorAll('#ui .wsec')]; const sec=secs.find(x=>x.querySelector('h2')&&x.querySelector('h2').textContent.trim().replace(/^§\d+\s*/,'')===h2); if(!sec) return;
     const wss=(sec.dataset.ws||'explore').split(' '); const ws=wss.includes(workspace)?workspace:wss[0]; setWorkspace(ws); $('ui').classList.remove('hidden'); sec.classList.remove('collapsed'); setTimeout(()=>sec.scrollIntoView({block:'start',behavior:still?'auto':'smooth'}),30); };
   const ping=el=>{ el.classList.remove('is-pinged'); void el.offsetWidth; el.classList.add('is-pinged'); setTimeout(()=>el.classList.remove('is-pinged'),950); };
   document.querySelectorAll('.node[data-open]').forEach(n=>n.addEventListener('click',()=>{ if(n.id==='nDir'){ const c=$('cDirector'); c.checked=!c.checked; c.dispatchEvent(new Event('change')); save(); toast(c.checked?'◈ The Director is awake: auto camera, looks and kaleidoscope':'The Director rests',2000); } openSection(n.dataset.open); }));
@@ -3376,7 +3408,7 @@ function relLum(v){ const c=Math.pow(v/255,2.2); return c; }
 function areaTransition(prev,cur,thr=0.1,area=0.25){ let up=0,dn=0; for(let i=0;i<cur.length;i++){ const d=cur[i]-prev[i]; if(d>=thr) up++; else if(d<=-thr) dn++; } const n=cur.length; return up/n>=area?1:(dn/n>=area?-1:0); }
 function countFlashes(events,now,windowMs=1000){ const ev=events.filter(e=>now-e.t<=windowMs); let alt=0; for(let i=1;i<ev.length;i++) if(ev[i].s!==ev[i-1].s) alt++; return Math.floor((alt+1)/2); }
 function guardProbe(now){
-  if(expo.active||document.hidden) return; SAFE.calm=$('cCalm').checked;
+  if(expo.active||off.active||mesh.active||document.hidden) return; SAFE.calm=$('cCalm').checked;
   if(SAFE.calm){ azV=clamp(azV,-2,2); elV=clamp(elV,-2,2); if(diveOn) setDive(false,true); }
   const on=$('cSafeGuard').checked;
   if(on&&now-SAFE.lastProbe>=28){ SAFE.lastProbe=now;
@@ -3432,6 +3464,135 @@ $('lbClear').onclick=()=>armBtn($('lbClear'),'Clear data',()=>{ labData=[]; labS
 labRender();
 window.fpLab={imageStats,boxDim,mirrorSym,edgeMask,rmsContrast,summary:labSummary};
 
+// ═════════════════════ OFFLINE FIXED-TIME RENDER (image sequence) ═════════════════════
+// The live loop takes its time from one argument. Here that argument is a virtual clock: frame n is rendered at exactly start + n/fps, whatever the machine's speed.
+// Trails, kaleidoscope, morphs and take playback run exactly as live, one fixed step at a time. Output is an image sequence plus a manifest and the ffmpeg
+// command to add the soundtrack (the media itself is never embedded). A frame is held only until it is written, so memory stays bounded.
+const off={active:false,cancel:false,log:null};
+const CRC_T=(()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(u8){ let c=0xFFFFFFFF; for(let i=0;i<u8.length;i++) c=CRC_T[(c^u8[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function zipStore(files){ const enc=new TextEncoder(), parts=[], cen=[]; let off0=0;
+  for(const f of files){ const nm=enc.encode(f.name), crc=crc32(f.data), sz=f.data.length; const lh=new DataView(new ArrayBuffer(30)); lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true); lh.setUint16(8,0,true); lh.setUint16(10,0,true); lh.setUint16(12,0x21,true); lh.setUint32(14,crc,true); lh.setUint32(18,sz,true); lh.setUint32(22,sz,true); lh.setUint16(26,nm.length,true); lh.setUint16(28,0,true);
+    parts.push(lh.buffer,nm,f.data); const ch=new DataView(new ArrayBuffer(46)); ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true); ch.setUint16(10,0,true); ch.setUint16(12,0,true); ch.setUint16(14,0x21,true); ch.setUint32(16,crc,true); ch.setUint32(20,sz,true); ch.setUint32(24,sz,true); ch.setUint16(28,nm.length,true); ch.setUint32(42,off0,true); cen.push(ch.buffer,nm); off0+=30+nm.length+sz; }
+  let cs=0; cen.forEach(b=>cs+=(b.byteLength!==undefined?b.byteLength:b.length)); const end=new DataView(new ArrayBuffer(22)); end.setUint32(0,0x06054b50,true); end.setUint16(8,files.length,true); end.setUint16(10,files.length,true); end.setUint32(12,cs,true); end.setUint32(16,off0,true); return new Blob([...parts,...cen,end.buffer],{type:'application/zip'}); }
+function offlinePlan(o){ const total=Math.round((o.end-o.start)*o.fps); if(!(o.fps===24||o.fps===30||o.fps===60)) return {error:'Frame rate must be 24, 30 or 60.'}; if(!(o.end>o.start)) return {error:'End must be after start.'}; if(total<1) return {error:'Nothing to render.'}; if(total>20000) return {error:`${total} frames is above the 20,000-frame limit; render it in ranges.`};
+  const L=gpuLimits(); if(!(o.W>=64&&o.H>=64)||o.W*o.H>8.4e6||o.W>Math.min(L.maxTex,L.maxView[0])||o.H>Math.min(L.maxTex,L.maxView[1])) return {error:'Size must fit one GPU pass (at most about 8 megapixels). Video does not use tiling.'}; if(!probeBuffer(o.W,o.H)) return {error:'This device cannot allocate render buffers of that size.'}; return {ok:true,total}; }
+const offlineFlash={events:[],max:0};
+async function renderOffline(o){
+  if(off.active||expo.active||mesh.active) return {error:'Another export is running.'}; if(o.mode==='take'&&take) o.end=Math.min(o.end,take.duration-1/o.fps); const plan=offlinePlan(o); if(plan.error) return plan; const total=plan.total, from=Math.max(0,o.from|0);
+  if(o.mode==='take'&&!take) return {error:'There is no take to render. Record or load one first, or use Turntable.'}; if(o.mode==='take') o.end=Math.min(o.end,take.duration-1/o.fps); if(flowMode&&o.mode==='turntable') return {error:'Turntable needs a 3D fractal.'};
+  const base=captureState(true), wasFrozen=frozen, wasPlaying=playing, az0=az, ex={az,el,zoom:zoomMul,hue,T,ang:ang.slice()}, ext=o.format==='jpeg'?'jpg':'png', mime=o.format==='jpeg'?'image/jpeg':'image/png', pad=n=>String(n).padStart(6,'0');
+  const sink={dir:o.dir||null,seg:[],segStart:from,downloads:0,bytes:0,files:0}; const sx=document.createElement('canvas'); sx.width=8; sx.height=5; const sctx=sx.getContext('2d',{willReadFrequently:true}); const ev=[]; let flMax=0, prevGrid=null;
+  const flushZip=async(force)=>{ if(!sink.seg.length) return; if(!force&&sink.seg.length<(o.segment||120)) return; const first=sink.segStart, last=first+sink.seg.length-1; saveBlobFile(zipStore(sink.seg),`fractal-pulse-frames-${pad(first)}-${pad(last)}.zip`); sink.downloads++; sink.seg=[]; sink.segStart=last+1; await new Promise(r=>setTimeout(r,250)); };
+  const writeFile=async(name,data)=>{ if(sink.dir){ const fh=await sink.dir.getFileHandle(name,{create:true}), w=await fh.createWritable(); await w.write(data); await w.close(); } else sink.seg.push({name,data}); sink.bytes+=data.length; sink.files++; };
+  Object.assign(off,{active:true,cancel:false,W:o.W,H:o.H,fps:o.fps,log:[]}); const calmK=$('cCalm').checked?0.3:1; SAFE.k=calmK; SAFE.active=false;
+  bAvg=0; lastBeat=-9; beatCount=0; phase=0; eShort=0; eLong=0.2; lastDrop=-99; quietSince=-99; A.pulse=0;   // live-audio carry-over must not leak into a fixed-time render
+  const vms0=600000;   // fixed virtual origin: the same frame number renders identically on every run and every machine
+  last=vms0/1000-1/o.fps; lastRender=0;
+  const t0=performance.now(); let n=from, written=0, firstMs=0;
+  try{
+    if(o.mode==='take'){ if(playing) playStop(); if(frozen) setFrozen(false,true); playStart(); playSeek(o.start,vms0/1000); } else { setFrozen(true,true); }
+    for(n=from;n<total;n++){
+      if(off.cancel) throw 'cancel'; const vt=vms0+n*1000/o.fps; if(o.mode==='turntable') az=az0+2*Math.PI*(n/total);
+      frameBody(vt);                                                                                          // exactly one fixed step
+      if(o.mode==='take'&&pl) off.log.push([n,+((vt/1000)-pl.t0).toFixed(6)]);
+      const blob=await new Promise(res=>canvas.toBlob(res,mime,0.95));                                          // taken in the same task as the draw
+      sctx.drawImage(canvas,0,0,8,5); const px=sctx.getImageData(0,0,8,5).data, grid=new Float32Array(40); for(let i=0;i<40;i++) grid[i]=0.2126*relLum(px[i*4])+0.7152*relLum(px[i*4+1])+0.0722*relLum(px[i*4+2]);
+      if(prevGrid){ const s=areaTransition(prevGrid,grid); if(s) ev.push({t:n*1000/o.fps,s}); } prevGrid=grid; while(ev.length&&ev[0].t<n*1000/o.fps-1500) ev.shift(); flMax=Math.max(flMax,countFlashes(ev,n*1000/o.fps));
+      if(!blob) throw new Error('could not encode frame '+n); if(o.onFrame) await o.onFrame(n,blob); await writeFile('frame_'+pad(n)+'.'+ext,new Uint8Array(await blob.arrayBuffer())); written++; if(written===1) firstMs=performance.now()-t0;
+      if(!sink.dir) await flushZip(false); if(o.onProgress&&(written%3===0||n===total-1)) o.onProgress(n+1,total,performance.now()-t0,sink.bytes); if(written%4===0) await new Promise(r=>setTimeout(r,0));
+    }
+    const ms=performance.now()-t0, song=take&&take.song?take.song:null, ffa=song?` -ss ${((song.songOffset||0)+(o.mode==='take'?o.start:0)).toFixed(3)} -i "${song.name}" -map 0:v -map 1:a -c:a aac -b:a 256k -shortest`:'';
+    const manifest={format:'fractal-pulse-offline-render',v:1,app:APP_VERSION,created:new Date().toISOString(),mode:o.mode,width:o.W,height:o.H,fps:o.fps,frames:total,firstFrame:from,startSeconds:o.mode==='take'?o.start:0,endSeconds:o.mode==='take'?o.end:total/o.fps,
+      timing:{exact:true,rule:'frame n is rendered at start + n/fps on a virtual clock, independent of machine speed',trailsHistory:'carried frame to frame',morphs:'advance by 1/fps per frame'},
+      take:take?{created:take.created,duration:take.duration,samples:take.frames.length,song:song||null}:null,audio:{embedded:false,note:'The soundtrack is not embedded; the take only references it. If the take was recorded mid-song, songOffset (when present) is where the song was when recording began.'},
+      flashCheck:{maxFlashesPerSecond:flMax,threshold:3,verdict:flMax>=3?'REVIEW: the guideline limit of 3 flashes per second was reached':'under the guideline limit',note:'Screening on an 8x5 thumbnail of every frame against published guidance; not a certification.'},
+      ffmpeg:`ffmpeg -framerate ${o.fps} -i frame_%06d.${ext}${ffa} -c:v libx264 -pix_fmt yuv420p -crf 14 output.mp4`,timingLog:o.mode==='take'?off.log.slice(0,5).concat(off.log.slice(-2)):null,msPerFrame:Math.round(ms/Math.max(1,written))};
+    await writeFile('render-manifest.json',new TextEncoder().encode(JSON.stringify(manifest,null,1))); if(!sink.dir) await flushZip(true);
+    return {ok:true,frames:written,total,ms,bytes:sink.bytes,manifest,downloads:sink.downloads,folder:!!sink.dir,flashMax:flMax,log:off.log};
+  }catch(e){ if(!sink.dir) await flushZip(true).catch(()=>{}); return e==='cancel'?{cancelled:true,done:written,total,nextFrame:n}:{error:String(e&&e.message||e),done:written}; }
+  finally{ off.active=false; if(o.mode==='take'&&playing) playStop(); const m=$('sTrans').value; $('sTrans').value='cut'; try{ applyState(base); } finally{ $('sTrans').value=m; }
+    az=ex.az; el=ex.el; zoomMul=ex.zoom; hue=ex.hue; T=ex.T; ex.ang.forEach((v,i)=>{ ang[i]=v; });      // exact values, not the 3-decimal ones in saved state
+    setFrozen(wasFrozen,true); last=performance.now()/1000; lastRender=0; }
+}
+const ofInfo=t=>{ $('ofInfo').textContent=t; };
+function ofOpts(){ const [W,H]=$('ofSize').value.split('x').map(Number); const takeMode=$('ofMode').value==='take'; const dur=takeMode&&take?take.duration:+$('ofSecs').value; return {mode:$('ofMode').value,W,H,fps:+$('ofFps').value,format:$('ofFmt').value,start:takeMode?Math.max(0,+$('ofFrom').value||0):0,end:takeMode?Math.min(dur,(+$('ofTo').value||dur)):dur,segment:+$('ofSeg').value||120}; }
+async function ofRun(estimate){
+  const o=ofOpts(); if(estimate){ o.end=Math.min(o.end,o.start+10/o.fps); } else if($('ofOut').value==='folder'&&window.showDirectoryPicker){ try{ o.dir=await window.showDirectoryPicker({mode:'readwrite'}); }catch(e){ ofInfo('No folder chosen: switching to zip segments.'); } }
+  if(estimate) o.segment=1e9; $('ofRender').disabled=$('ofTest').disabled=true; o.onProgress=(d,t,ms,b)=>ofInfo(`Frame ${d}/${t} · ${(ms/1000).toFixed(1)} s · ${(b/1e6).toFixed(1)} MB · about ${Math.max(0,Math.round((t-d)*ms/d/1000))} s left`);
+  const r=await renderOffline(estimate?Object.assign(o,{dir:null}):o); $('ofRender').disabled=$('ofTest').disabled=false;
+  if(r.error) return ofInfo('Could not render: '+r.error); if(r.cancelled) return ofInfo(`Cancelled after ${r.done}/${r.total} frames. Resume from frame ${r.nextFrame} using the "Start at frame" box.`);
+  if(estimate){ const perFrame=r.ms/r.frames, tot=Math.round(offlinePlan(ofOpts()).total||0); ofInfo(`Test: ${r.frames} frames in ${(r.ms/1000).toFixed(1)} s (${Math.round(perFrame)} ms each, ${(r.bytes/r.frames/1e6).toFixed(2)} MB each). The full render of ${tot} frames would take about ${Math.round(tot*perFrame/1000)} s and ~${Math.round(tot*r.bytes/r.frames/1e6)} MB. (The test downloaded a small zip.)`); return; }
+  ofInfo(`Done: ${r.frames} frames at exact ${o.fps} fps (${(r.bytes/1e6).toFixed(0)} MB) in ${(r.ms/1000).toFixed(0)} s, ${r.folder?'written to your folder':r.downloads+' zip file(s) downloaded'} with render-manifest.json. Flash check: ${r.flashMax} per second at worst (limit 3). Assemble with:\n${r.manifest.ffmpeg}`); }
+$('ofRender').onclick=()=>{ $('ofFromFrame').value=0; ofRun(false); }; $('ofTest').onclick=()=>ofRun(true); $('ofCancel').onclick=()=>{ off.cancel=true; };
+$('ofMode').onchange=()=>{ const t=$('ofMode').value==='take'; $('ofTakeRows').style.display=t?'flex':'none'; $('ofSecsRow').style.display=t?'none':'flex'; if(t&&take){ $('ofTo').value=take.duration.toFixed(1); } };
+window.fpOffline={renderOffline,zipStore,crc32,plan:offlinePlan};
+
+// ═════════════════════ 3D MESH EXPORT (experimental): sampled distance field -> surface nets -> OBJ / STL ═════════════════════
+// The fractal's distance estimate is sampled on a regular grid by a copy of the scene shader, and the surface where the distance equals a small offset
+// is extracted with naive surface nets. This is an approximation: detail finer than a voxel is lost, thin features can vanish, and the result is the
+// offset surface of the fractal, not its exact boundary. It is NOT print-ready (no wall-thickness or overhang analysis).
+const mesh={active:false,cancel:false,n:0,z:0,step:0,origin:[0,0,0],prog:null,src:'',onSlice:null,last:null};
+function meshShaderSource(){ let src=$('fs').textContent; const k='void main(){'; const i=src.indexOf(k); if(i<0) return null; src=src.slice(0,i)+'void mainScene(){'+src.slice(i+k.length);
+  return src+'\nuniform float uSliceZ, uGridStep; uniform vec3 uGridOrigin;\nvoid main(){ gRot=mat3(1.0); gEps=uGridStep*0.5; gPx=uGridStep*0.5; vec3 p=uGridOrigin+vec3(gl_FragCoord.xy-0.5,uSliceZ)*uGridStep; float d=map(p); outCol=vec4(d,0.0,0.0,1.0); }\n'; }
+// naive surface nets on a scalar field f (solid where f < iso). Returns {pos:Float32Array, idx:Uint32Array} in grid units.
+function surfaceNets(f,n,iso){
+  const N1=n-1, cell=new Int32Array(N1*N1*N1).fill(-1), P=[]; const ci=(x,y,z)=>x+N1*(y+N1*z), val=(x,y,z)=>f[x+n*(y+n*z)]-iso;
+  const C=[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]], E=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]], v8=new Float64Array(8);
+  for(let z=0;z<N1;z++) for(let y=0;y<N1;y++) for(let x=0;x<N1;x++){ let m=0; for(let c=0;c<8;c++){ const v=val(x+C[c][0],y+C[c][1],z+C[c][2]); v8[c]=v; if(v<0) m|=1<<c; } if(m===0||m===255) continue;
+    let sx=0,sy=0,sz=0,k=0; for(let e=0;e<12;e++){ const a=E[e][0], b=E[e][1], va=v8[a], vb=v8[b]; if((va<0)!==(vb<0)){ const t=va/(va-vb); sx+=C[a][0]+t*(C[b][0]-C[a][0]); sy+=C[a][1]+t*(C[b][1]-C[a][1]); sz+=C[a][2]+t*(C[b][2]-C[a][2]); k++; } }
+    cell[ci(x,y,z)]=P.length/3; P.push(x+sx/k,y+sy/k,z+sz/k); }
+  const I=[]; const quad=(a,b,c,d,flip)=>{ if(a<0||b<0||c<0||d<0) return; if(flip){ I.push(a,d,c,a,c,b); } else { I.push(a,b,c,a,c,d); } };
+  for(let z=1;z<N1;z++) for(let y=1;y<N1;y++) for(let x=0;x<N1;x++){ const a=val(x,y,z), b=val(x+1,y,z); if((a<0)!==(b<0)) quad(cell[ci(x,y-1,z-1)],cell[ci(x,y,z-1)],cell[ci(x,y,z)],cell[ci(x,y-1,z)],a<0); }
+  for(let z=1;z<N1;z++) for(let y=0;y<N1;y++) for(let x=1;x<N1;x++){ const a=val(x,y,z), b=val(x,y+1,z); if((a<0)!==(b<0)) quad(cell[ci(x-1,y,z-1)],cell[ci(x-1,y,z)],cell[ci(x,y,z)],cell[ci(x,y,z-1)],a<0); }
+  for(let z=0;z<N1;z++) for(let y=1;y<N1;y++) for(let x=1;x<N1;x++){ const a=val(x,y,z), b=val(x,y,z+1); if((a<0)!==(b<0)) quad(cell[ci(x-1,y-1,z)],cell[ci(x,y-1,z)],cell[ci(x,y,z)],cell[ci(x-1,y,z)],a<0); }
+  const pos=new Float32Array(P), idx=new Uint32Array(I);
+  // make the winding outward: a closed surface has positive signed volume when wound outward
+  let vol=0; for(let i=0;i<idx.length;i+=3){ const a=idx[i]*3,b=idx[i+1]*3,c=idx[i+2]*3; vol+=(pos[a]*(pos[b+1]*pos[c+2]-pos[b+2]*pos[c+1])-pos[a+1]*(pos[b]*pos[c+2]-pos[b+2]*pos[c])+pos[a+2]*(pos[b]*pos[c+1]-pos[b+1]*pos[c]))/6; }
+  if(vol<0) for(let i=0;i<idx.length;i+=3){ const t=idx[i+1]; idx[i+1]=idx[i+2]; idx[i+2]=t; }
+  return {pos,idx}; }
+function meshStats(pos,idx){ const V=pos.length/3, F=idx.length/3, ec=new Map(); let vol=0;
+  for(let i=0;i<idx.length;i+=3){ for(let k=0;k<3;k++){ const a=idx[i+k], b=idx[i+(k+1)%3], key=a<b?a*V+b:b*V+a; ec.set(key,(ec.get(key)||0)+1); }
+    const a=idx[i]*3,b=idx[i+1]*3,c=idx[i+2]*3; vol+=(pos[a]*(pos[b+1]*pos[c+2]-pos[b+2]*pos[c+1])-pos[a+1]*(pos[b]*pos[c+2]-pos[b+2]*pos[c])+pos[a+2]*(pos[b]*pos[c+1]-pos[b+1]*pos[c]))/6; }
+  let boundary=0,nonManifold=0; ec.forEach(c=>{ if(c===1) boundary++; else if(c>2) nonManifold++; }); const E=ec.size; const mn=[1e9,1e9,1e9], mx=[-1e9,-1e9,-1e9];
+  for(let i=0;i<pos.length;i+=3) for(let k=0;k<3;k++){ if(pos[i+k]<mn[k]) mn[k]=pos[i+k]; if(pos[i+k]>mx[k]) mx[k]=pos[i+k]; }
+  return {vertices:V,triangles:F,edges:E,boundaryEdges:boundary,nonManifoldEdges:nonManifold,watertight:boundary===0&&nonManifold===0&&F>0,euler:V-E+F,volume:vol,bboxMin:mn,bboxMax:mx}; }
+function meshToOBJ(pos,idx,meta){ const lines=['# Fractal Pulse mesh export (experimental): an approximation sampled from a distance field, not an exact surface',...Object.entries(meta||{}).map(([k,v])=>'# '+k+': '+v)]; for(let i=0;i<pos.length;i+=3) lines.push('v '+pos[i].toFixed(5)+' '+pos[i+1].toFixed(5)+' '+pos[i+2].toFixed(5)); for(let i=0;i<idx.length;i+=3) lines.push('f '+(idx[i]+1)+' '+(idx[i+1]+1)+' '+(idx[i+2]+1)); return new Blob([lines.join('\n')+'\n'],{type:'text/plain'}); }
+function meshToSTL(pos,idx){ const F=idx.length/3, buf=new ArrayBuffer(84+F*50), dv=new DataView(buf); const hdr='Fractal Pulse mesh export (experimental)'; for(let i=0;i<hdr.length;i++) dv.setUint8(i,hdr.charCodeAt(i)); dv.setUint32(80,F,true); let o=84;
+  for(let i=0;i<idx.length;i+=3){ const a=idx[i]*3,b=idx[i+1]*3,c=idx[i+2]*3; const ux=pos[b]-pos[a],uy=pos[b+1]-pos[a+1],uz=pos[b+2]-pos[a+2],vx=pos[c]-pos[a],vy=pos[c+1]-pos[a+1],vz=pos[c+2]-pos[a+2]; let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; nx/=l;ny/=l;nz/=l;
+    dv.setFloat32(o,nx,true);dv.setFloat32(o+4,ny,true);dv.setFloat32(o+8,nz,true); o+=12; for(const q of [a,b,c]){ dv.setFloat32(o,pos[q],true);dv.setFloat32(o+4,pos[q+1],true);dv.setFloat32(o+8,pos[q+2],true); o+=12; } dv.setUint16(o,0,true); o+=2; }
+  return new Blob([buf],{type:'model/stl'}); }
+function saveBlobFile(blob,name){ const url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),30000); }
+async function buildMesh(o){
+  if(mesh.active) return {error:'A mesh is already being built.'}; if(flowMode) return {error:'Mesh export needs a 3D fractal, not a 2D scene.'}; if(!useFloat) return {error:'This device renders in 8-bit; mesh export needs HDR (float) buffers.'}; if(expo.active||off.active) return {error:'Another export is running.'};
+  const n=o.n|0; if(!(n>=16&&n<=256)) return {error:'Grid must be 16 to 256.'}; const L=gpuLimits(); if(n>L.maxTex||!probeBuffer(n,n)) return {error:'This device cannot allocate a '+n+'² sampling buffer.'};
+  const src=meshShaderSource(); if(!src) return {error:'Could not prepare the sampling shader.'}; if(!mesh.prog||mesh.src!==src){ mesh.prog=makeProg('fs','mesh',src); mesh.src=src; } if(!mesh.prog||!mesh.prog.p) return {error:'The sampling shader failed to build.'};
+  const B=TYPES[shown].bound, base=captureState(true), wasFrozen=frozen; setFrozen(true,true); Object.assign(mesh,{active:true,cancel:false,n,step:2*B/(n-1),origin:[-B,-B,-B],onSlice:null});
+  const field=new Float32Array(n*n*n), buf=new Float32Array(n*n*4), t0=performance.now();
+  try{
+    for(let k=0;k<n;k++){ mesh.z=k; await new Promise((res,rej)=>{ const to=setTimeout(()=>{ mesh.onSlice=null; rej(new Error('a slice timed out')); },120000);
+        mesh.onSlice=()=>{ clearTimeout(to); gl.getError(); gl.readPixels(0,0,n,n,gl.RGBA,gl.FLOAT,buf); if(gl.getError()!==0){ rej(new Error('GPU read-back failed')); return; } for(let j=0;j<n*n;j++) field[k*n*n+j]=buf[j*4]; res(); }; });
+      if(o.onProgress) o.onProgress(k+1,n); if(mesh.cancel) throw 'cancel'; }
+    for(let i=0;i<field.length;i++) if(!isFinite(field[i])) field[i]=1e3;
+    for(let z=0;z<n;z++) for(let y=0;y<n;y++) for(let x=0;x<n;x++) if(x===0||y===0||z===0||x===n-1||y===n-1||z===n-1) field[x+n*(y+n*z)]=Math.max(field[x+n*(y+n*z)],mesh.step*4);   // close the surface at the sampling box
+    const iso=o.iso*mesh.step, sn=surfaceNets(field,n,iso); const pos=sn.pos; for(let i=0;i<pos.length;i+=3){ pos[i]=mesh.origin[0]+pos[i]*mesh.step; pos[i+1]=mesh.origin[1]+pos[i+1]*mesh.step; pos[i+2]=mesh.origin[2]+pos[i+2]*mesh.step; }
+    const st=meshStats(pos,sn.idx); const res={pos,idx:sn.idx,stats:st,n,iso,isoVoxels:o.iso,step:mesh.step,formula:TYPES[shown].name,ms:Math.round(performance.now()-t0),minField:field.reduce((a,v)=>Math.min(a,v),1e9)}; mesh.last=res; return res;
+  }catch(e){ return e==='cancel'?{cancelled:true}:{error:String(e&&e.message||e)}; }
+  finally{ mesh.active=false; mesh.onSlice=null; const m=$('sTrans').value; $('sTrans').value='cut'; try{ applyState(base); } finally{ $('sTrans').value=m; } setFrozen(wasFrozen,true); }
+}
+function meshScaled(res,mm,zUp){ const pos=new Float32Array(res.pos), s=res.stats; let ext=0; for(let k=0;k<3;k++) ext=Math.max(ext,s.bboxMax[k]-s.bboxMin[k]); const f=mm>0&&ext>0?mm/ext:1; const cx=(s.bboxMin[0]+s.bboxMax[0])/2, cy=(s.bboxMin[1]+s.bboxMax[1])/2, cz=(s.bboxMin[2]+s.bboxMax[2])/2;
+  for(let i=0;i<pos.length;i+=3){ let x=(pos[i]-cx)*f, y=(pos[i+1]-cy)*f, z=(pos[i+2]-cz)*f; if(zUp){ const ty=y; y=-z; z=ty; } pos[i]=x; pos[i+1]=y; pos[i+2]=z; } if(zUp){ let mn=1e9; for(let i=2;i<pos.length;i+=3) if(pos[i]<mn) mn=pos[i]; for(let i=2;i<pos.length;i+=3) pos[i]-=mn; } return pos; }
+const meshMeta=res=>({formula:res.formula,grid:res.n+'^3',offsetVoxels:res.isoVoxels,voxelSize:res.step.toFixed(5),app:APP_VERSION,created:new Date().toISOString(),watertight:res.stats.watertight});
+$('mhBuild').onclick=async()=>{ $('mhBuild').disabled=true; $('mhInfo').textContent='Sampling the field…'; const r=await buildMesh({n:+$('mhGrid').value,iso:+$('mhIso').value,onProgress:(k,n)=>{ if(k%4===0||k===n) $('mhInfo').textContent=`Sampling slice ${k}/${n}`; }}); $('mhBuild').disabled=false;
+  if(r.error){ $('mhInfo').textContent='Could not build: '+r.error; return; } if(r.cancelled){ $('mhInfo').textContent='Cancelled.'; return; } const s=r.stats;
+  $('mhInfo').textContent=`${r.formula} · ${r.n}³ grid · ${s.vertices.toLocaleString()} vertices · ${s.triangles.toLocaleString()} triangles · ${s.watertight?'watertight (every edge shared by exactly two triangles)':`NOT watertight: ${s.boundaryEdges} open edges, ${s.nonManifoldEdges} non-manifold`} · Euler ${s.euler} · built in ${(r.ms/1000).toFixed(1)} s. An approximation: detail below one voxel is lost.`; $('mhOBJ').disabled=$('mhSTL').disabled=!s.triangles; };
+$('mhCancel').onclick=()=>{ mesh.cancel=true; };
+$('mhOBJ').onclick=()=>{ const r=mesh.last; if(!r) return; saveBlobFile(meshToOBJ(meshScaled(r,+$('mhMM').value,$('mhZ').checked),r.idx,meshMeta(r)),'fractal-pulse-'+r.formula.replace(/\W+/g,'_')+'.obj'); };
+$('mhSTL').onclick=()=>{ const r=mesh.last; if(!r) return; saveBlobFile(meshToSTL(meshScaled(r,+$('mhMM').value,$('mhZ').checked),r.idx),'fractal-pulse-'+r.formula.replace(/\W+/g,'_')+'.stl'); };
+window.fpMesh={surfaceNets,meshStats,meshToOBJ,meshToSTL,build:buildMesh,last:()=>mesh.last};
+
+
+document.querySelectorAll('.labBtns [data-sec]').forEach(b=>b.addEventListener('click',()=>fpOpenSection(b.dataset.sec)));
 // ── never trapped: kaleidoscope / mirror / 2D mode each announce themselves, and one tap (or X) returns to plain 3D ──
 function trapReason(){ const kv=+$('sKal').value; if(playing&&playLook&&playKal>=2) return 'Kaleidoscope from the playing take'; if(kv>=2) return 'Kaleidoscope '+kv+'×'; if(dirKal>=2) return 'Director kaleidoscope'; if(chaosL>0.6) return 'Chaos kaleidoscope'; if(+$('sSym').value>=2) return 'Mirror '+$('sSym').value+'×'; if(flowMode) return '2D scene (not 3D)'; return ''; }
 function backTo3D(){ $('sKal').value=0; $('sSym').value=0; dirKal=0; chaosL=0; chaosExt=0; chaosSpeed=0; if(flowMode) setFlow(false,true); if(playing&&playLook) playKal=0; $('cTakeLook').checked=playing?false:$('cTakeLook').checked; [$('sKal'),$('sSym')].forEach(x=>x.dispatchEvent(new Event('input',{bubbles:true}))); save(); toast('Back to plain 3D',1600); }

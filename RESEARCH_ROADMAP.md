@@ -25,3 +25,8 @@ Status words are used strictly: **Supported** = stated by a peer-reviewed abstra
 4. Structure analyzer, tension proxy, angularity mapping (audio analysis experiments), all behind clear labels and an off switch.
 5. Benchmarks, morph continuity, mapping profiles, exchange notes.
 Each step: tests, a doc entry, and a commit. Results and limits are written down whether or not they flatter the idea.
+
+## Status update (offline render, mesh export, lab discoverability)
+- **Offline fixed-time render: Implemented; Verified in software GL** (byte-identical reruns, exact timestamps, cancel, limits, zip validity). Not measured on real hardware. See `OFFLINE_RENDER.md`.
+- **3D mesh export: Implemented (experimental); Verified in software GL** on a sphere and on a Mandelbulb (essentially watertight, not strictly). Not print-ready. See `MESH_EXPORT.md`.
+- **Pareidolia lab, video render, mesh export and comfort controls** now open from the Lab buttons on the bench rail and from node 7 in the Figure skin.
