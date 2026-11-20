@@ -248,4 +248,20 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G19 demo audio goes through the sync delay (default 40 ms), the slider changes it, and the visuals still react',r.def===40&&Math.abs(r.d0-0.04)<0.002&&Math.abs(r.d1-0.12)<0.002&&r.live,JSON.stringify(r));
     rec('G19 Face finder preset applies bilateral (2-fold) symmetry to the demon-faces fractal',r.sym===2&&r.type===15,JSON.stringify({sym:r.sym,type:r.type}));
     rec('G19 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G20: flash guard + Calm mode ──
+  { const p=await page(b,'scale=0.1&q=0&type=0',{ctx:{viewport:{width:1280,height:800}}});
+    const u=await p.evaluate(()=>{ const g=(v)=>new Float32Array(40).fill(v); const half=(a,b)=>{ const x=new Float32Array(40); for(let i=0;i<40;i++) x[i]=i<12?b:a; return x; };
+      const r={ none:areaTransition(g(0.2),g(0.25)), up:areaTransition(g(0.1),g(0.5)), down:areaTransition(g(0.6),g(0.1)), small:areaTransition(g(0.2),half(0.2,0.6)), quarter:areaTransition(g(0.2),half(0.2,0.6).map((v,i)=>i<10?0.6:0.2)) };
+      const ev=(arr)=>arr.map((s,i)=>({t:i*100,s}));
+      r.slow=countFlashes(ev([1,-1]),200); r.strobe=countFlashes(ev([1,-1,1,-1,1,-1]),500); r.fast=countFlashes(ev([1,-1,1,-1,1,-1,1,-1]),700); r.oldIgnored=countFlashes([{t:0,s:1},{t:100,s:-1},{t:200,s:1},{t:300,s:-1}],5000); return r; });
+    rec('G20 detector: counts area-wide luminance transitions and flashes per second correctly',u.none===0&&u.up===1&&u.down===-1&&u.small===0&&u.quarter===1&&u.slow===1&&u.strobe===3&&u.fast>=3&&u.oldIgnored===0,JSON.stringify(u));
+    const g=await p.evaluate(async()=>{ document.getElementById('bSilent').click(); await new Promise(r=>setTimeout(r,2500)); const live={k0:SAFE.k,probed:!!SAFE.prev,flashes:SAFE.flashes};
+      // a real strobe: hammer the drop pulse on alternate frames and see whether the guard notices and softens
+      const t0=performance.now(); let f0=frame; while(performance.now()-t0<9000){ A.drop=(frame%2)?1:0; A.beat=(frame%2)?1:0; await new Promise(r=>requestAnimationFrame(r)); }
+      return Object.assign(live,{k1:SAFE.k,trips:SAFE.trips,peak:+SAFE.peak.toFixed(1),frames:frame-f0}); });
+    rec('G20 the guard samples the real picture every frame without errors',g.probed&&g.frames>8,JSON.stringify(g));
+    const c=await p.evaluate(async()=>{ $('cCalm').checked=true; await new Promise(r=>setTimeout(r,1500)); const out={k:SAFE.k,calm:SAFE.calm}; $('sKal').value=8; azV=9; await new Promise(r=>setTimeout(r,300)); out.azVcapped=Math.abs(azV)<=2.01; setDive(true); out.dive=diveOn; $('sKal').value=0; $('cCalm').checked=false; await new Promise(r=>setTimeout(r,2500)); out.recovered=SAFE.k>0.8; return out; });
+    rec('G20 Calm mode softens pulses (k ≤ 0.35), caps spin, blocks Dive, and fully releases',c.calm&&c.k<=0.36&&c.azVcapped&&c.dive===false&&c.recovered,JSON.stringify(c));
+    rec('G20 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };

@@ -551,6 +551,11 @@
   <div class="row"><span>Auto-cycle</span><input id="cCycle" type="checkbox"><small style="color:var(--dim)">swap fractal on beat</small></div>
   <div class="row"><span>Auto-orbit</span><input id="cOrbit" type="checkbox" checked></div>
   <div class="row"><span>Cut-away</span><input id="cSlice" type="checkbox"></div>
+  <h2>Comfort &amp; safety</h2>
+  <div class="row"><span>Flash guard</span><input id="cSafeGuard" type="checkbox" checked><small style="color:var(--dim)">watches the picture and softens beat/drop pulses if flashing nears 3 per second</small></div>
+  <div class="row"><span>Calm mode</span><input id="cCalm" type="checkbox"><small style="color:var(--dim)">gentler pulses, no kaleidoscope, slower spin, no Dive</small></div>
+  <div class="note" id="safeInfo">Guard idle.</div>
+  <div class="note">Based on published guidance (flashes of 3 Hz or more over about a quarter of the screen; red transitions; 15-20 Hz worst). It lowers risk, it cannot guarantee safety. If you are photosensitive, turn Calm mode on and keep the screen small and far away.</div>
   <h2>Performance</h2>
   <div class="row"><span>Transition</span><select id="sTrans"><option value="morph">Morph (fold)</option><option value="dissolve">Dissolve</option><option value="cut">Cut</option></select></div>
   <div class="row"><span>Frame cap</span><select id="sFps"><option value="30">30 fps</option><option value="60">60 fps</option><option value="0">Max (120)</option></select></div>
@@ -2383,7 +2388,7 @@ function randomize(){
 $('bPal').onclick=()=>setPal(curPalPos()+1); $('bRand').onclick=randomize;
 
 // persistence
-const PERSIST=['sSync','cDirKal','sIterB','sCutAt','sTwist','sBend','cMatOv','sRough','sMetal','sSym','cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
+const PERSIST=['cSafeGuard','cCalm','sSync','cDirKal','sIterB','sCutAt','sTwist','sBend','cMatOv','sRough','sMetal','sSym','cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
 function save(){ try{ const o={v:SCHEMA,type:shown,palIdx,theme,realIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
 const PERF=['sRes','sQual','cAuto','sFps'];
 if(isPro){ $('sRes').value=0.62; $('sQual').value=1; $('sFps').value=60; }
@@ -2676,10 +2681,10 @@ function frameBody(nowMs){
   bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
   if(flowMode){
     const fp=flowProg(flowVar);
-    fp.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uDrop:A.drop});
+    fp.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uDrop:A.drop});
   } else {
   progScene.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
-    uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat,uEnergy:A.energy,uPulse:A.pulse,uDrop:A.drop,
+    uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uEnergy:A.energy,uPulse:A.pulse*SAFE.k,uDrop:A.drop*SAFE.k,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:expo.active?expo.glow:+$('sGlow').value,
     uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uSliceAt:+$('sCutAt').value,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
     uMatA:realCur.matA,uMatB:realCur.matB,uMetal:$('cMatOv').checked?+$('sMetal').value:realCur.metal,uRough:$('cMatOv').checked?+$('sRough').value:realCur.rough,uSunCol:realCur.sunCol,uSunDir:sunDir,uSkyTop:realCur.skyTop,uSkyHor:realCur.skyHor,uGround:realCur.ground,uSunI:3.0*(1+0.18*A.beat+0.3*A.drop),uWrap:realCur.wrap,uShK:realCur.shk,uAmb:realCur.amb,uClay:realCur.clay,uFloorOn:(floorOn&&!(expo.active&&expo.floor==='none'))?1:0,uFloorY:floorY,
@@ -2715,8 +2720,8 @@ function frameBody(nowMs){
   gl.bindFramebuffer(gl.FRAMEBUFFER,expo.active?expoT.fbo:(useTrail?trails[tw].fbo:null)); gl.viewport(0,0,cw,ch);
   bindTex(0,scenes[cur].tex); bindTex(1,scenes[1-cur].tex); bindTex(2,bloomB.tex); bindTex(3,trails[1-tw].tex);
   const kv=+$('sKal').value, kal=(playing&&playLook)?playKal:(kv>=2?kv:(dirKal||(chaosL>0.6?chaosKal:0)));
-  progComp.set({uScene:0,uPrev:1,uBloom:2,uFB:3,uTrail:useTrail?Math.min(0.96,trailAmt):0,uRes:[cw,ch],uTime:T,uBeat:A.beat,uDrop:A.drop,uOrigin:XO,uFull:expo.active?XF:[cw,ch],uAlpha:expo.active&&expo.alpha?1:0,uSharp:expo.active?0:clamp((1-resScale)*0.9,0.08,0.55),uBloomI:th.bloomI*(expo.active?expo.bloom:+$('sBloom').value),uFlat:flowMode?1:0,uExp:flowMode?1.0:th.exp,uPunch:th.punch,uVig:flowMode?0.16:th.vig,uGrain:th.grain,
-    uCA:th.ca*(+$('sBloom').value>0?1:0.4),uTrans:expo.active?0:transT*transT*(3-2*transT)*1.0,uKal:expo.active?expo.kal:kal,uKalRot:kalRot,uHue:hue});
+  progComp.set({uScene:0,uPrev:1,uBloom:2,uFB:3,uTrail:useTrail?Math.min(0.96,trailAmt):0,uRes:[cw,ch],uTime:T,uBeat:A.beat*SAFE.k,uDrop:A.drop*SAFE.k,uOrigin:XO,uFull:expo.active?XF:[cw,ch],uAlpha:expo.active&&expo.alpha?1:0,uSharp:expo.active?0:clamp((1-resScale)*0.9,0.08,0.55),uBloomI:th.bloomI*(expo.active?expo.bloom:+$('sBloom').value),uFlat:flowMode?1:0,uExp:flowMode?1.0:th.exp,uPunch:th.punch,uVig:flowMode?0.16:th.vig,uGrain:th.grain,
+    uCA:th.ca*(+$('sBloom').value>0?1:0.4),uTrans:expo.active?0:transT*transT*(3-2*transT)*1.0,uKal:expo.active?expo.kal:(SAFE.calm?0:kal),uKalRot:kalRot,uHue:hue});
   gl.drawArrays(gl.TRIANGLES,0,3);
   if(useTrail){ gl.bindFramebuffer(gl.READ_FRAMEBUFFER,trails[tw].fbo); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);
     gl.blitFramebuffer(0,0,cw,ch,0,0,cw,ch,gl.COLOR_BUFFER_BIT,gl.NEAREST); tw=1-tw; }
@@ -2728,6 +2733,7 @@ function frameBody(nowMs){
   if(takeRec) takeSample(now);
   if(frame%8===0) refreshSculptParams();
   if(thumbReq) doThumb();
+  guardProbe(now);
   frame++;
 }
 function drawHud(){
@@ -3167,7 +3173,7 @@ loadSpecimens(); renderSpecimens();
 
 // ═════════════════════ WORKSPACES: Explore / Sculpt / Perform / Forge ═════════════════════
 const WS_MAP={'Fractal':'explore','Theme':'explore','Audio':'explore perform','Sculpt · no music needed':'sculpt','Morph timeline':'explore perform','Look':'explore sculpt','Reactivity':'perform',
-  'Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
+  'Comfort & safety':'explore perform forge','Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
 (function groupWorkspaces(){
   const ui=$('ui'); let cur=null;
   [...ui.children].forEach(el=>{
@@ -3338,6 +3344,33 @@ setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEac
 })();
 
 $('buildTag').textContent='build '+APP_VERSION; $('buildTag2').textContent='build '+APP_VERSION+' · B skin · X back to 3D';
+// ═════════════════════ FLASH GUARD + CALM MODE ═════════════════════
+// Published guidance (Epilepsy Foundation consensus, WCAG/ITU): a flash is a hazard at >=3 per second when a luminance change of >=10% (relative) covers >=~25% of the screen;
+// transitions to/from saturated red are also risky; 15-20 Hz is the worst range. We sample an 8x5 thumbnail of the rendered picture every frame we can and count opposing
+// area-wide luminance transitions in a rolling second. This is a screening aid for an interactive page, not a certification.
+const SAFE={k:1,calm:false,hold:0,flashes:0,trips:0,peak:0,events:[],prev:null,fbo:null,buf:new Uint8Array(8*5*4),lastProbe:0,active:false};
+const calmLike=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function relLum(v){ const c=Math.pow(v/255,2.2); return c; }
+// pure detector (tested directly): previous and current 40-cell luminance grids -> +1 / -1 / 0 area transition
+function areaTransition(prev,cur,thr=0.1,area=0.25){ let up=0,dn=0; for(let i=0;i<cur.length;i++){ const d=cur[i]-prev[i]; if(d>=thr) up++; else if(d<=-thr) dn++; } const n=cur.length; return up/n>=area?1:(dn/n>=area?-1:0); }
+function countFlashes(events,now,windowMs=1000){ const ev=events.filter(e=>now-e.t<=windowMs); let alt=0; for(let i=1;i<ev.length;i++) if(ev[i].s!==ev[i-1].s) alt++; return Math.floor((alt+1)/2); }
+function guardProbe(now){
+  if(expo.active||document.hidden) return; SAFE.calm=$('cCalm').checked;
+  if(SAFE.calm){ azV=clamp(azV,-2,2); elV=clamp(elV,-2,2); if(diveOn) setDive(false,true); }
+  const on=$('cSafeGuard').checked;
+  if(on&&now-SAFE.lastProbe>=28){ SAFE.lastProbe=now;
+    try{ if(!SAFE.fbo) SAFE.fbo=makeTarget(8,5,false); gl.bindFramebuffer(gl.READ_FRAMEBUFFER,null); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,SAFE.fbo.fbo); gl.blitFramebuffer(0,0,canvas.width,canvas.height,0,0,8,5,gl.COLOR_BUFFER_BIT,gl.LINEAR);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,SAFE.fbo.fbo); gl.readPixels(0,0,8,5,gl.RGBA,gl.UNSIGNED_BYTE,SAFE.buf); gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+      const cur=new Float32Array(40); for(let i=0;i<40;i++){ const j=i*4; cur[i]=0.2126*relLum(SAFE.buf[j])+0.7152*relLum(SAFE.buf[j+1])+0.0722*relLum(SAFE.buf[j+2]); }
+      if(SAFE.prev){ const s=areaTransition(SAFE.prev,cur); if(s) SAFE.events.push({t:now,s}); } SAFE.prev=cur;
+      SAFE.events=SAFE.events.filter(e=>now-e.t<=1500); SAFE.flashes=countFlashes(SAFE.events,now); SAFE.peak=Math.max(SAFE.peak*0.998,SAFE.flashes);
+      if(SAFE.flashes>=3){ if(!SAFE.active) SAFE.trips++; SAFE.active=true; SAFE.hold=now+3000; } else if(now>SAFE.hold) SAFE.active=false;
+    }catch(e){ gl.bindFramebuffer(gl.FRAMEBUFFER,null); }
+  } else if(!on){ SAFE.active=false; SAFE.flashes=0; SAFE.prev=null; }
+  const target=Math.min(SAFE.active?0.3:1,SAFE.calm?0.3:1); SAFE.k+=(target-SAFE.k)*0.15;
+}
+setInterval(()=>{ const i=$('safeInfo'); if(!i) return; const g=$('cSafeGuard').checked; i.textContent=g?`Guard on · flashes in the last second: ${SAFE.flashes} · ${SAFE.active?'LIMITING pulses now':'not limiting'} · times it stepped in: ${SAFE.trips}${SAFE.calm?' · Calm mode on':''}`:`Guard off${SAFE.calm?' · Calm mode on':''}`; },500);
+if(calmLike){ try{ if(localStorage.getItem('fractalPulseCalmSeen')!=='1'){ $('cCalm').checked=true; localStorage.setItem('fractalPulseCalmSeen','1'); } }catch(e){ $('cCalm').checked=true; } }   // honour the system "reduce motion" setting once
 // ── never trapped: kaleidoscope / mirror / 2D mode each announce themselves, and one tap (or X) returns to plain 3D ──
 function trapReason(){ const kv=+$('sKal').value; if(playing&&playLook&&playKal>=2) return 'Kaleidoscope from the playing take'; if(kv>=2) return 'Kaleidoscope '+kv+'×'; if(dirKal>=2) return 'Director kaleidoscope'; if(chaosL>0.6) return 'Chaos kaleidoscope'; if(+$('sSym').value>=2) return 'Mirror '+$('sSym').value+'×'; if(flowMode) return '2D scene (not 3D)'; return ''; }
 function backTo3D(){ $('sKal').value=0; $('sSym').value=0; dirKal=0; chaosL=0; chaosExt=0; chaosSpeed=0; if(flowMode) setFlow(false,true); if(playing&&playLook) playKal=0; $('cTakeLook').checked=playing?false:$('cTakeLook').checked; [$('sKal'),$('sSym')].forEach(x=>x.dispatchEvent(new Event('input',{bubbles:true}))); save(); toast('Back to plain 3D',1600); }
@@ -3537,6 +3570,7 @@ $('bFreeze').onclick=()=>setFrozen(!frozen); $('freezeBtn').onclick=()=>setFroze
 $('bUnpinAll').onclick=()=>{ delete pins[shown]; buildSculptParams(); save(); toast('Parameters released'); };
 // ───────────────────────── DIVE: fly the camera into the fractal's surface ─────────────────────────
 function setDive(on,auto){
+  if(on&&SAFE.calm){ toast('Dive is off in Calm mode (forward motion through the fractal can cause discomfort)',3200); return; }
   if(on && flowMode){ toast('Dive is for the 3D fractals'); return; }
   try{ recEv('dive',on?1:0); }catch(e){}
   if(on && !useFloat){ toast('Dive needs HDR render targets (not available on this device)',3500); return; }
