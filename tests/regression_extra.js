@@ -243,8 +243,8 @@ module.exports=async function({b,page,rec,errText,URL}){
 
   // ── G19: research-guided changes: audio/visual sync delay + face-finder preset ──
   { const p=await page(b,'scale=0.1&q=0&type=0',{ctx:{viewport:{width:1440,height:900}}});
-    const r=await p.evaluate(async()=>{ startDemo(); await new Promise(r=>setTimeout(r,1200)); const d0=syncDelay&&syncDelay.delayTime.value; $('sSync').value=120; $('sSync').dispatchEvent(new Event('input',{bubbles:true})); const d1=syncDelay.delayTime.value; $('sSync').value=40; $('sSync').dispatchEvent(new Event('input',{bubbles:true}));
-      await new Promise(r=>setTimeout(r,600)); const live=A.live&&A.bass>0.02; const ref=REFS.find(x=>/Face finder/.test(x.n)); const sm=$('sTrans').value; $('sTrans').value='cut'; applyState(ref.s); $('sTrans').value=sm; return {def:+$('sSync').defaultValue,d0,d1,live,sym:+$('sSym').value,type:shown}; });
+    const r=await p.evaluate(async()=>{ startDemo(); for(let i=0;i<120&&!(A.live&&A.bass>0.02);i++) await new Promise(r=>setTimeout(r,250)); const d0=syncDelay&&syncDelay.delayTime.value; $('sSync').value=120; $('sSync').dispatchEvent(new Event('input',{bubbles:true})); const d1=syncDelay.delayTime.value; $('sSync').value=40; $('sSync').dispatchEvent(new Event('input',{bubbles:true}));
+      for(let i=0;i<60&&!(A.live&&A.bass>0.02);i++) await new Promise(r=>setTimeout(r,250)); const live=A.live&&A.bass>0.02; const ref=REFS.find(x=>/Face finder/.test(x.n)); const sm=$('sTrans').value; $('sTrans').value='cut'; applyState(ref.s); $('sTrans').value=sm; return {def:+$('sSync').defaultValue,d0,d1,live,sym:+$('sSym').value,type:shown}; });
     rec('G19 demo audio goes through the sync delay (default 40 ms), the slider changes it, and the visuals still react',r.def===40&&Math.abs(r.d0-0.04)<0.002&&Math.abs(r.d1-0.12)<0.002&&r.live,JSON.stringify(r));
     rec('G19 Face finder preset applies bilateral (2-fold) symmetry to the demon-faces fractal',r.sym===2&&r.type===15,JSON.stringify({sym:r.sym,type:r.type}));
     rec('G19 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
@@ -252,16 +252,25 @@ module.exports=async function({b,page,rec,errText,URL}){
   // ── G20: flash guard + Calm mode ──
   { const p=await page(b,'scale=0.1&q=0&type=0',{ctx:{viewport:{width:1280,height:800}}});
     const u=await p.evaluate(()=>{ const g=(v)=>new Float32Array(40).fill(v); const half=(a,b)=>{ const x=new Float32Array(40); for(let i=0;i<40;i++) x[i]=i<12?b:a; return x; };
-      const r={ none:areaTransition(g(0.2),g(0.25)), up:areaTransition(g(0.1),g(0.5)), down:areaTransition(g(0.6),g(0.1)), small:areaTransition(g(0.2),half(0.2,0.6)), quarter:areaTransition(g(0.2),half(0.2,0.6).map((v,i)=>i<10?0.6:0.2)) };
+      const r={ none:areaTransition(g(0.2),g(0.25)), up:areaTransition(g(0.1),g(0.5)), down:areaTransition(g(0.6),g(0.1)), small:areaTransition(g(0.2),half(0.2,0.6).map((v,i)=>i<8?0.6:0.2)), quarter:areaTransition(g(0.2),half(0.2,0.6).map((v,i)=>i<10?0.6:0.2)) };
       const ev=(arr)=>arr.map((s,i)=>({t:i*100,s}));
       r.slow=countFlashes(ev([1,-1]),200); r.strobe=countFlashes(ev([1,-1,1,-1,1,-1]),500); r.fast=countFlashes(ev([1,-1,1,-1,1,-1,1,-1]),700); r.oldIgnored=countFlashes([{t:0,s:1},{t:100,s:-1},{t:200,s:1},{t:300,s:-1}],5000); return r; });
     rec('G20 detector: counts area-wide luminance transitions and flashes per second correctly',u.none===0&&u.up===1&&u.down===-1&&u.small===0&&u.quarter===1&&u.slow===1&&u.strobe===3&&u.fast>=3&&u.oldIgnored===0,JSON.stringify(u));
-    const g=await p.evaluate(async()=>{ document.getElementById('bSilent').click(); await new Promise(r=>setTimeout(r,2500)); const live={k0:SAFE.k,probed:!!SAFE.prev,flashes:SAFE.flashes};
+    const g=await p.evaluate(async()=>{ document.getElementById('bSilent').click(); const fw=async(k)=>{ const f0=frame; while(frame<f0+k) await new Promise(r=>setTimeout(r,50)); }; await fw(8); const live={k0:SAFE.k,probed:!!SAFE.prev&&!SAFE.err,flashes:SAFE.flashes,err:SAFE.err||null};
       // a real strobe: hammer the drop pulse on alternate frames and see whether the guard notices and softens
       const t0=performance.now(); let f0=frame; while(performance.now()-t0<9000){ A.drop=(frame%2)?1:0; A.beat=(frame%2)?1:0; await new Promise(r=>requestAnimationFrame(r)); }
       return Object.assign(live,{k1:SAFE.k,trips:SAFE.trips,peak:+SAFE.peak.toFixed(1),frames:frame-f0}); });
     rec('G20 the guard samples the real picture every frame without errors',g.probed&&g.frames>8,JSON.stringify(g));
-    const c=await p.evaluate(async()=>{ $('cCalm').checked=true; await new Promise(r=>setTimeout(r,1500)); const out={k:SAFE.k,calm:SAFE.calm}; $('sKal').value=8; azV=9; await new Promise(r=>setTimeout(r,300)); out.azVcapped=Math.abs(azV)<=2.01; setDive(true); out.dive=diveOn; $('sKal').value=0; $('cCalm').checked=false; await new Promise(r=>setTimeout(r,2500)); out.recovered=SAFE.k>0.8; return out; });
+    const st=await p.evaluate(async()=>{ const src=document.createElement('canvas'); src.width=64; src.height=40; const sx=src.getContext('2d'); SAFE.testSource=src; $('cSafeGuard').checked=true; $('cCalm').checked=false; SAFE.events=[]; SAFE.prev=null; SAFE.active=false; SAFE.k=1; SAFE.hold=0; const base=5e6, trips0=SAFE.trips;
+      // a simulated clock (the software renderer is too slow to strobe in real time): black/white alternating every 100 ms = 5 flashes per second, driven through the guard's real sampling, counting and damping code
+      let peak=0; for(let ms=0;ms<4500;ms+=10){ sx.fillStyle=(Math.floor(ms/100)%2)?'#fff':'#000'; sx.fillRect(0,0,64,40); guardProbe((base+ms)/1000); peak=Math.max(peak,SAFE.flashes); }
+      const during={active:SAFE.active,k:+SAFE.k.toFixed(2),flashes:SAFE.flashes,peak,trips:SAFE.trips-trips0};
+      sx.fillStyle='#456'; sx.fillRect(0,0,64,40); for(let ms=4500;ms<12000;ms+=10) guardProbe((base+ms)/1000); const after={active:SAFE.active,k:+SAFE.k.toFixed(2)};
+      // and a gentle 2 flashes per second must NOT trip it
+      SAFE.events=[]; SAFE.prev=null; SAFE.active=false; SAFE.hold=0; SAFE.k=1; const trips1=SAFE.trips; for(let ms=0;ms<4000;ms+=10){ sx.fillStyle=(Math.floor(ms/250)%2)?'#fff':'#000'; sx.fillRect(0,0,64,40); guardProbe((base+20000+ms)/1000); } const gentle={active:SAFE.active,k:+SAFE.k.toFixed(2),trips:SAFE.trips-trips1};
+      SAFE.testSource=null; return {during,after,gentle}; });
+    rec('G20 a 5-flashes-per-second strobe trips the guard and damps pulses; it releases when steady; a gentle 2-per-second flicker does not trip it',st.during.active&&st.during.k<0.5&&st.during.peak>=3&&st.during.trips>=1&&!st.after.active&&st.after.k>0.85&&!st.gentle.active&&st.gentle.trips===0&&st.gentle.k>0.9,JSON.stringify(st));
+    const c=await p.evaluate(async()=>{ const fw=async(k)=>{ const f0=frame; while(frame<f0+k) await new Promise(r=>setTimeout(r,50)); }; $('cCalm').checked=true; await fw(40); const out={k:SAFE.k,calm:SAFE.calm}; $('sKal').value=8; azV=9; await fw(2); out.azVcapped=Math.abs(azV)<=2.01; setDive(true); out.dive=diveOn; $('sKal').value=0; $('cCalm').checked=false; await fw(60); out.recovered=SAFE.k>0.8; return out; });
     rec('G20 Calm mode softens pulses (k ≤ 0.35), caps spin, blocks Dive, and fully releases',c.calm&&c.k<=0.36&&c.azVcapped&&c.dive===false&&c.recovered,JSON.stringify(c));
     rec('G20 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 

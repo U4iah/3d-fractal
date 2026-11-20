@@ -3408,17 +3408,19 @@ function relLum(v){ const c=Math.pow(v/255,2.2); return c; }
 function areaTransition(prev,cur,thr=0.1,area=0.25){ let up=0,dn=0; for(let i=0;i<cur.length;i++){ const d=cur[i]-prev[i]; if(d>=thr) up++; else if(d<=-thr) dn++; } const n=cur.length; return up/n>=area?1:(dn/n>=area?-1:0); }
 function countFlashes(events,now,windowMs=1000){ const ev=events.filter(e=>now-e.t<=windowMs); let alt=0; for(let i=1;i<ev.length;i++) if(ev[i].s!==ev[i-1].s) alt++; return Math.floor((alt+1)/2); }
 function guardProbe(now){
+  now=now*1000;                       // the frame loop's clock is in seconds; everything below is in milliseconds
   if(expo.active||off.active||mesh.active||document.hidden) return; SAFE.calm=$('cCalm').checked;
   if(SAFE.calm){ azV=clamp(azV,-2,2); elV=clamp(elV,-2,2); if(diveOn) setDive(false,true); }
   const on=$('cSafeGuard').checked;
-  if(on&&now-SAFE.lastProbe>=28){ SAFE.lastProbe=now;
-    try{ if(!SAFE.fbo) SAFE.fbo=makeTarget(8,5,false); gl.bindFramebuffer(gl.READ_FRAMEBUFFER,null); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,SAFE.fbo.fbo); gl.blitFramebuffer(0,0,canvas.width,canvas.height,0,0,8,5,gl.COLOR_BUFFER_BIT,gl.LINEAR);
-      gl.bindFramebuffer(gl.FRAMEBUFFER,SAFE.fbo.fbo); gl.readPixels(0,0,8,5,gl.RGBA,gl.UNSIGNED_BYTE,SAFE.buf); gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-      const cur=new Float32Array(40); for(let i=0;i<40;i++){ const j=i*4; cur[i]=0.2126*relLum(SAFE.buf[j])+0.7152*relLum(SAFE.buf[j+1])+0.0722*relLum(SAFE.buf[j+2]); }
+  if(on&&now-SAFE.lastProbe>=50){ SAFE.lastProbe=now;       // 20 samples a second is plenty to see a 3 Hz flash
+    try{ // read the picture the viewer sees by drawing the canvas into an 8x5 2D canvas in the same task as the render (a GPU blit from an anti-aliased default framebuffer is not allowed)
+      if(!SAFE.cx){ const c=document.createElement('canvas'); c.width=8; c.height=5; SAFE.cx=c.getContext('2d',{willReadFrequently:true}); }
+      SAFE.cx.drawImage(SAFE.testSource||canvas,0,0,8,5); const px=SAFE.cx.getImageData(0,0,8,5).data;
+      const cur=new Float32Array(40); for(let i=0;i<40;i++){ const j=i*4; cur[i]=0.2126*relLum(px[j])+0.7152*relLum(px[j+1])+0.0722*relLum(px[j+2]); }
       if(SAFE.prev){ const s=areaTransition(SAFE.prev,cur); if(s) SAFE.events.push({t:now,s}); } SAFE.prev=cur;
       SAFE.events=SAFE.events.filter(e=>now-e.t<=1500); SAFE.flashes=countFlashes(SAFE.events,now); SAFE.peak=Math.max(SAFE.peak*0.998,SAFE.flashes);
       if(SAFE.flashes>=3){ if(!SAFE.active) SAFE.trips++; SAFE.active=true; SAFE.hold=now+3000; } else if(now>SAFE.hold) SAFE.active=false;
-    }catch(e){ gl.bindFramebuffer(gl.FRAMEBUFFER,null); }
+    }catch(e){ SAFE.err=String(e&&e.message||e); }
   } else if(!on){ SAFE.active=false; SAFE.flashes=0; SAFE.prev=null; }
   const target=Math.min(SAFE.active?0.3:1,SAFE.calm?0.3:1); SAFE.k+=(target-SAFE.k)*0.15;
 }
