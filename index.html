@@ -542,6 +542,7 @@
   <div class="row"><span>Glow</span><input id="sGlow" type="range" min="0" max="2" step="0.01" value="1"></div>
   <h2>Reactivity</h2>
   <div class="row"><span>Feel</span><select id="sReact"><option value="bal">Balanced</option><option value="punchy">Punchy (hard hits)</option><option value="smooth">Smooth (flowing)</option><option value="melodic">Melodic (follows pitch)</option></select></div>
+  <div class="row"><span>Sync (ms)</span><input id="sSync" type="range" min="0" max="200" step="1" value="40"><small style="color:var(--dim)">sound lags the picture by this much; ~40 feels simultaneous</small></div>
   <div class="row"><span>Sensitivity</span><input id="sSens" type="range" min="0.3" max="2.5" step="0.01" value="1.2"></div>
   <div class="row"><span>Motion</span><input id="sMotion" type="range" min="0" max="2.5" step="0.01" value="1"></div>
   <div class="row"><span>Show mode</span><input id="cShow" type="checkbox"><small style="color:var(--dim)">autonomous VJ: fractals, themes, dives, chaos</small></div>
@@ -2092,6 +2093,11 @@ function unlockAudio(){ try{ ensureCtx(); const b=actx.createBuffer(1,1,22050), 
 const wakeAudio=()=>{ if(actx && actx.state!=='running') actx.resume().catch(()=>{}); };
 ['pointerdown','touchend','keydown'].forEach(ev=>document.addEventListener(ev,wakeAudio,{passive:true}));
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') wakeAudio(); });
+// Picture lags sound by a frame or more, and people judge audio that trails the picture by ~40 ms (tolerance about -75..+175 ms) as simultaneous.
+// So file/demo audio goes out through a small, adjustable delay. The analyser taps the signal BEFORE the delay, so the visuals lead the speakers.
+let syncDelay=null;
+function outNode(){ if(!syncDelay){ syncDelay=actx.createDelay(0.5); syncDelay.connect(actx.destination); } syncDelay.delayTime.value=(+$('sSync').value||0)/1000; return syncDelay; }
+$('sSync').addEventListener('input',()=>{ if(syncDelay) syncDelay.delayTime.value=(+$('sSync').value||0)/1000; });
 function stopSources(){
   if(demoTimer){ clearInterval(demoTimer); demoTimer=null; }
   if(srcNode){ try{srcNode.disconnect();}catch(e){} srcNode=null; }
@@ -2116,7 +2122,7 @@ function startDemo(){
   const fb = actx.createGain(); fb.gain.value = 0.38;
   const dl = actx.createGain(); dl.gain.value = 0.35;
   delay.connect(fb); fb.connect(delay); delay.connect(dl); dl.connect(demoMaster);
-  demoMaster.connect(analyser); demoMaster.connect(actx.destination);
+  demoMaster.connect(analyser); demoMaster.connect(outNode());
   const nb = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
   const nd = nb.getChannelData(0); for(let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
   const step = 60/128/4; let next = actx.currentTime+0.1, n=0;
@@ -2169,7 +2175,7 @@ function useFile(file){
   player.onloadedmetadata=()=>{ if(mediaInfo) mediaInfo.duration=+player.duration.toFixed(2); toast(`${info.kind==='video'?'🎬':'♪'} ${info.name} · ${isFinite(player.duration)?Math.floor(player.duration/60)+':'+String(Math.floor(player.duration%60)).padStart(2,'0'):'stream'}`,3200); };
   player.src = mediaUrl; player.style.display='block';
   if(!player._node){ player._node = actx.createMediaElementSource(player); }
-  srcNode = player._node; srcNode.connect(analyser); srcNode.connect(actx.destination);
+  srcNode = player._node; srcNode.connect(analyser); srcNode.connect(outNode());
   player.play().catch(e=>{ if(e&&e.name==='NotAllowedError'){ toast('Press play on the player to start the audio',4000); } });   // other failures arrive via player.onerror
   done();
 }
@@ -2377,7 +2383,7 @@ function randomize(){
 $('bPal').onclick=()=>setPal(curPalPos()+1); $('bRand').onclick=randomize;
 
 // persistence
-const PERSIST=['cDirKal','sIterB','sCutAt','sTwist','sBend','cMatOv','sRough','sMetal','sSym','cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
+const PERSIST=['sSync','cDirKal','sIterB','sCutAt','sTwist','sBend','cMatOv','sRough','sMetal','sSym','cShow','sTrail','sReact','cPad','sTrans','sFps','sQual','sSens','sMotion','sGlow','sBloom','sWarp','sKal','sRes','cAuto','cCycle','cDirector','cOrbit'];
 function save(){ try{ const o={v:SCHEMA,type:shown,palIdx,theme,realIdx}; PERSIST.forEach(id=>{const e=$(id); o[id]=e.type==='checkbox'?e.checked:e.value;}); localStorage.setItem('fractalPulse',JSON.stringify(o)); }catch(e){} }
 const PERF=['sRes','sQual','cAuto','sFps'];
 if(isPro){ $('sRes').value=0.62; $('sQual').value=1; $('sFps').value=60; }
@@ -3393,7 +3399,7 @@ setInterval(()=>{ if(document.hidden) return; const r=trapReason(), b=$('trapBtn
     paint(); encs.push({paint,isDrag:()=>drag}); return el; }
   [['sMB','Shape'],['sMM','Detail'],['sMH','Sparkle'],['sWarp','Warp']].forEach(([id,l])=>enc($('eSculpt'),{id,label:l}));
   [['sBloom','Bloom'],['sGlow','Glow'],['sTrail','Trails'],['sHue','Hue'],['sKal','Kaleido'],['sSym','Symmetry']].forEach(([id,l])=>{ if($(id)) enc($('eLook'),{id,label:l}); });
-  [['sSens','Sens'],['sMotion','Motion']].forEach(([id,l])=>{ if($(id)) enc($('eMusic'),{id,label:l}); });
+  [['sSens','Sens'],['sMotion','Motion'],['sSync','Sync ms']].forEach(([id,l])=>{ if($(id)) enc($('eMusic'),{id,label:l}); });
   // the die: roll = mutate the sculpture; the Deviance encoder sets how far it travels
   let dev=0.4; enc($('eChance'),{label:'Deviance',min:0,max:1,def:0.4,get:()=>dev,set:v=>{ dev=v; }});
   const H={u:[],r:[]}; const snap=()=>JSON.parse(JSON.stringify(exportState()));
@@ -3581,6 +3587,8 @@ const REFS=[
   // fractal-made imagery: the U4 logotype, a real 3D solid whose surface is a mirror-tiled Mandelbox (see the type's Fractal skin slider)
   {n:'Ref 11 · U4 liquid gold (fractal logotype)', s:{type:21,theme:1,palIdx:0,realIdx:2,hue:0,shape:0,detail:0,sparkle:0,warp:0,kal:0,bloom:0.3,glow:0,trail:0,sym:0,az:0,el:0.05,zoom:0.8,ang:[0,0,0],pins:{21:{qw:0.6}}}},
   // a building that is also a fractal: gothic ogive sponge (type 22), inspired by the Codex U4 'Cathedral of Becoming'
+  // research-guided: pareidolia rises with natural-image statistics and vertical (left-right) symmetry, so this is the 'demon faces' find (Ref 10) folded across one mirror plane instead of twelve
+  {n:'Ref 14 · Face finder (bilateral mirror)', s:{type:15,theme:3,palIdx:0,realIdx:4,hue:0,shape:1,detail:0,sparkle:0,warp:0.1,kal:0,bloom:0.3,glow:0,trail:0,sym:2,iter:12,az:5.221,el:0.043,zoom:0.729,ang:[0.3,0.5,0.1]}},
   {n:'Ref 12 · Cathedral of Becoming (clay)', s:{type:22,theme:3,palIdx:0,realIdx:4,hue:0,shape:0,detail:0,sparkle:0,warp:0,kal:0,bloom:0.3,glow:0,trail:0,sym:0,az:0.9,el:-0.1,zoom:1.0,ang:[0,0,0]}},
   {n:'Ref 13 · Cathedral of Becoming (gold)', s:{type:22,theme:1,palIdx:0,realIdx:2,hue:0,shape:0,detail:0,sparkle:0,warp:0,kal:0,bloom:0.3,glow:0,trail:0,sym:0,az:0.4,el:0.12,zoom:0.85,ang:[0,0,0]}},
 ];

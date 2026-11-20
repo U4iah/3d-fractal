@@ -240,4 +240,12 @@ module.exports=async function({b,page,rec,errText,URL}){
     const w=await p.evaluate(async()=>{ actx.suspend(); await new Promise(r=>setTimeout(r,200)); startDemo(); await new Promise(r=>setTimeout(r,2500)); const shown=document.getElementById('audioFix').classList.contains('show'); document.getElementById('audioFix').click(); await new Promise(r=>setTimeout(r,800)); return {shown,state:actx.state,fixHidden:!document.getElementById('audioFix').classList.contains('show')}; });
     rec('G18 if audio is still asleep a one-tap wake button appears and works',w.state==='running'&&w.fixHidden,JSON.stringify(w));
     rec('G18 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
+
+  // ── G19: research-guided changes: audio/visual sync delay + face-finder preset ──
+  { const p=await page(b,'scale=0.1&q=0&type=0',{ctx:{viewport:{width:1440,height:900}}});
+    const r=await p.evaluate(async()=>{ startDemo(); await new Promise(r=>setTimeout(r,1200)); const d0=syncDelay&&syncDelay.delayTime.value; $('sSync').value=120; $('sSync').dispatchEvent(new Event('input',{bubbles:true})); const d1=syncDelay.delayTime.value; $('sSync').value=40; $('sSync').dispatchEvent(new Event('input',{bubbles:true}));
+      await new Promise(r=>setTimeout(r,600)); const live=A.live&&A.bass>0.02; const ref=REFS.find(x=>/Face finder/.test(x.n)); const sm=$('sTrans').value; $('sTrans').value='cut'; applyState(ref.s); $('sTrans').value=sm; return {def:+$('sSync').defaultValue,d0,d1,live,sym:+$('sSym').value,type:shown}; });
+    rec('G19 demo audio goes through the sync delay (default 40 ms), the slider changes it, and the visuals still react',r.def===40&&Math.abs(r.d0-0.04)<0.002&&Math.abs(r.d1-0.12)<0.002&&r.live,JSON.stringify(r));
+    rec('G19 Face finder preset applies bilateral (2-fold) symmetry to the demon-faces fractal',r.sym===2&&r.type===15,JSON.stringify({sym:r.sym,type:r.type}));
+    rec('G19 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 };
