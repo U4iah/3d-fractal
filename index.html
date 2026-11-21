@@ -452,7 +452,7 @@
     <div class="dieBox"><button class="die" id="bnDie" aria-label="Roll the die: randomize the sculpture"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><polygon points="32,3 57,17 57,47 32,61 7,47 7,17" fill="rgba(210,172,95,.08)"/><polygon points="32,17 46,41 18,41" /><line x1="32" y1="3" x2="32" y2="17"/><line x1="57" y1="17" x2="46" y2="41"/><line x1="57" y1="47" x2="46" y2="41"/><line x1="32" y1="61" x2="46" y2="41"/><line x1="32" y1="61" x2="18" y2="41"/><line x1="7" y1="47" x2="18" y2="41"/><line x1="7" y1="17" x2="18" y2="41"/><line x1="7" y1="17" x2="32" y2="17"/><line x1="57" y1="17" x2="32" y2="17"/><text x="32" y="36" text-anchor="middle" font-size="11" font-family="Georgia,serif" font-style="italic" fill="currentColor" stroke="none">20</text></svg></button>
       <div class="un"><button class="bn-btn" id="bnUndo">Undo</button><button class="bn-btn" id="bnRedo">Redo</button></div></div>
     <div id="eChance"></div><h3 style="margin-top:6px">Signal</h3><canvas id="bnMeter" width="170" height="120" style="width:100%;flex:1;min-height:60px;border-radius:6px;background:#06080a;box-shadow:inset 0 2px 5px rgba(0,0,0,.9)"></canvas></aside>
-  <aside class="bn-rail bn-right"><h3>Light &amp; matter</h3><div id="eLook"></div><h3 style="margin-top:6px">Ear</h3><div id="eMusic"></div><h3 style="margin-top:6px">Lab</h3><div class="labBtns"><button class="bn-btn" data-sec="Pareidolia lab">Pareidolia lab</button><button class="bn-btn" data-sec="Render video · offline, fixed time">Render video</button><button class="bn-btn" data-sec="3D mesh export · experimental">3D mesh</button><button class="bn-btn" data-sec="Comfort & safety">Comfort</button></div></aside>
+  <aside class="bn-rail bn-right"><h3>Light &amp; matter</h3><div id="eLook"></div><h3 style="margin-top:6px">Ear</h3><div id="eMusic"></div><h3 style="margin-top:6px">Lab</h3><div class="labBtns"><button class="bn-btn" data-sec="Pareidolia lab">Pareidolia lab</button><button class="bn-btn" data-sec="Render video · offline, fixed time">Render video</button><button class="bn-btn" data-sec="3D mesh export · experimental">3D mesh</button><button class="bn-btn" data-sec="Text sculpture">Text sculpture</button><button class="bn-btn" data-sec="Comfort & safety">Comfort</button></div></aside>
   <div class="bn-rack" id="bnRack" aria-label="Specimen slides"></div>
 </div>
 <div id="lbOverlay" role="dialog" aria-label="Pareidolia trial">
@@ -493,6 +493,11 @@
   <div id="wsTabs"><button data-ws="explore">Explore</button><button data-ws="sculpt">Sculpt</button><button data-ws="perform">Perform</button><button data-ws="forge">Forge</button></div>
   <h2>Fractal</h2>
   <div class="grid" id="types"></div>
+  <h2>Text sculpture</h2>
+  <div class="note">Type a word: each letter becomes inflated liquid metal carrying its <b>own</b> fractal pattern, a real 3D object you can orbit, save as a specimen, render offline, or export as a mesh. Short words in heavy fonts read best; fine type melts.</div>
+  <div class="row"><span>Text</span><input id="txtIn" type="text" maxlength="16" value="U4" placeholder="up to 16 characters" style="flex:1;min-width:0;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:var(--fg);font:inherit" autocomplete="off" spellcheck="false"></div>
+  <div class="row"><span>Font</span><select id="txtFont"><option value="sans">Heavy sans</option><option value="round">Rounded</option><option value="serif">Heavy serif</option><option value="slab">Slab</option><option value="mono">Mono</option></select></div>
+  <div class="row"><span>Letters differ</span><input id="txtDiff" type="checkbox" checked><small style="color:var(--dim)">each letter gets a different fractal pattern</small></div>
   <h2>Theme</h2>
   <div class="grid" id="themes">
     <button data-t="0">Neon</button>
@@ -886,6 +891,28 @@ float deCathedral(vec3 p){
   return d*0.55;
 }
 
+
+// 23 : Text sculpture. Any short text becomes inflated liquid-metal letters; each letter samples a DIFFERENT region/scale of a mirror-tiled Mandelbox, so every letter has its own fractal pattern.
+// The glyph outline arrives as a signed distance field in a texture (R = distance in world units, negative inside; G = letter index). gPower = fractal zoom, gQW = skin (-1 carved .. +1 relief), gFoldA = inflation.
+uniform sampler2D uTxt; uniform vec2 uTxtExt; uniform float uTxtDiff;
+float deText(vec3 p){
+  vec2 uv = p.xy/uTxtExt + 0.5, cuv = clamp(uv,0.0,1.0);
+  vec2 tx = textureLod(uTxt,cuv,0.0).rg;
+  float d2 = tx.r + length((uv-cuv)*uTxtExt);                              // signed 2D distance to the glyphs (outside the texture: distance to its edge)
+  float R = 0.16*(1.0+gFoldA);
+  float zf = R*sqrt(max(0.0,1.0-pow(1.0-clamp(-d2/R,0.0,1.0),2.0)));       // pillow profile: flat at the outline, full thickness inside
+  float d3 = (d2>0.0) ? length(vec2(d2,abs(p.z))) : max(abs(p.z)-zf, d2*0.5);
+  float idx = floor(tx.g+0.5), h = (uTxtDiff>0.5) ? fract(sin(idx*12.9898+1.7)*43758.5453) : 0.0;   // per-letter variation
+  float sc = max(gPower,0.5)*(1.0+0.6*h);
+  vec3 Lc = vec3(1.7), ps = p*sc + vec3(h*6.1,h*2.3,h*4.7);
+  ps = abs(mod(ps+Lc,4.0*Lc)-2.0*Lc) - Lc;
+  float dF = deBox(ps,0)/sc;                                                // also sets gTrap for colouring
+  float sk = clamp(gQW,-1.0,1.0);
+  if(sk>=0.0){ float hh = 1.0 - clamp(dF/0.12,0.0,1.0); return d3 - 0.07*sk*hh*hh; }
+  float off = (1.0+sk)*(1.0+sk)*0.2;
+  return max(d3, dF - off);
+}
+
 // KIFS fold steps shared by the sponge / gasket / hybrid
 void mengerStep(inout vec3 p, inout float sc, vec3 O, mat2 R){
   p = abs(p);
@@ -1102,6 +1129,7 @@ float evalType(int ty, vec3 p){
   else if(ty==19) d = deShip2(p,0);
   else if(ty==21) d = deLogo(p);
   else if(ty==22) d = deCathedral(p);
+  else if(ty==23) d = deText(p);
   else            d = deShip2(p,1);
   return d;
 }
@@ -2006,6 +2034,7 @@ const TYPES = [
   {name:'Burning Ship Julia 3D', size:1.2, cam:5.8, bound:1.9, info:'<b>3D Burning Ship Julia</b> — the same map started at the point with a fixed constant c (wandering with the music).'},
   {name:'U4 · fractal logotype', size:1.2, cam:5.6, bound:1.7, info:'<b>U4 logotype</b> — liquid-metal letters (smooth-merged 3D tubes and beads) intersected with a <i>negative Mandelbox</i>. <code>Fractal skin</code> slides from carved (−) through smooth to raised fractal relief (+); <code>Fractal zoom</code> and <code>Box scale</code> change what gets carved. A real 3D solid: orbit it.'},
   {name:'Cathedral of Becoming', size:1.2, cam:7.0, bound:2.4, info:'<b>Cathedral of Becoming</b> — a Menger-style sponge whose tunnels are gothic <i>pointed arches</i>, recursing into smaller cathedrals. Each level turns slightly (a spiral stair) and the whole tapers into a spire. <code>Spiral</code>, <code>Arch width</code> and <code>Spire taper</code> reshape the architecture.'},
+  {name:'Text sculpture', size:1.2, cam:6.4, bound:2.3, info:'<b>Text sculpture</b> — type a word: each letter is inflated liquid metal carrying its <i>own</i> fractal pattern (a different region and scale of a mirror-tiled negative Mandelbox). <code>Fractal skin</code> slides from carved (−) through smooth to raised relief (+); <code>Fractal zoom</code>, <code>Box scale</code> and <code>Inflate</code> reshape it. Use the Text sculpture panel to change the words.'},
 ];
 // cosine palettes: a + b·cos(2π(c·t + d))
 const PALS = [
@@ -2357,6 +2386,7 @@ const PSCHEMA={
   10:[['scale','Offset',0.7,1.4,0.01],TWIST], 11:[['scale','Fold box',0.7,1.4,0.01],TWIST], 12:[['qw','Slice w',-1,1,0.01]],
   13:[['scale','Offset',0.8,1.4,0.01],TWIST], 14:[['power','Fold scale (φ² ≈ 2.618)',2,3.5,0.01],['scale','Vertex offset',0.5,1.6,0.01],TWIST,['qw','End-sphere radius',0.3,2,0.01]],
   15:[['scale','Box scale',-2.8,-1.5,0.01]], 16:[['scale','Box scale',1.8,2.8,0.01],...JC3], 17:[],
+  23:[['qw','Fractal skin (− carve · + relief)',-1,1,0.01],['power','Fractal zoom',1,5,0.05],['scale','Box scale',-2.8,-1.5,0.01],['fold','Inflate',0,0.5,0.01]],
   22:[['fold','Spiral twist per level',-0.8,0.8,0.005],['scale','Arch width',0.6,1.4,0.01],['power','Spire taper',0,1.5,0.01]],
   21:[['qw','Fractal skin (− carve · + relief)',-1,1,0.01],['power','Fractal zoom',1,5,0.05],['scale','Box scale',-2.8,-1.5,0.01],['fold','Letter melt',0,0.5,0.01]],
   18:[...JC3,['qw','Quaternion w',-1,1,0.01]], 19:[['power','Power',2,4,0.01]], 20:[['power','Power',2,4,0.01],...JC3]
@@ -2565,6 +2595,7 @@ function params(ty){
     case 20: P.power=clamp(2.4+0.3*Math.sin(t*0.11)+0.6*b,2,4); P.jc=[0.12+0.1*Math.cos(t*0.2+m),0.25+0.12*Math.sin(t*0.27),0.1+0.12*Math.cos(t*0.17)+0.1*b]; break;
     case 18: P.jc=[-0.3+0.15*Math.cos(t*0.2)+0.12*b, 0.25+0.2*Math.sin(t*0.27)+0.1*m, 0.15*Math.sin(t*0.19)]; P.qw=0.1+0.2*Math.sin(t*0.13)+0.2*h; break;
     case 15: P.scale=-clamp(1.7+0.35*Math.sin(t*0.11)+0.6*b,1.5,2.8); break;
+    case 23: P.scale=-clamp(1.7+0.15*Math.sin(t*0.11)+0.3*b,1.5,2.8); P.power=2.2+0.06*Math.sin(t*0.07); P.qw=0.6+0.1*Math.sin(t*0.09); break;
     case 22: P.fold=0.12+0.05*Math.sin(t*0.1)+0.06*b; P.scale=1+0.06*Math.sin(t*0.07); P.power=0.55; break;
     case 21: P.scale=-clamp(1.7+0.2*Math.sin(t*0.11)+0.35*b,1.5,2.8); P.power=2.2+0.08*Math.sin(t*0.07); P.qw=0.6+0.12*Math.sin(t*0.09); break;
     case 16: P.scale=clamp(2.0+0.2*Math.sin(t*0.1)+0.5*b,1.8,2.8); P.jc=[0.7*Math.cos(t*0.13+m),0.5*Math.sin(t*0.17),0.45*Math.cos(t*0.11)+0.3*b]; break;
@@ -2730,11 +2761,12 @@ function frameBody(nowMs){
   // pass 1 — fractal → HDR scene buffer
   gl.bindFramebuffer(gl.FRAMEBUFFER,scenes[cur].fbo); gl.viewport(0,0,sw,sh);
   bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
+  if(TXT&&TXT.tex) bindTex(5,TXT.tex);
   if(flowMode){
     const fp=flowProg(flowVar);
     fp.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uDrop:A.drop});
   } else {
-  (mesh.active?mesh.prog:progScene).set({uSliceZ:mesh.z,uGridStep:mesh.step,uGridOrigin:mesh.origin,uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
+  (mesh.active?mesh.prog:progScene).set({uSliceZ:mesh.z,uGridStep:mesh.step,uGridOrigin:mesh.origin,uTxt:5,uTxtExt:TXT.ext,uTxtDiff:TXT.diff?1:0,uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uEnergy:A.energy,uPulse:A.pulse*SAFE.k,uDrop:A.drop*SAFE.k,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:expo.active?expo.glow:+$('sGlow').value,
     uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uSliceAt:+$('sCutAt').value,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
@@ -3226,7 +3258,7 @@ loadSpecimens(); renderSpecimens();
 
 // ═════════════════════ WORKSPACES: Explore / Sculpt / Perform / Forge ═════════════════════
 const WS_MAP={'Fractal':'explore','Theme':'explore','Audio':'explore perform','Sculpt · no music needed':'sculpt','Morph timeline':'explore perform','Look':'explore sculpt','Reactivity':'perform',
-  'Comfort & safety':'explore perform forge','Pareidolia lab':'forge','Render video · offline, fixed time':'forge','3D mesh export · experimental':'forge','Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
+  'Comfort & safety':'explore perform forge','Text sculpture':'explore sculpt','Pareidolia lab':'forge','Render video · offline, fixed time':'forge','3D mesh export · experimental':'forge','Performance':'explore forge','Specimens':'forge','Slots & sharing':'forge','Performance take · editable':'perform','Still art · high resolution':'forge','E-PAPER NODE 000 · 384 × 184':'forge','Capture':'forge'};
 (function groupWorkspaces(){
   const ui=$('ui'); let cur=null;
   [...ui.children].forEach(el=>{
@@ -3293,12 +3325,12 @@ function tlDescribe(it){ const r=it.raw; const t=fmtT(it.t); return it.gesture?`
 // ═════════════════════ INSTRUMENT CHROME (UI pass) ═════════════════════
 const specCode=sp=>'FP·'+String(sp.id).replace(/^sp-/,'').slice(0,6).toUpperCase();
 let loadedSpec=null;                                       // {id, state}: the saved specimen the current sculpture came from (never overwritten silently)
-const DIRTY_KEYS=['type','theme','palIdx','realIdx','hue','shape','detail','sparkle','warp','kal','bloom','glow','trail','sym','iter','cutAt','twist','bend','cut','flow','flowVar'];
+const DIRTY_KEYS=['txt','txtFont','txtDiff','type','theme','palIdx','realIdx','hue','shape','detail','sparkle','warp','kal','bloom','glow','trail','sym','iter','cutAt','twist','bend','cut','flow','flowVar'];
 function stateDiffers(a,b){ if(!a||!b) return false; for(const k of DIRTY_KEYS){ const x=a[k],y=b[k]; if(typeof x==='number'&&typeof y==='number'){ if(Math.abs(x-y)>0.012) return true; } else if(x!==y&&!(x==null&&y==null)) return true; }
   if(JSON.stringify(a.pins||{})!==JSON.stringify(b.pins||{})) return true; if(JSON.stringify(a.mat||{})!==JSON.stringify(b.mat||{})) return true; return false; }
 function setLoadedSpec(sp){ loadedSpec=sp?{id:sp.id,state:JSON.parse(JSON.stringify(sp.state))}:null; }
 { const _rs=restoreSpecimen; restoreSpecimen=function(sp){ _rs(sp); setLoadedSpec(sp); }; }
-{ const _ss=saveSpecimen; saveSpecimen=function(f,x){ const n0=specimens.length; _ss(f,x); setTimeout(()=>{ if(specimens.length>n0) setLoadedSpec(specimens[0]); },3200); }; }
+{ const _ss=saveSpecimen; saveSpecimen=function(f,x){ const n0=specimens.length; _ss(f,x); let tries=0; const iv=setInterval(()=>{ if(specimens.length>n0){ clearInterval(iv); setLoadedSpec(specimens[0]); } else if(++tries>150) clearInterval(iv); },100); }; }   // wait for the specimen to exist (its thumbnail is captured asynchronously)
 // what is steering the artwork right now
 function controlSummary(){
   const parts=[], amber=!!(takeRec||rec||playing);
@@ -3595,6 +3627,39 @@ window.fpMesh={surfaceNets,meshStats,meshToOBJ,meshToSTL,build:buildMesh,last:()
 
 
 document.querySelectorAll('.labBtns [data-sec]').forEach(b=>b.addEventListener('click',()=>fpOpenSection(b.dataset.sec)));
+// ═════════════════════ TEXT SCULPTURE: any short text -> glyph distance field -> inflated letters, each with its own fractal pattern ═════════════════════
+var TXT={text:'U4',font:'sans',diff:true,tex:null,ext:[1,1],w:0,h:0,ids:0};
+var TXT_FONTS={sans:"900 {s}px 'Arial Black','Helvetica Neue',Impact,system-ui,sans-serif",round:"800 {s}px ui-rounded,'Arial Rounded MT Bold',Nunito,system-ui,sans-serif",serif:"900 {s}px Georgia,'Times New Roman',serif",mono:"800 {s}px ui-monospace,Menlo,Consolas,monospace",slab:"900 {s}px Rockwell,'Courier New',serif"};
+const sanitizeText=t=>String(t==null?'':t).replace(/[\u0000-\u001f\u007f]/g,'').slice(0,16);
+function edtSq(mask,w,h,fg){            // squared distance from every pixel to the nearest pixel where mask===fg (Felzenszwalb & Huttenlocher, exact Euclidean)
+  const INF=1e20, g=new Float32Array(w*h), tmp=new Float32Array(Math.max(w,h)), v=new Int32Array(Math.max(w,h)), z=new Float32Array(Math.max(w,h)+1);
+  const pass=(f,n)=>{ let k=0; v[0]=0; z[0]=-INF; z[1]=INF; for(let q=1;q<n;q++){ let s; for(;;){ const p=v[k]; s=((f[q]+q*q)-(f[p]+p*p))/(2*q-2*p); if(s<=z[k]&&k>0) k--; else break; } if(s>z[k]){ k++; v[k]=q; z[k]=s; z[k+1]=INF; } else { v[k]=q; z[k]=s; z[k+1]=INF; } } k=0; for(let q=0;q<n;q++){ while(z[k+1]<q) k++; const p=v[k]; tmp[q]=(q-p)*(q-p)+f[p]; } };
+  for(let i=0;i<w*h;i++) g[i]=mask[i]===fg?0:INF;
+  const col=new Float32Array(h); for(let x=0;x<w;x++){ for(let y=0;y<h;y++) col[y]=g[y*w+x]; pass(col,h); for(let y=0;y<h;y++) g[y*w+x]=tmp[y]; }
+  const row=new Float32Array(w); for(let y=0;y<h;y++){ for(let x=0;x<w;x++) row[x]=g[y*w+x]; pass(row,w); for(let x=0;x<w;x++) g[y*w+x]=tmp[x]; }
+  return g; }
+function buildTextField(text,fontKey){
+  text=sanitizeText(text)||' '; const H=192, tmpC=document.createElement('canvas'), tc=tmpC.getContext('2d'); let s=H*0.78; const font=sz=>(TXT_FONTS[fontKey]||TXT_FONTS.sans).replace('{s}',sz);
+  tc.font=font(s); let tw=tc.measureText(text).width; const maxW=1024-24; if(tw>maxW){ s*=maxW/tw; tc.font=font(s); tw=tc.measureText(text).width; }
+  const W=Math.max(H,Math.min(1024,Math.ceil(tw+24))); tmpC.width=W; tmpC.height=H; const c=tmpC.getContext('2d',{willReadFrequently:true}); c.fillStyle='#000'; c.fillRect(0,0,W,H); c.fillStyle='#fff'; c.font=font(s); c.textBaseline='middle'; c.textAlign='left';
+  const x0=(W-tw)/2; c.fillText(text,x0,H*0.54);
+  const img=c.getImageData(0,0,W,H).data, mask=new Uint8Array(W*H); for(let i=0;i<W*H;i++) mask[i]=img[i*4]>127?1:0;
+  const dOut=edtSq(mask,W,H,1), dIn=edtSq(mask,W,H,0); let extH=1.0, extW=W/H; if(extW>2.8){ extH=2.8/extW; extW=2.8; } const wu=extH/H;     // world units per pixel
+  // letter ids by column: boundaries from cumulative advance widths
+  const bounds=[]; for(let i=0;i<=text.length;i++) bounds.push(x0+tc.measureText(text.slice(0,i)).width); const data=new Float32Array(W*H*2); let n=0;
+  const idCol=new Float32Array(W); for(let x=0;x<W;x++){ let id=0; for(let i=0;i<text.length;i++) if(x+0.5>=bounds[i]) id=i; idCol[x]=id; }
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const i=y*W+x; const sd=(Math.sqrt(dOut[i])-Math.sqrt(dIn[i])-(mask[i]?-0.5:0.5)*0)*wu; data[i*2]=mask[i]?-Math.sqrt(dIn[i])*wu+0.5*wu:Math.sqrt(dOut[i])*wu-0.5*wu; data[i*2+1]=idCol[x]; n++; }
+  return {W,H,data,ext:[extW,extH],text,letters:text.length}; }
+function uploadTextField(f){ if(!TXT.tex) TXT.tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,TXT.tex); gl.pixelStorei(gl.UNPACK_ALIGNMENT,1); gl.texImage2D(gl.TEXTURE_2D,0,gl.RG16F,f.W,f.H,0,gl.RG,gl.FLOAT,f.data);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); TXT.ext=f.ext; TXT.w=f.W; TXT.h=f.H; }
+let txtTimer=0;
+function setText(t,font,diff,opts){ opts=opts||{}; TXT.text=sanitizeText(t)||' '; if(font&&TXT_FONTS[font]) TXT.font=font; if(diff!=null) TXT.diff=!!+diff; const f=buildTextField(TXT.text,TXT.font); uploadTextField(f); if($('txtIn')&&$('txtIn').value!==TXT.text.trim()&&!opts.fromInput) $('txtIn').value=TXT.text.trim(); if($('txtFont')) $('txtFont').value=TXT.font; if($('txtDiff')) $('txtDiff').checked=TXT.diff; if(!opts.quiet) save(); }
+setText('U4','sans',true,{quiet:true});
+$('txtIn').addEventListener('input',()=>{ clearTimeout(txtTimer); txtTimer=setTimeout(()=>{ setText($('txtIn').value,null,null,{fromInput:true}); const ti=TYPES.findIndex(x=>x.name==='Text sculpture'); if(shown!==ti) setType(ti); },140); });
+$('txtFont').addEventListener('change',()=>setText(TXT.text,$('txtFont').value)); $('txtDiff').addEventListener('change',()=>setText(TXT.text,null,$('txtDiff').checked));
+window.fpText={buildTextField,edtSq,sanitizeText,setText,TXT};
+window.__txtReady=true; if(window.__pendingTxt){ const a=window.__pendingTxt; window.__pendingTxt=null; setText(a[0],a[1],a[2],{quiet:true}); }
+
 // ── never trapped: kaleidoscope / mirror / 2D mode each announce themselves, and one tap (or X) returns to plain 3D ──
 function trapReason(){ const kv=+$('sKal').value; if(playing&&playLook&&playKal>=2) return 'Kaleidoscope from the playing take'; if(kv>=2) return 'Kaleidoscope '+kv+'×'; if(dirKal>=2) return 'Director kaleidoscope'; if(chaosL>0.6) return 'Chaos kaleidoscope'; if(+$('sSym').value>=2) return 'Mirror '+$('sSym').value+'×'; if(flowMode) return '2D scene (not 3D)'; return ''; }
 function backTo3D(){ $('sKal').value=0; $('sSym').value=0; dirKal=0; chaosL=0; chaosExt=0; chaosSpeed=0; if(flowMode) setFlow(false,true); if(playing&&playLook) playKal=0; $('cTakeLook').checked=playing?false:$('cTakeLook').checked; [$('sKal'),$('sSym')].forEach(x=>x.dispatchEvent(new Event('input',{bubbles:true}))); save(); toast('Back to plain 3D',1600); }
@@ -3810,7 +3875,8 @@ function exportState(){ return {v:1,type:shown,theme,palIdx,realIdx,hue:+$('sHue
   shape:+$('sMB').value,detail:+$('sMM').value,sparkle:+$('sMH').value,warp:+$('sWarp').value,kal:+$('sKal').value,bloom:+$('sBloom').value,
   glow:+$('sGlow').value,trail:+$('sTrail').value,react:$('sReact').value,ang:ang.map(v=>+v.toFixed(3)),flow:flowMode?1:0,flowVar,sym:+$('sSym').value,
   pins:JSON.parse(JSON.stringify(pins)),iter:+$('sIterB').value,cutAt:+$('sCutAt').value,twist:+$('sTwist').value,bend:+$('sBend').value,
-  mat:{on:$('cMatOv').checked?1:0,rough:+$('sRough').value,metal:+$('sMetal').value},cut:$('cSlice').checked?1:0,frozen:frozen?1:0,T:+T.toFixed(3)}; }
+  mat:{on:$('cMatOv').checked?1:0,rough:+$('sRough').value,metal:+$('sMetal').value},cut:$('cSlice').checked?1:0,txt:(typeof TXT!=='undefined'&&TXT)?TXT.text.trim():'U4',txtFont:(typeof TXT!=='undefined'&&TXT)?TXT.font:'sans',txtDiff:(typeof TXT!=='undefined'&&TXT&&!TXT.diff)?0:1,frozen:frozen?1:0,T:+T.toFixed(3)}; }
+function restoreText(o){ const a=[o.txt,o.txtFont,o.txtDiff]; if(window.__txtReady&&typeof TXT!=='undefined'&&TXT&&TXT.tex) setText(a[0],a[1],a[2],{quiet:true}); else window.__pendingTxt=a; }
 function applyState(o){
   if(!o||typeof o!=='object') return; const nv=(v,a,b,d)=>Number.isFinite(+v)?clamp(+v,a,b):d;
   setTheme(nrm(o.theme,THEMES.length),true); palIdx=nrm(o.palIdx,PALS.length); realIdx=nrm(o.realIdx,LOOKS.length);
@@ -3824,6 +3890,7 @@ function applyState(o){
   $('sIterB').value=nv(o.iter,6,24,12); $('sCutAt').value=nv(o.cutAt,-1.5,1.5,0); $('sTwist').value=nv(o.twist,-1,1,0); $('sBend').value=nv(o.bend,0,1,0);
   if(o.mat&&typeof o.mat==='object'){ $('cMatOv').checked=!!o.mat.on; $('sRough').value=nv(o.mat.rough,0.05,1,0.5); $('sMetal').value=nv(o.mat.metal,0,1,0); } else $('cMatOv').checked=false;
   $('cSlice').checked=!!o.cut;
+  if('txt' in o) restoreText(o);
   setFlowVar(o.flowVar|0,true); setFlow(!!o.flow,true); padSync(); setType(o.type);
   setFrozen(!!o.frozen,true); if(frozen&&Number.isFinite(+o.T)) T=+o.T; save();
 }

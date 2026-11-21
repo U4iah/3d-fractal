@@ -1,9 +1,9 @@
 {
- "commit": "4a0dd20",
- "when": "2026-11-20T22:12:06.003Z",
+ "commit": "556b813",
+ "when": "2026-11-21T02:08:41.534Z",
  "quick": true,
- "pass": 100,
- "fail": 4,
+ "pass": 104,
+ "fail": 1,
  "results": [
   {
    "name": "G1 page loads, no console errors",
@@ -43,7 +43,7 @@
   {
    "name": "G4 take records (frames+events+observations)",
    "ok": true,
-   "info": "{\"dur\":4.605,\"frames\":10,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
+   "info": "{\"dur\":3.994,\"frames\":10,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
   },
   {
    "name": "G4 playback restores fractal/theme/sculpt",
@@ -78,22 +78,22 @@
   {
    "name": "G6 bad hash survives: type=abc&pal=99&look=-4&",
    "ok": true,
-   "info": "frames=4"
+   "info": "frames=10"
   },
   {
    "name": "G6 bad hash survives: s=!!notbase64!!",
    "ok": true,
-   "info": "frames=16"
+   "info": "frames=10"
   },
   {
    "name": "G6 bad hash survives: type=999999&theme=-3",
    "ok": true,
-   "info": "frames=4"
+   "info": "frames=9"
   },
   {
    "name": "G7 frozen: time, camera, spin, hue, fractal all hold under Director+Show+cycle+orbit+live audio",
    "ok": true,
-   "info": "{\"s0\":{\"T\":0.41999999999999993,\"az\":0.608},\"s1\":{\"T\":0.41999999999999993,\"az\":0.608}}"
+   "info": "{\"s0\":{\"T\":0.98,\"az\":0.714019011247923},\"s1\":{\"T\":0.98,\"az\":0.714019011247923}}"
   },
   {
    "name": "G7 frozen: chaos/pulse/audio envelopes ignored",
@@ -103,7 +103,7 @@
   {
    "name": "G7 frozen: manual orbit still works",
    "ok": true,
-   "info": "az 0.61→-0.11"
+   "info": "az 0.71→0.00"
   },
   {
    "name": "G7 frozen: pinned parameter takes effect",
@@ -113,7 +113,7 @@
   {
    "name": "G7 resume: time advances and audio is live again",
    "ok": true,
-   "info": "{\"T\":0.5832399999999999,\"live\":true}"
+   "info": "{\"T\":1.9599999999999993,\"live\":true}"
   },
   {
    "name": "G7 every formula-parameter key plumbs through params()",
@@ -148,7 +148,7 @@
   {
    "name": "G8 specimen carries a preview thumbnail",
    "ok": true,
-   "info": "3763 chars"
+   "info": "4323 chars"
   },
   {
    "name": "G8 restore reproduces type, geometry, symmetry, camera, material and pinned parameter",
@@ -158,7 +158,7 @@
   {
    "name": "G8 live audio is baked into the saved sculpt values, and the state is frozen",
    "ok": true,
-   "info": "{\"bass\":0.5890441375975521,\"mid\":0.2948139090694748,\"shape\":0.589,\"detail\":0.295,\"baked\":true,\"frozen\":1}"
+   "info": "{\"bass\":1.2806688742681749,\"mid\":1.0176933055553983,\"shape\":1.2,\"detail\":1.018,\"baked\":true,\"frozen\":1}"
   },
   {
    "name": "G8 duplicate keeps state and records parent; variation mutates and records parent",
@@ -178,7 +178,7 @@
   {
    "name": "G8 capture a specimen from a performance take (source + timestamp recorded, frozen)",
    "ok": true,
-   "info": "{\"added\":1,\"kind\":\"take\",\"t\":4.204,\"frozen\":1}"
+   "info": "{\"added\":1,\"kind\":\"take\",\"t\":1.585,\"frozen\":1}"
   },
   {
    "name": "G8 library persists across reload",
@@ -193,17 +193,17 @@
   {
    "name": "G9 still render is exact size, non-blank",
    "ok": true,
-   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":83.68632291666667,\"meanAbsDiff\":0.8563958333333334,\"bigFrac\":0}"
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":81.73914583333334,\"meanAbsDiff\":1.46071875,\"bigFrac\":0}"
   },
   {
    "name": "G9 tiled render matches single-pass render (no visible seams)",
    "ok": true,
-   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":83.68632291666667,\"meanAbsDiff\":0.8563958333333334,\"bigFrac\":0}"
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":81.73914583333334,\"meanAbsDiff\":1.46071875,\"bigFrac\":0}"
   },
   {
    "name": "G9 transparent export: corners clear, object opaque, soft edges",
    "ok": true,
-   "info": "{\"corner\":1,\"corner2\":2,\"center\":255,\"opaque\":46539,\"partial\":15229,\"total\":65536}"
+   "info": "{\"corner\":1,\"corner2\":2,\"center\":255,\"opaque\":47948,\"partial\":15427,\"total\":65536}"
   },
   {
    "name": "G9 oversize requests are refused with a reason; cancel restores the live view",
@@ -213,17 +213,17 @@
   {
    "name": "G9 e-paper output is exactly 384×184 and only uses palette colours",
    "ok": true,
-   "info": "{\"bw/none\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bw/fs\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bwr/atk\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":741},\"bw/bayer\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0}}"
+   "info": "{\"bw/none\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bw/fs\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bwr/atk\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":9},\"bw/bayer\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0}}"
   },
   {
    "name": "G9 e-paper threshold changes the black/white balance; title strip is stamped",
    "ok": true,
-   "info": "{\"lo\":25553,\"hi\":0,\"strip\":114}"
+   "info": "{\"lo\":25829,\"hi\":0,\"strip\":114}"
   },
   {
    "name": "G9 e-paper red is only produced in the three-colour palette",
    "ok": true,
-   "info": "{\"bw\":0,\"bwr\":741}"
+   "info": "{\"bw\":0,\"bwr\":9}"
   },
   {
    "name": "G9 no console errors",
@@ -238,12 +238,12 @@
   {
    "name": "G10 audio-only WAV (no MIME) plays and drives the analysis",
    "ok": true,
-   "info": "{\"dur\":3,\"live\":true,\"bass\":0.645544453121816,\"kind\":\"audio\",\"name\":\"FL export.wav\",\"err\":null}"
+   "info": "{\"dur\":3,\"live\":true,\"bass\":1.2,\"kind\":\"audio\",\"name\":\"FL export.wav\",\"err\":null}"
   },
   {
    "name": "G10 take records source-media metadata and says the media is not embedded",
    "ok": true,
-   "info": "{\"name\":\"FL export.wav\",\"duration\":3,\"songOffset\":3,\"kind\":\"audio\",\"mime\":\"audio/wav\",\"size\":132344,\"reference\":\"original media is NOT embedded; the take stores the musical analysis recorded while it played\"}"
+   "info": "{\"name\":\"FL export.wav\",\"duration\":3,\"songOffset\":1.652,\"kind\":\"audio\",\"mime\":\"audio/wav\",\"size\":132344,\"reference\":\"original media is NOT embedded; the take stores the musical analysis recorded while it played\"}"
   },
   {
    "name": "G10 undecodable file gives a clear message naming the file",
@@ -263,7 +263,7 @@
   {
    "name": "G11 status line says who controls the artwork (touch / frozen / recording)",
    "ok": true,
-   "info": "{\"a\":\"Controlling · You (touch)\",\"b2\":\"Controlling · FROZEN\",\"c\":\"● REC TAKE 0:00.6 · You (touch)\",\"amber\":true}"
+   "info": "{\"a\":\"Controlling · You (touch)\",\"b2\":\"Controlling · FROZEN\",\"c\":\"● REC TAKE 0:01.6 · You (touch)\",\"amber\":true}"
   },
   {
    "name": "G11 timeline groups slider moves into gestures but keeps every raw event; irregular sample rate preserved",
@@ -272,8 +272,8 @@
   },
   {
    "name": "G11 unsaved changes are flagged; hold-to-compare shows the saved version and returns to the edit",
-   "ok": true,
-   "info": "{\"id\":true,\"clean\":true,\"dirty\":true,\"edited\":3,\"during\":0,\"base\":0,\"after\":3,\"idText\":\"FP·MWPIXY · UI test\"}"
+   "ok": false,
+   "info": "{\"id\":true,\"clean\":true,\"dirty\":false,\"edited\":3,\"during\":3,\"base\":0,\"after\":3,\"idText\":\"temporary look · Icosahedral IFS\"}"
   },
   {
    "name": "G11 clean view hides controls, preserves state, and returns",
@@ -318,7 +318,7 @@
   {
    "name": "G13 logotype is selectable and renders a solid wider than tall",
    "ok": true,
-   "info": "{\"n\":24627,\"w\":266,\"h\":172,\"sum\":31126622}"
+   "info": "{\"n\":24627,\"w\":266,\"h\":172,\"sum\":22522951}"
   },
   {
    "name": "G13 fractal skin changes the surface; carving removes material, relief keeps the letters whole",
@@ -333,12 +333,12 @@
   {
    "name": "G14 cathedral renders a solid with openings (not a filled block)",
    "ok": true,
-   "info": "{\"n\":40231,\"sum\":16419810}"
+   "info": "{\"n\":40231,\"sum\":18575927}"
   },
   {
    "name": "G14 spiral twist reshapes the architecture",
    "ok": true,
-   "info": "{\"a\":{\"n\":40231,\"sum\":16419810},\"c\":{\"n\":38101,\"sum\":17943934}}"
+   "info": "{\"a\":{\"n\":40231,\"sum\":18575927},\"c\":{\"n\":38101,\"sum\":18621929}}"
   },
   {
    "name": "G14 no console errors",
@@ -363,7 +363,7 @@
   {
    "name": "G15 Save puts a specimen on a slide; clicking the slide restores it",
    "ok": true,
-   "info": "{\"n\":1,\"filled\":1,\"restored\":0,\"spec\":\"Icosahedral IFS · 10:04 PM\"}"
+   "info": "{\"n\":1,\"filled\":1,\"restored\":0,\"spec\":\"Icosahedral IFS · 02:03 AM\"}"
   },
   {
    "name": "G15 B switches to the Figure skin (full-bleed artwork) and back",
@@ -427,8 +427,8 @@
   },
   {
    "name": "G19 demo audio goes through the sync delay (default 40 ms), the slider changes it, and the visuals still react",
-   "ok": false,
-   "info": "{\"def\":40,\"d0\":0.03999999910593033,\"d1\":0.11999999731779099,\"live\":false,\"sym\":2,\"type\":15}"
+   "ok": true,
+   "info": "{\"def\":40,\"d0\":0.03999999910593033,\"d1\":0.11999999731779099,\"live\":true,\"sym\":2,\"type\":15}"
   },
   {
    "name": "G19 Face finder preset applies bilateral (2-fold) symmetry to the demon-faces fractal",
@@ -442,18 +442,23 @@
   },
   {
    "name": "G20 detector: counts area-wide luminance transitions and flashes per second correctly",
-   "ok": false,
-   "info": "{\"none\":0,\"up\":1,\"down\":-1,\"small\":1,\"quarter\":1,\"slow\":1,\"strobe\":3,\"fast\":4,\"oldIgnored\":0}"
+   "ok": true,
+   "info": "{\"none\":0,\"up\":1,\"down\":-1,\"small\":0,\"quarter\":1,\"slow\":1,\"strobe\":3,\"fast\":4,\"oldIgnored\":0}"
   },
   {
    "name": "G20 the guard samples the real picture every frame without errors",
-   "ok": false,
-   "info": "{\"k0\":1,\"probed\":false,\"flashes\":0,\"k1\":1,\"trips\":0,\"peak\":0,\"frames\":29}"
+   "ok": true,
+   "info": "{\"k0\":1,\"probed\":true,\"flashes\":0,\"err\":null,\"k1\":1,\"trips\":0,\"peak\":1,\"frames\":16}"
+  },
+  {
+   "name": "G20 a 5-flashes-per-second strobe trips the guard and damps pulses; it releases when steady; a gentle 2-per-second flicker does not trip it",
+   "ok": true,
+   "info": "{\"during\":{\"active\":true,\"k\":0.3,\"flashes\":5,\"peak\":5,\"trips\":1},\"after\":{\"active\":false,\"k\":1},\"gentle\":{\"active\":false,\"k\":1,\"trips\":0}}"
   },
   {
    "name": "G20 Calm mode softens pulses (k ≤ 0.35), caps spin, blocks Dive, and fully releases",
-   "ok": false,
-   "info": "{\"k\":0.895,\"calm\":true,\"azVcapped\":false,\"dive\":false,\"recovered\":true}"
+   "ok": true,
+   "info": "{\"k\":0.301051610874924,\"calm\":true,\"azVcapped\":true,\"dive\":false,\"recovered\":true}"
   },
   {
    "name": "G20 no console errors",
@@ -483,7 +488,7 @@
   {
    "name": "G22 the zip writer produces archives a real unzip accepts",
    "ok": true,
-   "info": "No errors detected in compressed data of /tmp/fp-test-1795212626358.zip."
+   "info": "No errors detected in compressed data of /tmp/fp-test-1795226859226.zip."
   },
   {
    "name": "G22 mesh of the live fractal: thousands of triangles, under 0.5% questionable edges, inside the bound, view restored",
@@ -503,12 +508,12 @@
   {
    "name": "G22 take render: every frame is at exactly start + n/fps on the virtual clock, cancel stops cleanly, and unreasonable requests are refused",
    "ok": true,
-   "info": "{\"frames\":12,\"exactTimes\":true,\"glowEventApplied\":1,\"cancelled\":true,\"done\":2,\"idle\":true,\"plans\":{\"fps\":true,\"big\":true,\"long\":true,\"backwards\":true}}"
+   "info": "{\"frames\":12,\"exactTimes\":true,\"glowEventApplied\":1,\"cancelled\":true,\"done\":3,\"idle\":true,\"plans\":{\"fps\":true,\"big\":true,\"long\":true,\"backwards\":true}}"
   },
   {
    "name": "G22 zip-segment output: frames are split into segments and each archive passes a real unzip",
    "ok": true,
-   "info": "{\"zr\":{\"frames\":9,\"downloads\":3,\"bytes\":196521},\"downloads\":3,\"zipOk\":\"No errors detected in compressed data of /tmp/fp-seg-1795212\"}"
+   "info": "{\"zr\":{\"frames\":9,\"downloads\":3,\"bytes\":196521},\"downloads\":3,\"zipOk\":\"No errors detected in compressed data of /tmp/fp-seg-1795226\"}"
   },
   {
    "name": "G22 no console errors",
