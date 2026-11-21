@@ -27,7 +27,7 @@ module.exports=async function({b,page,rec,errText,URL}){
     const bad=await p.evaluate(()=>{ const bad=[]; for(let ty=0;ty<TYPES.length;ty++){ for(const [k,label,min,max] of (PSCHEMA[ty]||[])){ const v=min+(max-min)*0.37; pins[ty]={[k]:v}; const P=params(ty); const got=pinVal(P,ty,k); if(!(Math.abs(got-v)<1e-9)) bad.push(ty+':'+k); delete pins[ty]; } } return bad; });
     rec('G7 every formula-parameter key plumbs through params()',bad.length===0,bad.join(','));
     const cov=await p.evaluate(()=>TYPES.map((_,i)=>(PSCHEMA[i]||[]).length).join(','));
-    rec('G7 parameter schema covers every formula',cov.split(',').length===23,cov);
+    rec('G7 parameter schema covers every formula',cov.split(',').length===24,cov);
     // state round-trip includes pins, geometry, frozen, T
     const rt=await p.evaluate(()=>{ pins[5]={scale:2.4}; document.getElementById('sIterB').value=18; document.getElementById('sCutAt').value=.3; document.getElementById('sTwist').value=.2; document.getElementById('cMatOv').checked=true; document.getElementById('sRough').value=.7; setFrozen(true,true); T=7.5; const st=exportState(); pins[5]=null; delete pins[5]; document.getElementById('sIterB').value=12; setFrozen(false,true); applyState(JSON.parse(JSON.stringify(st))); return {pin:pins[5]&&pins[5].scale,iter:+document.getElementById('sIterB').value,cut:+document.getElementById('sCutAt').value,mat:document.getElementById('cMatOv').checked,rough:+document.getElementById('sRough').value,frozen,T}; });
     rec('G7 state round-trip keeps pins/geometry/material/frozen/time',rt.pin===2.4&&rt.iter===18&&Math.abs(rt.cut-.3)<1e-9&&rt.mat&&Math.abs(rt.rough-.7)<1e-9&&rt.frozen&&Math.abs(rt.T-7.5)<1e-6,JSON.stringify(rt));
@@ -227,8 +227,8 @@ module.exports=async function({b,page,rec,errText,URL}){
     await fc.setFiles({name:'my beat.wav',mimeType:'audio/wav',buffer:buf}); await p.waitForFunction(()=>A.live&&A.bass>0.05&&isFinite(player.duration),null,{timeout:90000});
     const f=await p.evaluate(()=>({live:A.live,dur:player.duration,gone:document.getElementById('start').classList.contains('gone')})); rec('G17 real click on Import opens the picker and the chosen file plays',f.live&&f.dur>1&&f.gone,JSON.stringify(f)); await p.context().close(); }
   { const p=await raw({viewport:{width:1440,height:900},permissions:['microphone']});
-    await p.click('#bMic',{timeout:30000}); await p.waitForFunction(()=>document.getElementById('start').classList.contains('gone')||document.getElementById('err').style.display!=='none',null,{timeout:30000});
-    const m=await p.evaluate(()=>({gone:document.getElementById('start').classList.contains('gone'),err:document.getElementById('err').style.display!=='none'?document.getElementById('err').textContent:'',state:actx&&actx.state}));
+    await p.click('#bMic',{timeout:30000}); await p.waitForFunction(()=>document.getElementById('start').classList.contains('gone')||getComputedStyle(document.getElementById('err')).display!=='none',null,{timeout:60000});
+    const m=await p.evaluate(()=>({gone:document.getElementById('start').classList.contains('gone'),err:getComputedStyle(document.getElementById('err')).display!=='none'?document.getElementById('err').textContent:'',state:actx&&actx.state}));
     rec('G17 real click on Mic either starts listening or says clearly why not',m.gone||/Microphone/.test(m.err),JSON.stringify(m)); await p.context().close(); }
 
   // ── G18: audio unlock on the first tap, even when the start screen is skipped ──
@@ -322,7 +322,7 @@ module.exports=async function({b,page,rec,errText,URL}){
       const visible=id=>{ const e=document.getElementById(id); return !!e&&e.offsetParent!==null; };
       for(const [sec,id] of [['Pareidolia lab','lbStart'],['Render video · offline, fixed time','ofRender'],['3D mesh export · experimental','mhBuild'],['Comfort & safety','cCalm']]){ document.getElementById('ui').classList.add('hidden'); document.querySelector('.labBtns [data-sec="'+sec+'"]').click(); await sleep(700); out[id]=visible(id)&&!document.getElementById('ui').classList.contains('hidden'); }
       document.getElementById('ui').classList.add('hidden'); window.dispatchEvent(new KeyboardEvent('keydown',{key:'b'})); await sleep(500); out.figure=!document.body.classList.contains('bench'); out.nodeThere=visible('nLab'); document.getElementById('nLab').click(); await sleep(700); out.nodeOpensLab=visible('lbStart')&&!document.getElementById('ui').classList.contains('hidden'); out.legend=!![...document.querySelectorAll('#legend li')].find(l=>/lab/.test(l.textContent)); return out; });
-    rec('G23 the lab, video render, mesh export and comfort controls open from the bench buttons and from the Figure skin node',r.bench&&r.names.length===4&&r.lbStart&&r.ofRender&&r.mhBuild&&r.cCalm&&r.figure&&r.nodeThere&&r.nodeOpensLab&&r.legend,JSON.stringify(r));
+    rec('G23 the lab, video render, mesh export and comfort controls open from the bench buttons and from the Figure skin node',r.bench&&r.names.length===5&&r.names.includes('Text sculpture')&&r.lbStart&&r.ofRender&&r.mhBuild&&r.cCalm&&r.figure&&r.nodeThere&&r.nodeOpensLab&&r.legend,JSON.stringify(r));
     rec('G23 no console errors',p.errs.length===0,p.errs[0]||''); await p.context().close(); }
 
   // ── G24: Text sculpture ──

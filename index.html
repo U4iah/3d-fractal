@@ -3601,7 +3601,8 @@ async function buildMesh(o){
   if(mesh.active) return {error:'A mesh is already being built.'}; if(flowMode) return {error:'Mesh export needs a 3D fractal, not a 2D scene.'}; if(!useFloat) return {error:'This device renders in 8-bit; mesh export needs HDR (float) buffers.'}; if(expo.active||off.active) return {error:'Another export is running.'};
   const n=o.n|0; if(!(n>=16&&n<=256)) return {error:'Grid must be 16 to 256.'}; const L=gpuLimits(); if(n>L.maxTex||!probeBuffer(n,n)) return {error:'This device cannot allocate a '+n+'² sampling buffer.'};
   const src=meshShaderSource(); if(!src) return {error:'Could not prepare the sampling shader.'}; if(!mesh.prog||mesh.src!==src){ mesh.prog=makeProg('fs','mesh',src); mesh.src=src; } if(!mesh.prog||!mesh.prog.p) return {error:'The sampling shader failed to build.'};
-  const B=TYPES[shown].bound, base=captureState(true), wasFrozen=frozen; setFrozen(true,true); Object.assign(mesh,{active:true,cancel:false,n,step:2*B/(n-1),origin:[-B,-B,-B],onSlice:null});
+  const B=(TYPES[shown].name==='Text sculpture'&&typeof TXT!=='undefined')?Math.min(TYPES[shown].bound,Math.max(TXT.ext[0],TXT.ext[1])/2+0.3):TYPES[shown].bound, base=captureState(true), wasFrozen=frozen;   // fit the sampling box to the text so a short word gets enough voxels
+   setFrozen(true,true); Object.assign(mesh,{active:true,cancel:false,n,step:2*B/(n-1),origin:[-B,-B,-B],onSlice:null});
   const field=new Float32Array(n*n*n), buf=new Float32Array(n*n*4), t0=performance.now();
   try{
     for(let k=0;k<n;k++){ mesh.z=k; await new Promise((res,rej)=>{ const to=setTimeout(()=>{ mesh.onSlice=null; rej(new Error('a slice timed out')); },120000);
