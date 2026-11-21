@@ -908,7 +908,7 @@ float deText(vec3 p){
   ps = abs(mod(ps+Lc,4.0*Lc)-2.0*Lc) - Lc;
   float dF = deBox(ps,0)/sc;                                                // also sets gTrap for colouring
   float sk = clamp(gQW,-1.0,1.0);
-  if(sk>=0.0){ float hh = 1.0 - clamp(dF/0.2,0.0,1.0), inside = 1.0 - smoothstep(-0.03,0.03,d2); return d3 - 0.14*sk*hh*hh*inside; }   // raised relief grows out of the letters only; outlines stay crisp
+  if(sk>=0.0){ float hh = 1.0 - clamp(dF/0.2,0.0,1.0), inside = 1.0 - smoothstep(-0.10,0.02,d2); return (d3 - 0.12*sk*hh*hh*inside)*0.55; }   // relief grows out of the letters only; the 0.55 keeps the field's slope under 1 so the marcher cannot overshoot
   float off = (1.0+sk)*(1.0+sk)*0.2;
   return max(d3, dF - off);
 }
