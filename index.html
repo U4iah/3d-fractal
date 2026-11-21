@@ -896,7 +896,7 @@ float deCathedral(vec3 p){
 // The glyph outline arrives as a signed distance field in a texture (R = distance in world units, negative inside; G = letter index). gPower = fractal zoom, gQW = skin (-1 carved .. +1 relief), gFoldA = inflation.
 uniform sampler2D uTxt; uniform vec2 uTxtExt; uniform float uTxtDiff;
 float deText(vec3 p){
-  vec2 uv = p.xy/uTxtExt + 0.5, cuv = clamp(uv,0.0,1.0);
+  vec2 uv = vec2(p.x/uTxtExt.x + 0.5, 0.5 - p.y/uTxtExt.y), cuv = clamp(uv,0.0,1.0);       // image rows run top to bottom, world y runs up
   vec2 tx = textureLod(uTxt,cuv,0.0).rg;
   float d2 = tx.r + length((uv-cuv)*uTxtExt);                              // signed 2D distance to the glyphs (outside the texture: distance to its edge)
   float R = 0.16*(1.0+gFoldA);
@@ -2034,7 +2034,7 @@ const TYPES = [
   {name:'Burning Ship Julia 3D', size:1.2, cam:5.8, bound:1.9, info:'<b>3D Burning Ship Julia</b> — the same map started at the point with a fixed constant c (wandering with the music).'},
   {name:'U4 · fractal logotype', size:1.2, cam:5.6, bound:1.7, info:'<b>U4 logotype</b> — liquid-metal letters (smooth-merged 3D tubes and beads) intersected with a <i>negative Mandelbox</i>. <code>Fractal skin</code> slides from carved (−) through smooth to raised fractal relief (+); <code>Fractal zoom</code> and <code>Box scale</code> change what gets carved. A real 3D solid: orbit it.'},
   {name:'Cathedral of Becoming', size:1.2, cam:7.0, bound:2.4, info:'<b>Cathedral of Becoming</b> — a Menger-style sponge whose tunnels are gothic <i>pointed arches</i>, recursing into smaller cathedrals. Each level turns slightly (a spiral stair) and the whole tapers into a spire. <code>Spiral</code>, <code>Arch width</code> and <code>Spire taper</code> reshape the architecture.'},
-  {name:'Text sculpture', size:1.2, cam:6.4, bound:2.3, info:'<b>Text sculpture</b> — type a word: each letter is inflated liquid metal carrying its <i>own</i> fractal pattern (a different region and scale of a mirror-tiled negative Mandelbox). <code>Fractal skin</code> slides from carved (−) through smooth to raised relief (+); <code>Fractal zoom</code>, <code>Box scale</code> and <code>Inflate</code> reshape it. Use the Text sculpture panel to change the words.'},
+  {name:'Text sculpture', size:1.2, cam:4.3, bound:2.3, info:'<b>Text sculpture</b> — type a word: each letter is inflated liquid metal carrying its <i>own</i> fractal pattern (a different region and scale of a mirror-tiled negative Mandelbox). <code>Fractal skin</code> slides from carved (−) through smooth to raised relief (+); <code>Fractal zoom</code>, <code>Box scale</code> and <code>Inflate</code> reshape it. Use the Text sculpture panel to change the words.'},
 ];
 // cosine palettes: a + b·cos(2π(c·t + d))
 const PALS = [
