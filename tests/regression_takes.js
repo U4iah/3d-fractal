@@ -38,7 +38,7 @@ module.exports=async function({b,page,rec,errText,URL}){
     await p.context().close(); }
   // robustness: the stale-page banner, GPU loss during an export, byte-budgeted zip segments
   { const p=await page(b,'scale=0.1&q=0&type=0',{ctx:{viewport:{width:1280,height:800},acceptDownloads:true}}); const dls=[]; p.on('download',d=>dls.push(d));
-    const u=await p.evaluate(async()=>{ const real=window.fetch; const bar=()=>document.getElementById('updBar').classList.contains('show'); const out={start:bar()};
+    const u=await p.evaluate(async()=>{ window.fpTestUpdate=true; const real=window.fetch; const bar=()=>document.getElementById('updBar').classList.contains('show'); const out={start:bar()};
       window.fetch=async()=>({ok:true,text:async()=>"const APP_VERSION='"+APP_VERSION+"';"}); await checkUpdate(); out.same=bar();
       window.fetch=async()=>({ok:true,text:async()=>"const APP_VERSION='fp-9999.01.01-future';"}); await checkUpdate(); out.newer=bar(); window.fetch=async()=>{ throw new Error('offline'); }; document.getElementById('updBar').classList.remove('show'); await checkUpdate(); out.offline=bar(); window.fetch=real; return out; });
     rec('G25 a stale copy is detected: no banner when current or offline, banner when a newer version exists',!u.start&&!u.same&&u.newer&&!u.offline,JSON.stringify(u));

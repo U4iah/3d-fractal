@@ -3774,7 +3774,7 @@ $('ofVideo').onclick=makeVideoFlow; $('tcVideo').onclick=makeVideoFlow; $('tcX')
 $('rbarX').onclick=()=>{ vidState.cancel=true; off.cancel=true; };
 $('tkSave2').onclick=()=>saveTakeFile(); $('tkDel').onclick=()=>armBtn($('tkDel'),'Delete this take',async()=>{ if(!take) return; try{ if(take.id) await takeDB.del(take.id); }catch(e){} if(playing) playStop(); take=null; takeChanged(false); renderTakeList(); toast('Take deleted',1500); });
 // newer-version banner: when a stale copy is running (cached page, restored tab), say so
-async function checkUpdate(){ try{ const r=await fetch(location.href.split('#')[0].split('?')[0],{cache:'no-store'}); if(!r.ok) return; const t=await r.text(); const m=t.match(/APP_VERSION='([^']+)'/); if(m&&m[1]!==APP_VERSION) $('updBar').classList.add('show'); }catch(e){} }
+async function checkUpdate(){ try{ if(!/^https?:/.test(location.protocol)&&!window.fpTestUpdate) return; const r=await fetch(location.href.split('#')[0].split('?')[0],{cache:'no-store'}); if(!r.ok) return; const t=await r.text(); const m=t.match(/APP_VERSION='([^']+)'/); if(m&&m[1]!==APP_VERSION) $('updBar').classList.add('show'); }catch(e){} }
 $('updReload').onclick=()=>{ try{ navigator.serviceWorker&&navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())); caches&&caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))); }catch(e){} setTimeout(()=>location.reload(),200); };
 setTimeout(checkUpdate,4000); setInterval(checkUpdate,600000);
 takeLenText(); renderTakeList(); window.fpTakes={takeDB,keepTake,renderTakeList,makeVideoFlow,checkUpdate};
