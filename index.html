@@ -3183,7 +3183,7 @@ $('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
-const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.22-phonesafe', SPEC_KEY='fractalPulseSpecimens';
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.22-diag', SPEC_KEY='fractalPulseSpecimens';
 let specimens=[], spSel=null, thumbReq=null;
 const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
 function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,
@@ -3790,6 +3790,37 @@ async function checkUpdate(){ try{ if(!/^https?:/.test(location.protocol)&&!wind
 $('updReload').onclick=()=>{ try{ navigator.serviceWorker&&navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())); caches&&caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))); }catch(e){} setTimeout(()=>location.reload(),200); };
 setTimeout(checkUpdate,4000); setInterval(checkUpdate,600000);
 takeLenText(); renderTakeList(); window.fpTakes={takeDB,keepTake,renderTakeList,makeVideoFlow,checkUpdate};
+
+// ── Device diagnostics: ?diag=1, or tap the build label 5 times. Records what the audio player, the audio engine, the frame loop and the page are doing,
+//    so a problem on a real phone (hot, laggy, song that keeps restarting) can be copied out as one text report. Off by default; costs nothing until opened.
+const DG={on:false,ev:[],t0:performance.now(),flips:0,long:0,longMs:0,errs:0,fps:[],lastFrame:0,lastT:0,timer:0,panel:null,maxEv:400};
+function dgLog(kind,msg){ const e={t:+((performance.now()-DG.t0)/1000).toFixed(2),k:kind,m:String(msg||'')}; DG.ev.push(e); if(DG.ev.length>DG.maxEv) DG.ev.shift(); if(DG.panel) dgRender(); }
+function dgState(){ const p=player; return {
+  build:APP_VERSION, ua:navigator.userAgent, screen:`${screen.width}x${screen.height}@${devicePixelRatio}`, viewport:`${innerWidth}x${innerHeight}`, coarse:matchMedia('(pointer:coarse)').matches,
+  standalone:!!(navigator.standalone||matchMedia('(display-mode:standalone)').matches), visible:document.visibilityState,
+  audioCtx:actx?{state:actx.state,sampleRate:actx.sampleRate,baseLatency:+(actx.baseLatency||0).toFixed(4)}:null, source:lastSource||'', hasAudio,
+  player:{paused:p.paused,t:+p.currentTime.toFixed(2),dur:isFinite(p.duration)?+p.duration.toFixed(2):null,ready:p.readyState,net:p.networkState,src:!!p.src,err:p.error?p.error.code:0},
+  audioLoopGuard:{tripped:audioLoop.tripped}, guardOn:$('cSafeGuard').checked, calm:$('cCalm').checked, syncMs:+$('sSync').value, resScale:+resScale.toFixed(3), qual:$('sQual').value, fpsCap:$('sFps').value,
+  frames:frame, fps1s:DG.fps.length?DG.fps[DG.fps.length-1]:null, fpsMin:DG.fps.length?Math.min(...DG.fps):null, fpsAvg:DG.fps.length?+(DG.fps.reduce((a,b)=>a+b,0)/DG.fps.length).toFixed(1):null,
+  longTasks:DG.long, longTaskMs:Math.round(DG.longMs), playPauseFlips:DG.flips, errors:DG.errs,
+  heapMB:performance.memory?+(performance.memory.usedJSHeapSize/1048576).toFixed(0):null, cores:navigator.hardwareConcurrency||null, deviceMemoryGB:navigator.deviceMemory||null, uptimeS:+((performance.now()-DG.t0)/1000).toFixed(0) }; }
+function dgReport(){ return JSON.stringify({format:'fractal-pulse-diagnostics',v:1,created:new Date().toISOString(),state:dgState(),events:DG.ev.slice(-250)},null,1); }
+function dgRender(){ if(!DG.panel) return; const s=dgState(); const pre=DG.panel.querySelector('pre'); pre.textContent=
+  `build ${s.build}\n${s.screen}  viewport ${s.viewport}  ${s.standalone?'home-screen app':'browser'}\nfps ${s.fps1s??'-'} (min ${s.fpsMin??'-'}, avg ${s.fpsAvg??'-'})  res ${s.resScale}  long tasks ${s.longTasks} (${s.longTaskMs} ms)\naudio ${s.audioCtx?s.audioCtx.state:'none'}  source ${s.source||'-'}  player ${s.player.src?(s.player.paused?'paused':'playing'):'-'} ${s.player.t}/${s.player.dur??'-'}\nplay/pause flips ${s.playPauseFlips}  loop guard ${s.audioLoopGuard.tripped?'TRIPPED':'ok'}  errors ${s.errors}\nflash guard ${s.guardOn?'on':'off'}  sync ${s.syncMs} ms  heap ${s.heapMB??'n/a'} MB\n\n`+DG.ev.slice(-14).map(e=>`${e.t}s ${e.k} ${e.m}`).join('\n'); }
+function dgOpen(){ if(DG.panel){ DG.panel.remove(); DG.panel=null; return; }
+  const d=document.createElement('div'); d.id='dgPanel'; d.style.cssText='position:fixed;left:6px;right:6px;bottom:calc(6px + env(safe-area-inset-bottom));z-index:99999;background:rgba(10,10,12,.92);color:#cfe;border:1px solid #567;border-radius:10px;padding:8px;font:11px/1.35 ui-monospace,Menlo,monospace;max-height:46vh;overflow:auto;-webkit-user-select:text;user-select:text';
+  d.innerHTML='<div style="display:flex;gap:8px;margin-bottom:6px"><button id="dgCopy" style="flex:1;min-height:40px;font:inherit">Copy report</button><button id="dgClear" style="min-height:40px;font:inherit">Clear</button><button id="dgClose" style="min-height:40px;font:inherit">Close</button></div><pre style="margin:0;white-space:pre-wrap;word-break:break-word"></pre>';
+  document.body.appendChild(d); DG.panel=d; d.querySelector('#dgCopy').onclick=()=>copyText(dgReport(),'Diagnostics report'); d.querySelector('#dgClear').onclick=()=>{ DG.ev=[]; DG.flips=0; DG.long=0; DG.longMs=0; DG.errs=0; DG.fps=[]; dgRender(); }; d.querySelector('#dgClose').onclick=()=>dgOpen(); dgRender(); }
+function dgStart(){ if(DG.on) return; DG.on=true; dgLog('diag','recording started');
+  ['play','pause','playing','waiting','stalled','seeking','seeked','ended','emptied','suspend','abort','ratechange','error','loadedmetadata','canplay'].forEach(n=>player.addEventListener(n,()=>{ if(n==='play'||n==='pause') DG.flips++; dgLog('player',n+' t='+player.currentTime.toFixed(2)); }));
+  if(actx){ actx.addEventListener('statechange',()=>dgLog('audioctx',actx.state)); } else { const w=setInterval(()=>{ if(actx){ clearInterval(w); actx.addEventListener('statechange',()=>dgLog('audioctx',actx.state)); dgLog('audioctx','created '+actx.state); } },500); }
+  document.addEventListener('visibilitychange',()=>dgLog('page',document.visibilityState)); addEventListener('pagehide',()=>dgLog('page','pagehide')); addEventListener('pageshow',e=>dgLog('page','pageshow persisted='+e.persisted));
+  addEventListener('error',e=>{ DG.errs++; dgLog('error',e.message); }); addEventListener('unhandledrejection',e=>{ DG.errs++; dgLog('reject',e.reason&&e.reason.message||e.reason); });
+  try{ new PerformanceObserver(l=>{ for(const x of l.getEntries()){ DG.long++; DG.longMs+=x.duration; if(x.duration>200) dgLog('longtask',Math.round(x.duration)+' ms'); } }).observe({entryTypes:['longtask']}); }catch(e){}
+  DG.lastFrame=frame; DG.lastT=performance.now(); DG.timer=setInterval(()=>{ const n=performance.now(), f=frame; DG.fps.push(+((f-DG.lastFrame)*1000/(n-DG.lastT)).toFixed(1)); if(DG.fps.length>120) DG.fps.shift(); DG.lastFrame=f; DG.lastT=n; if(DG.panel) dgRender(); },1000); }
+let _dgTaps=[]; ['buildTag','buildTag2'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('click',()=>{ const n=performance.now(); _dgTaps=_dgTaps.filter(x=>n-x<2500); _dgTaps.push(n); if(_dgTaps.length>=5){ _dgTaps=[]; dgStart(); dgOpen(); } }); });
+if(/[?&]diag=1/.test(location.search)){ dgStart(); setTimeout(dgOpen,1500); }
+window.fpDiag={start:dgStart,open:dgOpen,report:dgReport,state:dgState,log:dgLog};
 
 // ── never trapped: kaleidoscope / mirror / 2D mode each announce themselves, and one tap (or X) returns to plain 3D ──
 function trapReason(){ const kv=+$('sKal').value; if(playing&&playLook&&playKal>=2) return 'Kaleidoscope from the playing take'; if(kv>=2) return 'Kaleidoscope '+kv+'×'; if(dirKal>=2) return 'Director kaleidoscope'; if(chaosL>0.6) return 'Chaos kaleidoscope'; if(+$('sSym').value>=2) return 'Mirror '+$('sSym').value+'×'; if(flowMode) return '2D scene (not 3D)'; return ''; }
