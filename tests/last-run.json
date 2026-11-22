@@ -1,14 +1,14 @@
 {
- "commit": "c9afcb2",
- "when": "2026-11-22T04:42:37.706Z",
+ "commit": "d725176",
+ "when": "2026-11-22T05:03:24.254Z",
  "quick": true,
- "pass": 97,
- "fail": 23,
+ "pass": 120,
+ "fail": 0,
  "results": [
   {
    "name": "G1 page loads, no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G1 catalogue sizes",
@@ -17,7 +17,7 @@
   },
   {
    "name": "G1 all 4 themes switch without error",
-   "ok": false,
+   "ok": true,
    "info": ""
   },
   {
@@ -32,18 +32,18 @@
   },
   {
    "name": "G2 5 3D fractals render",
-   "ok": false,
-   "info": "0(err),5(err),6(err),14(err),19(err)"
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G3 4 2D scenes render",
-   "ok": false,
-   "info": "0,1,2,3"
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G4 take records (frames+events+observations)",
    "ok": true,
-   "info": "{\"dur\":3.869,\"frames\":9,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
+   "info": "{\"dur\":4.041,\"frames\":10,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
   },
   {
    "name": "G4 playback restores fractal/theme/sculpt",
@@ -58,12 +58,12 @@
   {
    "name": "G4 JSON round-trip, trim, reject garbage",
    "ok": true,
-   "info": "{\"a\":9,\"trimmedFrames\":8,\"rej\":\"rejected\"}"
+   "info": "{\"a\":10,\"trimmedFrames\":9,\"rej\":\"rejected\"}"
   },
   {
    "name": "G4 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G5 mic works after switching to play-and-record",
@@ -78,7 +78,7 @@
   {
    "name": "G6 bad hash survives: type=abc&pal=99&look=-4&",
    "ok": true,
-   "info": "frames=12"
+   "info": "frames=11"
   },
   {
    "name": "G6 bad hash survives: s=!!notbase64!!",
@@ -88,12 +88,12 @@
   {
    "name": "G6 bad hash survives: type=999999&theme=-3",
    "ok": true,
-   "info": "frames=9"
+   "info": "frames=13"
   },
   {
    "name": "G7 frozen: time, camera, spin, hue, fractal all hold under Director+Show+cycle+orbit+live audio",
    "ok": true,
-   "info": "{\"s0\":{\"T\":0.7,\"az\":0.6805690001364324},\"s1\":{\"T\":0.7,\"az\":0.6805690001364324}}"
+   "info": "{\"s0\":{\"T\":0.84,\"az\":0.7057218200927584},\"s1\":{\"T\":0.84,\"az\":0.7057218200927584}}"
   },
   {
    "name": "G7 frozen: chaos/pulse/audio envelopes ignored",
@@ -103,7 +103,7 @@
   {
    "name": "G7 frozen: manual orbit still works",
    "ok": true,
-   "info": "az 0.68→-0.03"
+   "info": "az 0.71→-0.01"
   },
   {
    "name": "G7 frozen: pinned parameter takes effect",
@@ -113,7 +113,7 @@
   {
    "name": "G7 resume: time advances and audio is live again",
    "ok": true,
-   "info": "{\"T\":1.6799999999999995,\"live\":true}"
+   "info": "{\"T\":1.8199999999999994,\"live\":true}"
   },
   {
    "name": "G7 every formula-parameter key plumbs through params()",
@@ -132,8 +132,8 @@
   },
   {
    "name": "G7 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G8 four workspaces show the right sections",
@@ -148,7 +148,7 @@
   {
    "name": "G8 specimen carries a preview thumbnail",
    "ok": true,
-   "info": "4275 chars"
+   "info": "4247 chars"
   },
   {
    "name": "G8 restore reproduces type, geometry, symmetry, camera, material and pinned parameter",
@@ -158,7 +158,7 @@
   {
    "name": "G8 live audio is baked into the saved sculpt values, and the state is frozen",
    "ok": true,
-   "info": "{\"bass\":1.170991937585213,\"mid\":1.0689528495510794,\"shape\":1.171,\"detail\":1.069,\"baked\":true,\"frozen\":1}"
+   "info": "{\"bass\":1.4167423328037878,\"mid\":1.187158907329163,\"shape\":1.2,\"detail\":1.187,\"baked\":true,\"frozen\":1}"
   },
   {
    "name": "G8 duplicate keeps state and records parent; variation mutates and records parent",
@@ -178,7 +178,7 @@
   {
    "name": "G8 capture a specimen from a performance take (source + timestamp recorded, frozen)",
    "ok": true,
-   "info": "{\"added\":1,\"kind\":\"take\",\"t\":1.494,\"frozen\":1}"
+   "info": "{\"added\":1,\"kind\":\"take\",\"t\":1.552,\"frozen\":1}"
   },
   {
    "name": "G8 library persists across reload",
@@ -187,23 +187,23 @@
   },
   {
    "name": "G8 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G9 still render is exact size, non-blank",
    "ok": true,
-   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":84.93467708333333,\"meanAbsDiff\":1.2881510416666666,\"bigFrac\":0}"
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":82.96699479166666,\"meanAbsDiff\":0.9113697916666667,\"bigFrac\":0}"
   },
   {
    "name": "G9 tiled render matches single-pass render (no visible seams)",
    "ok": true,
-   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":84.93467708333333,\"meanAbsDiff\":1.2881510416666666,\"bigFrac\":0}"
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":82.96699479166666,\"meanAbsDiff\":0.9113697916666667,\"bigFrac\":0}"
   },
   {
    "name": "G9 transparent export: corners clear, object opaque, soft edges",
    "ok": true,
-   "info": "{\"corner\":2,\"corner2\":2,\"center\":255,\"opaque\":47133,\"partial\":15634,\"total\":65536}"
+   "info": "{\"corner\":1,\"corner2\":3,\"center\":255,\"opaque\":47200,\"partial\":14728,\"total\":65536}"
   },
   {
    "name": "G9 oversize requests are refused with a reason; cancel restores the live view",
@@ -213,22 +213,22 @@
   {
    "name": "G9 e-paper output is exactly 384×184 and only uses palette colours",
    "ok": true,
-   "info": "{\"bw/none\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bw/fs\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bwr/atk\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":266},\"bw/bayer\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0}}"
+   "info": "{\"bw/none\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bw/fs\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bwr/atk\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":262},\"bw/bayer\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0}}"
   },
   {
    "name": "G9 e-paper threshold changes the black/white balance; title strip is stamped",
    "ok": true,
-   "info": "{\"lo\":25297,\"hi\":0,\"strip\":114}"
+   "info": "{\"lo\":25828,\"hi\":0,\"strip\":114}"
   },
   {
    "name": "G9 e-paper red is only produced in the three-colour palette",
    "ok": true,
-   "info": "{\"bw\":0,\"bwr\":266}"
+   "info": "{\"bw\":0,\"bwr\":262}"
   },
   {
    "name": "G9 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G10 import picker accepts audio, video and explicit extensions",
@@ -238,12 +238,12 @@
   {
    "name": "G10 audio-only WAV (no MIME) plays and drives the analysis",
    "ok": true,
-   "info": "{\"dur\":3,\"live\":true,\"bass\":1.0093327512082964,\"kind\":\"audio\",\"name\":\"FL export.wav\",\"err\":null}"
+   "info": "{\"dur\":3,\"live\":true,\"bass\":1.2,\"kind\":\"audio\",\"name\":\"FL export.wav\",\"err\":null}"
   },
   {
    "name": "G10 take records source-media metadata and says the media is not embedded",
    "ok": true,
-   "info": "{\"name\":\"FL export.wav\",\"duration\":3,\"songOffset\":1.841,\"kind\":\"audio\",\"mime\":\"audio/wav\",\"size\":132344,\"reference\":\"original media is NOT embedded; the take stores the musical analysis recorded while it played\"}"
+   "info": "{\"name\":\"FL export.wav\",\"duration\":3,\"songOffset\":1.944,\"kind\":\"audio\",\"mime\":\"audio/wav\",\"size\":132344,\"reference\":\"original media is NOT embedded; the take stores the musical analysis recorded while it played\"}"
   },
   {
    "name": "G10 undecodable file gives a clear message naming the file",
@@ -252,8 +252,8 @@
   },
   {
    "name": "G10 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": "Couldn't play “broken.mp3”: this format is not supported by this browser. Try WAV, MP3 or M4A, or an MP4 with AAC audio."
   },
   {
    "name": "G11 strip switches workspaces; tapping the active one closes the panel",
@@ -263,7 +263,7 @@
   {
    "name": "G11 status line says who controls the artwork (touch / frozen / recording)",
    "ok": true,
-   "info": "{\"a\":\"Controlling · You (touch)\",\"b2\":\"Controlling · FROZEN\",\"c\":\"● REC TAKE 0:00.6 · You (touch)\",\"amber\":true}"
+   "info": "{\"a\":\"Controlling · You (touch)\",\"b2\":\"Controlling · FROZEN\",\"c\":\"● REC TAKE 0:00.9 · You (touch)\",\"amber\":true}"
   },
   {
    "name": "G11 timeline groups slider moves into gestures but keeps every raw event; irregular sample rate preserved",
@@ -273,7 +273,7 @@
   {
    "name": "G11 unsaved changes are flagged; hold-to-compare shows the saved version and returns to the edit",
    "ok": true,
-   "info": "{\"id\":true,\"clean\":true,\"dirty\":true,\"edited\":3,\"during\":0,\"base\":0,\"after\":3,\"idText\":\"FP·MWRC9Y · UI test\"}"
+   "info": "{\"id\":true,\"clean\":true,\"dirty\":true,\"edited\":3,\"during\":0,\"base\":0,\"after\":3,\"idText\":\"FP·MWRD1C · UI test\"}"
   },
   {
    "name": "G11 clean view hides controls, preserves state, and returns",
@@ -287,8 +287,8 @@
   },
   {
    "name": "G11 no console errors (desktop)",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G11 phone: sheet sits above the strip, strip spans the width, no horizontal scroll, buttons ≥40px, view untouched",
@@ -297,8 +297,8 @@
   },
   {
    "name": "G11 no console errors (phone)",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G12 Ref 10 applies the exact demon-faces state",
@@ -312,13 +312,13 @@
   },
   {
    "name": "G12 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G13 logotype is selectable and renders a solid wider than tall",
    "ok": true,
-   "info": "{\"n\":24627,\"w\":266,\"h\":172,\"sum\":24050890}"
+   "info": "{\"n\":24627,\"w\":266,\"h\":172,\"sum\":21351818}"
   },
   {
    "name": "G13 fractal skin changes the surface; carving removes material, relief keeps the letters whole",
@@ -327,23 +327,23 @@
   },
   {
    "name": "G13 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G14 cathedral renders a solid with openings (not a filled block)",
    "ok": true,
-   "info": "{\"n\":40231,\"sum\":18745606}"
+   "info": "{\"n\":40231,\"sum\":18175255}"
   },
   {
    "name": "G14 spiral twist reshapes the architecture",
    "ok": true,
-   "info": "{\"a\":{\"n\":40231,\"sum\":18745606},\"c\":{\"n\":38101,\"sum\":18594838}}"
+   "info": "{\"a\":{\"n\":40231,\"sum\":18175255},\"c\":{\"n\":38101,\"sum\":18513364}}"
   },
   {
    "name": "G14 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G15 bench layout: viewport framed between rails, encoders and 8 slide slots present, full panel closed",
@@ -363,7 +363,7 @@
   {
    "name": "G15 Save puts a specimen on a slide; clicking the slide restores it",
    "ok": true,
-   "info": "{\"n\":1,\"filled\":1,\"restored\":0,\"spec\":\"Icosahedral IFS · 04:32 AM\"}"
+   "info": "{\"n\":1,\"filled\":1,\"restored\":0,\"spec\":\"Icosahedral IFS · 04:53 AM\"}"
   },
   {
    "name": "G15 B switches to the Figure skin (full-bleed artwork) and back",
@@ -372,8 +372,8 @@
   },
   {
    "name": "G15 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G16 Back-to-3D appears for kaleidoscope, mirror and 2D mode, and each tap/X really clears it",
@@ -387,8 +387,8 @@
   },
   {
    "name": "G16 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G17 real click on Demo beat starts audio and closes the start screen",
@@ -422,8 +422,8 @@
   },
   {
    "name": "G18 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G19 demo audio goes through the sync delay (default 40 ms), the slider changes it, and the visuals still react",
@@ -437,8 +437,8 @@
   },
   {
    "name": "G19 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G20 detector: counts area-wide luminance transitions and flashes per second correctly",
@@ -448,7 +448,7 @@
   {
    "name": "G20 the guard samples the real picture every frame without errors",
    "ok": true,
-   "info": "{\"k0\":1,\"probed\":true,\"flashes\":0,\"err\":null,\"k1\":1,\"trips\":0,\"peak\":1,\"frames\":15}"
+   "info": "{\"k0\":1,\"probed\":true,\"flashes\":0,\"err\":null,\"k1\":1,\"trips\":0,\"peak\":1,\"frames\":16}"
   },
   {
    "name": "G20 a 5-flashes-per-second strobe trips the guard and damps pulses; it releases when steady; a gentle 2-per-second flicker does not trip it",
@@ -462,8 +462,8 @@
   },
   {
    "name": "G20 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G21 measures: box-count dimension ≈1 for a line and ≈2 for a filled area; mirror symmetry ranks symmetric above asymmetric; contrast sensible",
@@ -477,8 +477,8 @@
   },
   {
    "name": "G21 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G22 surface nets: a closed sphere is watertight, Euler 2, volume within 3%; STL size exact; CRC-32 matches the standard test vector",
@@ -488,7 +488,7 @@
   {
    "name": "G22 the zip writer produces archives a real unzip accepts",
    "ok": true,
-   "info": "No errors detected in compressed data of /tmp/fp-test-1795322205341.zip."
+   "info": "No errors detected in compressed data of /tmp/fp-test-1795323470072.zip."
   },
   {
    "name": "G22 mesh of the live fractal: thousands of triangles, under 0.5% questionable edges, inside the bound, view restored",
@@ -513,12 +513,12 @@
   {
    "name": "G22 zip-segment output: frames are split into segments and each archive passes a real unzip",
    "ok": true,
-   "info": "{\"zr\":{\"frames\":9,\"downloads\":3,\"bytes\":196521},\"downloads\":3,\"zipOk\":\"No errors detected in compressed data of /tmp/fp-seg-1795322\"}"
+   "info": "{\"zr\":{\"frames\":9,\"downloads\":3,\"bytes\":196521},\"downloads\":3,\"zipOk\":\"No errors detected in compressed data of /tmp/fp-seg-1795323\"}"
   },
   {
    "name": "G22 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G23 the lab, video render, mesh export and comfort controls open from the bench buttons and from the Figure skin node",
@@ -527,8 +527,8 @@
   },
   {
    "name": "G23 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G24 distance transform is exact on a test square; text fields are sized by their words; control characters are stripped and length is capped at 16",
@@ -538,7 +538,7 @@
   {
    "name": "G24 text renders as a solid wider than tall; wider text is wider; per-letter patterns change the surface; text is saved in the state and in specimens",
    "ok": true,
-   "info": "{\"shown\":\"Text sculpture\",\"same\":{\"n\":6536,\"w\":104,\"h\":85,\"sum\":2403262},\"diff\":{\"n\":6546,\"w\":104,\"h\":85,\"sum\":2415720},\"wide\":{\"n\":11328,\"w\":360,\"h\":49,\"sum\":3978989},\"txt\":\"HELLO WORLD\"}"
+   "info": "{\"shown\":\"Text sculpture\",\"same\":{\"n\":6538,\"w\":104,\"h\":85,\"sum\":2405627},\"diff\":{\"n\":6590,\"w\":104,\"h\":85,\"sum\":2456266},\"wide\":{\"n\":11298,\"w\":360,\"h\":49,\"sum\":3915012},\"txt\":\"HELLO WORLD\"}"
   },
   {
    "name": "G24 restoring a saved state brings back the text, font and per-letter setting",
@@ -552,18 +552,18 @@
   },
   {
    "name": "G24 no console errors",
-   "ok": false,
-   "info": "Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \"file\" is not supported."
+   "ok": true,
+   "info": ""
   },
   {
    "name": "G25 stopping a recording shows a card with the take length and a video button, saves the take, and lists it as the latest",
    "ok": true,
-   "info": "{\"cardShown\":true,\"title\":\"Take saved · 0:02.1\",\"hasVideoBtn\":true,\"dur\":2.129,\"stored\":1,\"storedDur\":2.129,\"len\":\"This take is 0:02.1 long · 5 samples · 0 events. The video will cover all of it.\",\"listed\":[\"Latest · Take Nov 22, 04:38 AM · 0:02.1\"]}"
+   "info": "{\"cardShown\":true,\"title\":\"Take saved · 0:01.6\",\"hasVideoBtn\":true,\"dur\":1.615,\"stored\":1,\"storedDur\":1.615,\"len\":\"This take is 0:01.6 long · 4 samples · 0 events. The video will cover all of it.\",\"listed\":[\"Latest · Take Nov 22, 04:59 AM · 0:01.6\"]}"
   },
   {
    "name": "G25 after a reload the take is still there, can be picked from the list, and the whole length is shown without asking for seconds",
    "ok": true,
-   "info": "{\"had\":1,\"loaded\":true,\"dur\":2.129,\"len\":\"This take is 0:02.1 long · 5 samples · 0 events. The video will cover all of it.\"}"
+   "info": "{\"had\":1,\"loaded\":true,\"dur\":1.615,\"len\":\"This take is 0:01.6 long · 4 samples · 0 events. The video will cover all of it.\"}"
   },
   {
    "name": "G25 \"Make video of the whole take\" shows progress and finishes with a saved-video message",
@@ -573,7 +573,7 @@
   {
    "name": "G25 no console errors",
    "ok": true,
-   "info": "[\"Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \\\"file\\\" is not supported.\",\"Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \\\"file\\\" is not supported.\"]"
+   "info": "[]"
   },
   {
    "name": "G25 the MP4 is a real H.264 file: right size, 30 fps, yuv420p, frame count matches, duration matches, and it decodes cleanly",
@@ -603,7 +603,7 @@
   {
    "name": "G25 no console errors",
    "ok": true,
-   "info": "[\"Fetch API cannot load file:///home/user/3d-fractal/index.html. URL scheme \\\"file\\\" is not supported.\",\"The graphics card ran out of memory during the export, so it was stopped. Your take is saved. Reload the page, then try a smaller size (for example 1280×720).\"]"
+   "info": "[\"The graphics card ran out of memory during the export, so it was stopped. Your take is saved. Reload the page, then try a smaller size (for example 1280×720).\"]"
   }
  ]
 }
