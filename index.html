@@ -2176,6 +2176,14 @@ let hasAudio = false, lastFileName = '', flowMode = false;
 // iOS audio-session category: 'playback' plays through the ring/silent switch but forbids mic capture;
 // the mic needs 'play-and-record'. Switch per source.
 function setAudioSession(type){ try{ if(navigator.audioSession) navigator.audioSession.type=type; }catch(e){} }
+// Loop guard: if iOS keeps interrupting the audio and we keep restarting it (or the player flips play/pause over and over), that burns CPU,
+// heats the phone and never makes sound. Resume at most once per second, and after a burst of flips stop automatically and say so.
+const audioLoop={tripped:false,ev:[],last:0};
+function resumeSoon(){ if(document.visibilityState==='hidden'||!actx) return; const n=performance.now(); if(n-audioLoop.last<1000) return; audioLoop.last=n; actx.resume().catch(()=>{}); }
+function audioFlip(kind){ const n=performance.now(); audioLoop.ev=audioLoop.ev.filter(x=>n-x<4000); audioLoop.ev.push(n);
+  if(audioLoop.ev.length>=10 && !audioLoop.tripped){ audioLoop.tripped=true; audioLoop.ev=[]; try{ player.pause(); }catch(e){} showErr('The audio kept stopping and starting by itself, so I stopped it to keep your phone cool. Tap ▶ on the player once to try again, or pick the source again.'); setTimeout(()=>$('err').style.display='none',12000); console.warn('audio loop guard tripped',kind); } }
+player.addEventListener('play',()=>audioFlip('play')); player.addEventListener('pause',()=>audioFlip('pause'));
+player.addEventListener('playing',()=>{ audioLoop.tripped=false; });
 function ensureCtx(){
   if(!actx){
     actx = new (window.AudioContext||window.webkitAudioContext)();
@@ -2184,7 +2192,7 @@ function ensureCtx(){
     freq = new Uint8Array(analyser.frequencyBinCount);
     try{ recDest = actx.createMediaStreamDestination(); analyser.connect(recDest); }catch(e){}
     setAudioSession('playback');                                                              // iOS: play through the silent switch
-    actx.onstatechange=()=>{ if(actx.state!=='running' && hasAudio) actx.resume().catch(()=>{}); };
+    actx.onstatechange=()=>{ if(actx.state!=='running' && hasAudio && !audioLoop.tripped) resumeSoon(); };
   }
   if(actx.state!=='running') actx.resume().catch(()=>{});
 }
@@ -3174,7 +3182,7 @@ $('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
-const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.22-video', SPEC_KEY='fractalPulseSpecimens';
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.22-audioguard', SPEC_KEY='fractalPulseSpecimens';
 let specimens=[], spSel=null, thumbReq=null;
 const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
 function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,

@@ -47,4 +47,11 @@ module.exports=async function({b,page,rec,errText,URL}){
     const z=await p.evaluate(async()=>{ const r=await renderOffline({mode:'turntable',W:320,H:180,fps:30,format:'jpeg',start:0,end:0.4,segment:1000,segmentBytes:30000}); return {frames:r.frames,downloads:r.downloads,bytes:r.bytes}; }); await p.waitForTimeout(1500);
     rec('G25 zip segments are split by size, not only by frame count, so memory per archive stays bounded',z.frames===12&&z.downloads>=2&&dls.length>=2,JSON.stringify({z,downloads:dls.length}));
     rec('G25 no console errors',p.errs.filter(e=>!/Failed to load|offline|Fetch API cannot load|ran out of memory/.test(e)).length===0,JSON.stringify(p.errs)); await p.context().close(); }
+  // G26: play/pause thrash on the player (seen on an iPhone) is detected and stopped instead of burning CPU
+  { const p=await page(b,'scale=0.1&q=0&type=0');
+    const g=await p.evaluate(async()=>{ const pl=document.getElementById('player'); let flips=0; pl.addEventListener('pause',()=>flips++); for(let i=0;i<30;i++){ pl.dispatchEvent(new Event('play')); pl.dispatchEvent(new Event('pause')); await new Promise(r=>setTimeout(r,20)); }
+      const err=/kept stopping/.test(document.getElementById('err').textContent); const tripped=audioLoop.tripped; pl.dispatchEvent(new Event('playing')); return {err,tripped,reset:!audioLoop.tripped}; });
+    rec('G26 a play/pause loop on the player trips a guard with a plain message, and a normal play re-arms it',g.err&&g.tripped&&g.reset,JSON.stringify(g));
+    const r=await p.evaluate(async()=>{ let n=0; const real=actx.resume.bind(actx); actx.resume=()=>{ n++; return real(); }; for(let i=0;i<40;i++){ resumeSoon(); } return {resumeCalls:n}; });
+    rec('G26 audio-context resume requests are rate limited (at most one per second)',r.resumeCalls<=1,JSON.stringify(r)); await p.context().close(); }
 };
