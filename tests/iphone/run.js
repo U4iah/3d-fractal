@@ -10,7 +10,7 @@ function wav(sec,sr){ const n=sr*sec,b=Buffer.alloc(44+n*2); b.write('RIFF',0); 
   const dev=pw.devices['iPhone 16 Pro']; let b, ctxOpts={...dev}; 
   if(stress){ b=await pw.chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']}); const {defaultBrowserType,...rest}=dev; ctxOpts=rest; }
   else b=await pw.webkit.launch();
-  const ctx=await b.newContext({...ctxOpts,acceptDownloads:true}); const p=await ctx.newPage(); const errs=[]; p.on('console',m=>{ if(m.type()==='error') errs.push(m.text()); }); p.on('pageerror',e=>errs.push('pageerror '+e.message));
+  const ctx=await b.newContext({...ctxOpts,acceptDownloads:true}); ctx.setDefaultTimeout(stress?240000:30000); const p=await ctx.newPage(); const errs=[]; p.on('console',m=>{ if(m.type()==='error') errs.push(m.text()); }); p.on('pageerror',e=>errs.push('pageerror '+e.message));
   if(stress){ const c=await ctx.newCDPSession(p); await c.send('Emulation.setCPUThrottlingRate',{rate:4}); }
   console.log('engine:',stress?'Chromium (iPhone 16 Pro profile, 4x CPU slowdown)':'WebKit (iPhone 16 Pro profile)');
   await p.goto(URL+'?scale=0.15&q=0'); await p.waitForFunction(()=>typeof frame!=='undefined'&&frame>2,null,{timeout:300000});
