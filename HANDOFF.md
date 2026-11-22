@@ -9,7 +9,7 @@ Single-file, no-build WebGL2 music-reactive 3D fractal instrument (`index.html`)
 |---|---|---|
 | 0–3 | Baseline, Freeze + formula parameters, Specimens, still export + e-paper | done (simulated) |
 | 4 | Editable performance tracks / timeline editing / re-embodiment | **not started** (timeline is a read-only view) |
-| 5 | Offline fixed-time render | **done (simulated)**: virtual clock, byte-identical reruns, folder or zip image sequences, manifest, ffmpeg line, flash screening. `OFFLINE_RENDER.md`. No audio, no in-browser video encoding |
+| 5 | Offline fixed-time render | **done (simulated)**: virtual clock, byte-identical reruns, folder or zip image sequences, manifest, ffmpeg line, flash screening. `OFFLINE_RENDER.md`. No audio, in-browser MP4 video of a take via WebCodecs (see OFFLINE_RENDER.md) |
 | 6 | FIELD mapping layer + secure host interface | **not started**. Known issue: the `message` listener accepts any origin |
 | 7 | 3D mesh export | **done (experimental, simulated)**: distance-field sampling + surface nets → OBJ/STL, watertightness report. `MESH_EXPORT.md`. Approximation, not print-ready |
 | 8 | Cathedral identity + host integration doc | emblem + design-preview card only; no integration, no host doc |

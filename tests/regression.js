@@ -12,6 +12,7 @@ const errText=p=>p.evaluate(()=>document.getElementById('err').textContent||'');
 (async()=>{
   const commit=(()=>{ try{ return execSync('git rev-parse --short HEAD',{cwd:path.resolve(__dirname,'..')}).toString().trim(); }catch(e){ return '?'; } })();
   const b=await chromium.launch({args:ARGS});
+  if(process.env.FP_ONLY){ await require(path.join(__dirname,'regression_takes.js'))({b,page,rec,errText,URL}); await b.close(); const pass=results.filter(r=>r.ok).length; console.log(`\n${pass}/${results.length} passed (FP_ONLY)`); process.exit(results.length-pass?1:0); }
   // ── G1: load, themes, state ──
   { const p=await page(b,'scale=0.15&q=0&type=0'); await p.waitForTimeout(1500);
     rec('G1 page loads, no console errors',p.errs.length===0 && !(await errText(p)),p.errs[0]||'');
@@ -58,6 +59,7 @@ const errText=p=>p.evaluate(()=>document.getElementById('err').textContent||'');
   for(const h of ['type=abc&pal=99&look=-4&theme=77&kal=zz','s=!!notbase64!!','type=999999&theme=-3']){ const p=await page(b,'scale=0.12&q=0&'+h); await p.waitForTimeout(1500); const f=await p.evaluate(()=>frame); rec('G6 bad hash survives: '+h.slice(0,24),f>2&&!(await errText(p)),'frames='+f); await p.context().close(); }
   // optional extra suites added by later phases
   const extra=path.join(__dirname,'regression_extra.js'); if(fs.existsSync(extra)){ await require(extra)({b,page,rec,errText,URL}); }
+  { const tk=path.join(__dirname,'regression_takes.js'); if(fs.existsSync(tk)){ await require(tk)({b,page,rec,errText,URL}); } }
   await b.close();
   const pass=results.filter(r=>r.ok).length; const out={commit,when:new Date().toISOString(),quick:QUICK,pass,fail:results.length-pass,results};
   fs.writeFileSync(path.join(__dirname,'last-run.json'),JSON.stringify(out,null,1)); console.log(`\n${pass}/${results.length} passed (commit ${commit})`); process.exit(results.length-pass?1:0);
