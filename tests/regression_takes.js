@@ -54,4 +54,13 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G26 a play/pause loop on the player trips a guard with a plain message, and a normal play re-arms it',g.err&&g.tripped&&g.reset,JSON.stringify(g));
     const r=await p.evaluate(async()=>{ let n=0; const real=actx.resume.bind(actx); actx.resume=()=>{ n++; return real(); }; for(let i=0;i<40;i++){ resumeSoon(); } return {resumeCalls:n}; });
     rec('G26 audio-context resume requests are rate limited (at most one per second)',r.resumeCalls<=1,JSON.stringify(r)); await p.context().close(); }
+  // G27: phones start with the two newest always-on extras off (suspected cause of a hot, laggy phone); desktops are unchanged
+  { const m=await page(b,'scale=0.1&q=0&type=0',{ctx:{viewport:{width:390,height:800},hasTouch:true,isMobile:true,acceptDownloads:true}});
+    const a=await m.evaluate(()=>({guard:document.getElementById('cSafeGuard').checked,sync:+document.getElementById('sSync').value,flag:localStorage.getItem('fpPhoneSafe1'),direct:outNode()===actx.destination,coarse:matchMedia('(pointer:coarse)').matches}));
+    rec('G27 on a phone the flash-guard readback and the audio sync delay start off, and sound goes straight to the speakers',a.coarse&&!a.guard&&a.sync===0&&a.flag==='1'&&a.direct,JSON.stringify(a));
+    await m.evaluate(()=>{ const g=document.getElementById('cSafeGuard'); g.checked=true; g.dispatchEvent(new Event('change')); save(); }); await m.reload({waitUntil:'commit'}); await m.waitForFunction(()=>typeof frame!=='undefined'&&frame>2,null,{timeout:240000});
+    const a2=await m.evaluate(()=>document.getElementById('cSafeGuard').checked);
+    rec('G27 turning the guard back on is remembered (the phone default is applied only once)',a2===true,String(a2)); await m.context().close();
+    const d=await page(b,'scale=0.1&q=0&type=0'); const c=await d.evaluate(()=>({guard:document.getElementById('cSafeGuard').checked,sync:+document.getElementById('sSync').value}));
+    rec('G27 on a desktop the guard stays on and sync stays at its default',c.guard&&c.sync===40,JSON.stringify(c)); await d.context().close(); }
 };

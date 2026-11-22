@@ -2208,7 +2208,8 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 // Picture lags sound by a frame or more, and people judge audio that trails the picture by ~40 ms (tolerance about -75..+175 ms) as simultaneous.
 // So file/demo audio goes out through a small, adjustable delay. The analyser taps the signal BEFORE the delay, so the visuals lead the speakers.
 let syncDelay=null;
-function outNode(){ if(!syncDelay){ syncDelay=actx.createDelay(0.5); syncDelay.connect(actx.destination); } syncDelay.delayTime.value=(+$('sSync').value||0)/1000; return syncDelay; }
+function outNode(){ const ms=+$('sSync').value||0; if(!ms&&!syncDelay) return actx.destination;   // 0 ms: connect straight to the speakers, exactly as before the sync option existed
+  if(!syncDelay){ syncDelay=actx.createDelay(0.5); syncDelay.connect(actx.destination); } syncDelay.delayTime.value=ms/1000; return syncDelay; }
 $('sSync').addEventListener('input',()=>{ if(syncDelay) syncDelay.delayTime.value=(+$('sSync').value||0)/1000; });
 function stopSources(){
   if(demoTimer){ clearInterval(demoTimer); demoTimer=null; }
@@ -3182,7 +3183,7 @@ $('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
-const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.22-audioguard', SPEC_KEY='fractalPulseSpecimens';
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.22-phonesafe', SPEC_KEY='fractalPulseSpecimens';
 let specimens=[], spSel=null, thumbReq=null;
 const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
 function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,
@@ -3470,6 +3471,9 @@ function relLum(v){ const c=Math.pow(v/255,2.2); return c; }
 // pure detector (tested directly): previous and current 40-cell luminance grids -> +1 / -1 / 0 area transition
 function areaTransition(prev,cur,thr=0.1,area=0.25){ let up=0,dn=0; for(let i=0;i<cur.length;i++){ const d=cur[i]-prev[i]; if(d>=thr) up++; else if(d<=-thr) dn++; } const n=cur.length; return up/n>=area?1:(dn/n>=area?-1:0); }
 function countFlashes(events,now,windowMs=1000){ const ev=events.filter(e=>now-e.t<=windowMs); let alt=0; for(let i=1;i<ev.length;i++) if(ev[i].s!==ev[i-1].s) alt++; return Math.floor((alt+1)/2); }
+// Phones: the two newest always-on extras (flash-guard picture readback 20x/s, and the audio sync delay) are the prime suspects for a laggy, hot phone
+// and a song that keeps restarting. Start them OFF on touch devices, once; the person can turn either back on in Forge.
+try{ if(matchMedia('(pointer:coarse)').matches && !localStorage.getItem('fpPhoneSafe1')){ localStorage.setItem('fpPhoneSafe1','1'); $('cSafeGuard').checked=false; $('sSync').value=0; save();} }catch(e){}
 function guardProbe(now){
   now=now*1000;                       // the frame loop's clock is in seconds; everything below is in milliseconds
   if(expo.active||off.active||mesh.active||document.hidden) return; SAFE.calm=$('cCalm').checked;
