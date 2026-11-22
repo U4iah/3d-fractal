@@ -294,7 +294,7 @@
   #start{overflow:hidden}
   @media (min-width:901px) and (pointer:fine){ .legend{display:block} body.panelOpen{--panelW:340px} #title{display:none} }
   @media (max-width:900px),(pointer:coarse){ #figure{display:none} #strip{gap:2px;padding:6px 4px calc(8px + env(safe-area-inset-bottom));background:var(--panel)!important;border-top:1px solid var(--hair)!important}
-    #strip button.organ{padding:0 8px;min-height:40px;font-size:9.5px;letter-spacing:.08em} #sFreeze{width:72px;height:72px;margin:-26px 0 -2px} #sFreeze .lbl{font-size:9px} }
+    #strip button.organ{padding:0 2px;min-height:44px;font-size:9px;letter-spacing:.02em;flex:1 1 0;min-width:0;overflow:hidden;white-space:nowrap} #strip button.ws.organ{flex:1.5 1 0} #sFreeze{width:64px;height:64px;margin:-22px 0 -2px;flex:none} #sFreeze .lbl{font-size:8px;letter-spacing:.04em} #strip{gap:1px;padding-left:2px;padding-right:2px} #sClean{flex:0 0 40px!important} #sCap .w{display:none} }
   body.clean #figure,body.clean .legend{opacity:0;pointer-events:none}
   @media (prefers-reduced-motion:reduce){.well,.well::after,.orbit,.node.is-pinged{animation:none!important}}
 
@@ -494,7 +494,7 @@
   <button id="sRec" class="organ" data-shape="pill" title="Record a structured take (movement as data)" aria-label="Record take">● rec</button>
   <button id="sPlay" class="organ" data-shape="pill" title="Play the saved take" aria-label="Play take"><span id="sPlayLbl">▶</span></button>
   <button id="sFreeze" title="Freeze / resume (Z)" aria-label="Freeze or resume"><canvas id="coreCv" width="192" height="192"></canvas><span class="orbit orbit--a"><i></i></span><span class="orbit orbit--b"><i></i></span><span class="lbl" id="coreLbl">freeze</span></button>
-  <button id="sCap" class="organ" data-shape="pill" title="Capture a specimen of exactly what you see" aria-label="Capture specimen">◆ capture</button>
+  <button id="sCap" class="organ" data-shape="pill" title="Capture a specimen of exactly what you see" aria-label="Capture specimen">◆<span class="w"> capture</span></button>
   <span class="sep"></span>
   <button class="ws organ" data-shape="pill" data-ws="explore">Explore</button><button class="ws organ" data-shape="pill" data-ws="sculpt">Sculpt</button><button class="ws organ" data-shape="pill" data-ws="perform">Perform</button><button class="ws organ" data-shape="pill" data-ws="forge">Forge</button>
   <button id="sClean" class="organ" data-shape="circle" title="Clean view (H): hide every control, keep your work" aria-label="Clean view">◻</button>
