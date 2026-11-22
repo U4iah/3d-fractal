@@ -2084,7 +2084,7 @@ const gl = canvas.getContext('webgl2', {antialias:false, alpha:false, powerPrefe
 function showErr(m){ const e=$('err'); e.style.display='block'; e.textContent=m; console.error(m); }
 let toastT; function toast(m,ms){ const t=$('toast'); t.textContent=m; t.style.opacity=1; clearTimeout(toastT); toastT=setTimeout(()=>t.style.opacity=0,ms||1600); }
 if(!gl){ showErr('WebGL2 is required.'); throw new Error('no webgl2'); }
-canvas.addEventListener('webglcontextlost',e=>{e.preventDefault(); showErr('GPU context lost — reloading…'); setTimeout(()=>location.reload(),800);});
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault(); if(typeof off!=='undefined'&&(off.active||mesh.active)){ off.cancel=true; mesh.cancel=true; if(typeof vidState!=='undefined') vidState.cancel=true; showErr('The graphics card ran out of memory during the export, so it was stopped. Your take is saved. Reload the page, then try a smaller size (for example 1280×720).'); return; } showErr('GPU context lost — reloading…'); setTimeout(()=>location.reload(),800);});
 
 const hdr = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
 gl.getExtension('OES_texture_float_linear');
@@ -3517,7 +3517,7 @@ async function renderOffline(o){
   if(o.mode==='take'&&!take) return {error:'There is no take to render. Record or load one first, or use Turntable.'}; if(o.mode==='take') o.end=Math.min(o.end,take.duration-1/o.fps); if(flowMode&&o.mode==='turntable') return {error:'Turntable needs a 3D fractal.'};
   const base=captureState(true), wasFrozen=frozen, wasPlaying=playing, az0=az, ex={az,el,zoom:zoomMul,hue,T,ang:ang.slice()}, ext=o.format==='jpeg'?'jpg':'png', mime=o.format==='jpeg'?'image/jpeg':'image/png', pad=n=>String(n).padStart(6,'0');
   const sink={dir:o.dir||null,seg:[],segStart:from,downloads:0,bytes:0,files:0}; const sx=document.createElement('canvas'); sx.width=8; sx.height=5; const sctx=sx.getContext('2d',{willReadFrequently:true}); const ev=[]; let flMax=0, prevGrid=null;
-  const flushZip=async(force)=>{ if(!sink.seg.length) return; if(!force&&sink.seg.length<(o.segment||120)) return; const first=sink.segStart, last=first+sink.seg.length-1; saveBlobFile(zipStore(sink.seg),`fractal-pulse-frames-${pad(first)}-${pad(last)}.zip`); sink.downloads++; sink.seg=[]; sink.segStart=last+1; await new Promise(r=>setTimeout(r,250)); };
+  const flushZip=async(force)=>{ if(!sink.seg.length) return; const segBytes=sink.seg.reduce((a,f)=>a+f.data.length,0); if(!force&&sink.seg.length<(o.segment||120)&&segBytes<(o.segmentBytes||100e6)) return; const first=sink.segStart, last=first+sink.seg.length-1; saveBlobFile(zipStore(sink.seg),`fractal-pulse-frames-${pad(first)}-${pad(last)}.zip`); sink.downloads++; sink.seg=[]; sink.segStart=last+1; await new Promise(r=>setTimeout(r,250)); };
   const writeFile=async(name,data)=>{ if(sink.dir){ const fh=await sink.dir.getFileHandle(name,{create:true}), w=await fh.createWritable(); await w.write(data); await w.close(); } else sink.seg.push({name,data}); sink.bytes+=data.length; sink.files++; };
   Object.assign(off,{active:true,cancel:false,W:o.W,H:o.H,fps:o.fps,log:[]}); const calmK=$('cCalm').checked?0.3:1; SAFE.k=calmK; SAFE.active=false;
   bAvg=0; lastBeat=-9; beatCount=0; phase=0; eShort=0; eLong=0.2; lastDrop=-99; quietSince=-99; A.pulse=0;   // live-audio carry-over must not leak into a fixed-time render
@@ -3527,14 +3527,16 @@ async function renderOffline(o){
   try{
     if(o.mode==='take'){ if(playing) playStop(); if(frozen) setFrozen(false,true); playStart(); playSeek(o.start,vms0/1000); } else { setFrozen(true,true); }
     for(n=from;n<total;n++){
-      if(off.cancel) throw 'cancel'; const vt=vms0+n*1000/o.fps; if(o.mode==='turntable') az=az0+2*Math.PI*(n/total);
+      if(off.cancel||(o.shouldCancel&&o.shouldCancel())) throw 'cancel'; const vt=vms0+n*1000/o.fps; if(o.mode==='turntable') az=az0+2*Math.PI*(n/total);
       frameBody(vt);                                                                                          // exactly one fixed step
       if(o.mode==='take'&&pl) off.log.push([n,+((vt/1000)-pl.t0).toFixed(6)]);
-      const blob=await new Promise(res=>canvas.toBlob(res,mime,0.95));                                          // taken in the same task as the draw
+      if(o.onCanvasFrame) await o.onCanvasFrame(n);                                                             // video: encode straight from the canvas, in the same task as the draw
+      const blob=(o.sink==='none')?null:await new Promise(res=>canvas.toBlob(res,mime,0.95));                    // taken in the same task as the draw
       sctx.drawImage(canvas,0,0,8,5); const px=sctx.getImageData(0,0,8,5).data, grid=new Float32Array(40); for(let i=0;i<40;i++) grid[i]=0.2126*relLum(px[i*4])+0.7152*relLum(px[i*4+1])+0.0722*relLum(px[i*4+2]);
       if(prevGrid){ const s=areaTransition(prevGrid,grid); if(s) ev.push({t:n*1000/o.fps,s}); } prevGrid=grid; while(ev.length&&ev[0].t<n*1000/o.fps-1500) ev.shift(); flMax=Math.max(flMax,countFlashes(ev,n*1000/o.fps));
-      if(!blob) throw new Error('could not encode frame '+n); if(o.onFrame) await o.onFrame(n,blob); await writeFile('frame_'+pad(n)+'.'+ext,new Uint8Array(await blob.arrayBuffer())); written++; if(written===1) firstMs=performance.now()-t0;
-      if(!sink.dir) await flushZip(false); if(o.onProgress&&(written%3===0||n===total-1)) o.onProgress(n+1,total,performance.now()-t0,sink.bytes); if(written%4===0) await new Promise(r=>setTimeout(r,0));
+      if(o.sink==='none'){ written++; if(written===1) firstMs=performance.now()-t0; }
+      else{ if(!blob) throw new Error('could not encode frame '+n); if(o.onFrame) await o.onFrame(n,blob); await writeFile('frame_'+pad(n)+'.'+ext,new Uint8Array(await blob.arrayBuffer())); written++; if(written===1) firstMs=performance.now()-t0; }
+      if(!sink.dir&&o.sink!=='none') await flushZip(false); if(o.onProgress&&(written%3===0||n===total-1)) o.onProgress(n+1,total,performance.now()-t0,sink.bytes); if(written%4===0) await new Promise(r=>setTimeout(r,0));
     }
     const ms=performance.now()-t0, song=take&&take.song?take.song:null, ffa=song?` -ss ${((song.songOffset||0)+(o.mode==='take'?o.start:0)).toFixed(3)} -i "${song.name}" -map 0:v -map 1:a -c:a aac -b:a 256k -shortest`:'';
     const manifest={format:'fractal-pulse-offline-render',v:1,app:APP_VERSION,created:new Date().toISOString(),mode:o.mode,width:o.W,height:o.H,fps:o.fps,frames:total,firstFrame:from,startSeconds:o.mode==='take'?o.start:0,endSeconds:o.mode==='take'?o.end:total/o.fps,
@@ -3542,7 +3544,7 @@ async function renderOffline(o){
       take:take?{created:take.created,duration:take.duration,samples:take.frames.length,song:song||null}:null,audio:{embedded:false,note:'The soundtrack is not embedded; the take only references it. If the take was recorded mid-song, songOffset (when present) is where the song was when recording began.'},
       flashCheck:{maxFlashesPerSecond:flMax,threshold:3,verdict:flMax>=3?'REVIEW: the guideline limit of 3 flashes per second was reached':'under the guideline limit',note:'Screening on an 8x5 thumbnail of every frame against published guidance; not a certification.'},
       ffmpeg:`ffmpeg -framerate ${o.fps} -i frame_%06d.${ext}${ffa} -c:v libx264 -pix_fmt yuv420p -crf 14 output.mp4`,timingLog:o.mode==='take'?off.log.slice(0,5).concat(off.log.slice(-2)):null,msPerFrame:Math.round(ms/Math.max(1,written))};
-    await writeFile('render-manifest.json',new TextEncoder().encode(JSON.stringify(manifest,null,1))); if(!sink.dir) await flushZip(true);
+    if(o.sink!=='none'){ await writeFile('render-manifest.json',new TextEncoder().encode(JSON.stringify(manifest,null,1))); if(!sink.dir) await flushZip(true); }
     return {ok:true,frames:written,total,ms,bytes:sink.bytes,manifest,downloads:sink.downloads,folder:!!sink.dir,flashMax:flMax,log:off.log};
   }catch(e){ if(!sink.dir) await flushZip(true).catch(()=>{}); return e==='cancel'?{cancelled:true,done:written,total,nextFrame:n}:{error:String(e&&e.message||e),done:written}; }
   finally{ off.active=false; if(o.mode==='take'&&playing) playStop(); const m=$('sTrans').value; $('sTrans').value='cut'; try{ applyState(base); } finally{ $('sTrans').value=m; }
@@ -3660,6 +3662,67 @@ $('txtIn').addEventListener('input',()=>{ clearTimeout(txtTimer); txtTimer=setTi
 $('txtFont').addEventListener('change',()=>setText(TXT.text,$('txtFont').value)); $('txtDiff').addEventListener('change',()=>setText(TXT.text,null,$('txtDiff').checked));
 window.fpText={buildTextField,edtSq,sanitizeText,setText,TXT};
 window.__txtReady=true; if(window.__pendingTxt){ const a=window.__pendingTxt; window.__pendingTxt=null; setText(a[0],a[1],a[2],{quiet:true}); }
+
+// ═════════════════════ VIDEO FILE (MP4) from a take: fixed-time frames -> WebCodecs H.264 -> a small MP4 writer, plus the soundtrack when the same song is loaded ═════════════════════
+// Frames come from the offline renderer's virtual clock (so timing is exact); each frame is encoded and discarded at once, so memory holds only the compressed stream.
+const u32=v=>{ const a=new Uint8Array(4); new DataView(a.buffer).setUint32(0,v>>>0); return a; }, u16=v=>{ const a=new Uint8Array(2); new DataView(a.buffer).setUint16(0,v); return a; };
+const cat=parts=>{ let n=0; parts.forEach(p=>n+=p.length); const o=new Uint8Array(n); let k=0; parts.forEach(p=>{ o.set(p,k); k+=p.length; }); return o; };
+const bx=(type,...ps)=>{ const body=cat(ps); return cat([u32(8+body.length),new TextEncoder().encode(type),body]); };
+const fbx=(type,ver,flags,...ps)=>bx(type,u32((ver<<24)|flags),...ps);
+const zeros=n=>new Uint8Array(n);
+const MATRIX=cat([u32(0x10000),u32(0),u32(0),u32(0),u32(0x10000),u32(0),u32(0),u32(0),u32(0x40000000)]);
+function descr(tag,body){ return cat([Uint8Array.of(tag,body.length),body]); }          // single-byte expandable length (bodies here are < 128 bytes)
+function mp4Mux(o){   // o:{width,height,fps,avcC:Uint8Array,video:[{data,key}],audio:null|{kind:'aac'|'opus',sampleRate,channels,desc:Uint8Array|null,preSkip,samples:[{data,dur}]}}
+  const TS=90000, vd=Math.round(TS/o.fps), nV=o.video.length, vDur=nV*vd, durMs=Math.round(vDur*1000/TS);
+  const vSizes=cat(o.video.map(s=>u32(s.data.length))), keys=[]; o.video.forEach((s,i)=>{ if(s.key) keys.push(i+1); });
+  const vsd=fbx('stsd',0,0,u32(1),bx('avc1',zeros(6),u16(1),zeros(16),u16(o.width),u16(o.height),u32(0x480000),u32(0x480000),u32(0),u16(1),zeros(32),u16(0x18),u16(0xffff),bx('avcC',o.avcC)));
+  const vtrak=off=>bx('trak',fbx('tkhd',0,3,u32(0),u32(0),u32(1),u32(0),u32(durMs),zeros(8),u16(0),u16(0),u16(0),u16(0),MATRIX,u32(o.width<<16),u32(o.height<<16)),
+    bx('mdia',fbx('mdhd',0,0,u32(0),u32(0),u32(TS),u32(vDur),u16(0x55c4),u16(0)),fbx('hdlr',0,0,u32(0),new TextEncoder().encode('vide'),zeros(12),new TextEncoder().encode('VideoHandler\0')),
+      bx('minf',fbx('vmhd',0,1,zeros(8)),bx('dinf',fbx('dref',0,0,u32(1),fbx('url ',0,1))),
+        bx('stbl',vsd,fbx('stts',0,0,u32(1),u32(nV),u32(vd)),fbx('stss',0,0,u32(keys.length),cat(keys.map(u32))),fbx('stsc',0,0,u32(1),u32(1),u32(nV),u32(1)),fbx('stsz',0,0,u32(0),u32(nV),vSizes),fbx('stco',0,0,u32(1),u32(off))))));
+  let atrak=null, aBytes=new Uint8Array(0), aDurMs=0;
+  const A=o.audio; const build=(vOff,aOff)=>{ const parts=[vtrak(vOff)]; if(A&&A.samples.length){
+      const aTS=A.sampleRate, sizes=cat(A.samples.map(s=>u32(s.data.length))); const runs=[]; A.samples.forEach(s=>{ const d=Math.round(s.dur*aTS/1e6); if(runs.length&&runs[runs.length-1][1]===d) runs[runs.length-1][0]++; else runs.push([1,d]); }); const total=A.samples.reduce((a,s)=>a+Math.round(s.dur*aTS/1e6),0); aDurMs=Math.round(total*1000/aTS);
+      let entry; if(A.kind==='aac'){ const dsi=descr(0x05,A.desc||new Uint8Array(0)); const dec=descr(0x04,cat([Uint8Array.of(0x40,0x15),zeros(3),u32(0),u32(0),dsi])); const es=descr(0x03,cat([u16(2),Uint8Array.of(0),dec,descr(0x06,Uint8Array.of(2))])); entry=bx('mp4a',zeros(6),u16(1),zeros(8),u16(A.channels),u16(16),u16(0),u16(0),u32(aTS<<16),fbx('esds',0,0,es)); }
+      else entry=bx('Opus',zeros(6),u16(1),zeros(8),u16(A.channels),u16(16),u16(0),u16(0),u32(48000<<16),bx('dOps',Uint8Array.of(0,A.channels),u16(A.preSkip||312),u32(A.sampleRate),u16(0),Uint8Array.of(0)));
+      parts.push(bx('trak',fbx('tkhd',0,3,u32(0),u32(0),u32(2),u32(0),u32(aDurMs),zeros(8),u16(0),u16(0),u16(0x100),u16(0),MATRIX,u32(0),u32(0)),
+        bx('mdia',fbx('mdhd',0,0,u32(0),u32(0),u32(aTS),u32(total),u16(0x55c4),u16(0)),fbx('hdlr',0,0,u32(0),new TextEncoder().encode('soun'),zeros(12),new TextEncoder().encode('SoundHandler\0')),
+          bx('minf',fbx('smhd',0,0,zeros(4)),bx('dinf',fbx('dref',0,0,u32(1),fbx('url ',0,1))),
+            bx('stbl',fbx('stsd',0,0,u32(1),entry),fbx('stts',0,0,u32(runs.length),cat(runs.map(r=>cat([u32(r[0]),u32(r[1])])))),fbx('stsc',0,0,u32(1),u32(1),u32(A.samples.length),u32(1)),fbx('stsz',0,0,u32(0),u32(A.samples.length),sizes),fbx('stco',0,0,u32(1),u32(aOff)))))));
+    }
+    return bx('moov',fbx('mvhd',0,0,u32(0),u32(0),u32(1000),u32(Math.max(durMs,aDurMs)),u32(0x10000),u16(0x100),zeros(10),MATRIX,zeros(24),u32(A?3:2)),...parts); };
+  const ftyp=bx('ftyp',new TextEncoder().encode('isom'),u32(512),new TextEncoder().encode('isomiso2avc1mp41'));
+  let moov=build(0,0); const vBytes=cat(o.video.map(s=>s.data)); aBytes=A&&A.samples.length?cat(A.samples.map(s=>s.data)):new Uint8Array(0);
+  const base=ftyp.length+moov.length+8; moov=build(base,base+vBytes.length);
+  return new Blob([ftyp,moov,u32(8+vBytes.length+aBytes.length),new TextEncoder().encode('mdat'),vBytes,aBytes],{type:'video/mp4'}); }
+function videoSupport(){ return typeof VideoEncoder!=='undefined'&&typeof VideoFrame!=='undefined'; }
+async function pickH264(w,h,fps,bitrate){ const lvl=(w*h>2100000||fps>30&&w*h>1000000)?'avc1.64002a':'avc1.64001f'; for(const codec of [lvl,'avc1.4d001f','avc1.42001f']){ try{ const cfg={codec,width:w,height:h,bitrate,framerate:fps,avc:{format:'avc'},latencyMode:'realtime'}; const s=await VideoEncoder.isConfigSupported(cfg); if(s.supported) return cfg; }catch(e){} } return null; }
+async function decodeSong(url,startSec,durSec){ const ab=await (await fetch(url)).arrayBuffer(); const OC=window.OfflineAudioContext||window.webkitOfflineAudioContext; const ctx=new OC(2,48000,48000); const buf=await ctx.decodeAudioData(ab); const sr=buf.sampleRate, n=Math.round(durSec*sr), s0=Math.round(startSec*sr), ch=[0,1].map(c=>{ const src=buf.getChannelData(Math.min(c,buf.numberOfChannels-1)); const out=new Float32Array(n); for(let i=0;i<n;i++){ const j=s0+i; out[i]=j>=0&&j<src.length?src[j]:0; } return out; }); return {sr,ch,n}; }
+async function encodeAudio(song,aborted){
+  const kinds=[]; if(typeof AudioEncoder!=='undefined'){ for(const [codec,kind] of [['mp4a.40.2','aac'],['opus','opus']]){ try{ const c={codec,sampleRate:song.sr,numberOfChannels:2,bitrate:160000}; if(kind==='aac') c.aac={format:'aac'}; const s=await AudioEncoder.isConfigSupported(c); if(s.supported) kinds.push([c,kind]); }catch(e){} } }
+  for(const [cfg,kind] of kinds){ try{ const out=[]; let desc=null, err=null; const enc=new AudioEncoder({output:(ch,meta)=>{ if(meta&&meta.decoderConfig&&meta.decoderConfig.description) desc=new Uint8Array(meta.decoderConfig.description.slice?meta.decoderConfig.description.slice(0):meta.decoderConfig.description); const d=new Uint8Array(ch.byteLength); ch.copyTo(d); out.push({data:d,dur:ch.duration||Math.round(1e6*1024/song.sr)}); },error:e=>{ err=e; }}); enc.configure(cfg);
+      const step=kind==='opus'?960:1024; for(let i=0;i<song.n;i+=step){ if(aborted()) throw 'cancel'; const m=Math.min(step,song.n-i), pl=new Float32Array(m*2); pl.set(song.ch[0].subarray(i,i+m),0); pl.set(song.ch[1].subarray(i,i+m),m); const ad=new AudioData({format:'f32-planar',sampleRate:song.sr,numberOfFrames:m,numberOfChannels:2,timestamp:Math.round(i*1e6/song.sr),data:pl}); enc.encode(ad); ad.close(); while(enc.encodeQueueSize>16) await new Promise(r=>setTimeout(r,0)); if(err) throw err; }
+      await enc.flush(); enc.close(); if(!out.length) continue; let preSkip=312; if(kind==='opus'&&desc&&desc.length>=12&&String.fromCharCode(...desc.slice(0,8))==='OpusHead') preSkip=desc[10]|(desc[11]<<8); return {kind,sampleRate:song.sr,channels:2,desc,preSkip,samples:out}; }catch(e){ if(e==='cancel') throw e; } }
+  return null; }
+const vidState={active:false,cancel:false};
+async function renderVideo(o){   // o:{W,H,fps,start,end,mode,audio:true,onProgress}
+  if(vidState.active||off.active||expo.active||mesh.active) return {error:'Another export is running.'}; if(!videoSupport()) return {error:'This browser cannot encode video. Use the image-sequence export under Advanced.'};
+  if(o.W%2||o.H%2) return {error:'Width and height must be even.'}; const bitrate=Math.round(o.W*o.H*o.fps*0.1); const cfg=await pickH264(o.W,o.H,o.fps,bitrate); if(!cfg) return {error:'This browser cannot encode H.264 video. Use the image-sequence export under Advanced.'};
+  vidState.active=true; vidState.cancel=false; let enc=null, encErr=null; const vs=[]; let avcC=null;
+  try{
+    enc=new VideoEncoder({output:(ch,meta)=>{ if(meta&&meta.decoderConfig&&meta.decoderConfig.description&&!avcC){ const d=meta.decoderConfig.description; avcC=new Uint8Array(d.buffer?d.buffer.slice(d.byteOffset,d.byteOffset+d.byteLength):d); } const d=new Uint8Array(ch.byteLength); ch.copyTo(d); vs.push({data:d,key:ch.type==='key'}); },error:e=>{ encErr=e; }}); enc.configure(cfg);
+    const total=Math.round((o.end-o.start)*o.fps); let wantAudio=!!o.audio&&o.mode==='take'&&take&&take.song&&lastFileName&&take.song.name===lastFileName&&mediaUrl; const note=[];
+    const r=await renderOffline({mode:o.mode,W:o.W,H:o.H,fps:o.fps,format:'png',start:o.start,end:o.end,sink:'none',onProgress:o.onProgress,
+      onCanvasFrame:async(n)=>{ if(vidState.cancel) throw 'cancel'; while(enc.encodeQueueSize>6){ await new Promise(r=>setTimeout(r,0)); if(encErr) throw encErr; } const vf=new VideoFrame(canvas,{timestamp:Math.round(n*1e6/o.fps),duration:Math.round(1e6/o.fps)}); enc.encode(vf,{keyFrame:n%(o.fps*2)===0}); vf.close(); if(encErr) throw encErr; },shouldCancel:()=>vidState.cancel});
+    if(r.cancelled||r.error){ try{ enc.close(); }catch(e){} return r; }
+    await enc.flush(); enc.close(); if(encErr) throw encErr; if(!avcC||!vs.length) throw new Error('the encoder produced no video');
+    let audio=null; if(wantAudio){ try{ const song=await decodeSong(mediaUrl,(take.song.songOffset||0)+o.start,r.frames/o.fps); audio=await encodeAudio(song,()=>vidState.cancel); if(!audio) note.push('This browser cannot encode audio, so the video has no sound.'); }catch(e){ if(e==='cancel') return {cancelled:true}; note.push('The soundtrack could not be added ('+(e&&e.message||e)+').'); } }
+    else if(o.audio&&o.mode==='take'&&take&&take.song){ note.push(lastFileName&&take.song.name!==lastFileName?`Sound not added: this take was recorded with “${take.song.name}” but “${lastFileName}” is loaded. Load the original song and render again.`:`Sound not added: load “${take.song.name}” first to include it.`); }
+    const blob=mp4Mux({width:o.W,height:o.H,fps:o.fps,avcC,video:vs,audio}); return {ok:true,blob,frames:r.frames,seconds:r.frames/o.fps,bytes:blob.size,audio:!!audio,audioKind:audio&&audio.kind,notes:note,codec:cfg.codec,ms:r.ms,flashMax:r.flashMax};
+  }catch(e){ try{ enc&&enc.state!=='closed'&&enc.close(); }catch(_){} return e==='cancel'?{cancelled:true}:{error:String(e&&e.message||e)}; }
+  finally{ vidState.active=false; }
+}
+window.fpVideo={mp4Mux,renderVideo,videoSupport};
 
 // ── never trapped: kaleidoscope / mirror / 2D mode each announce themselves, and one tap (or X) returns to plain 3D ──
 function trapReason(){ const kv=+$('sKal').value; if(playing&&playLook&&playKal>=2) return 'Kaleidoscope from the playing take'; if(kv>=2) return 'Kaleidoscope '+kv+'×'; if(dirKal>=2) return 'Director kaleidoscope'; if(chaosL>0.6) return 'Chaos kaleidoscope'; if(+$('sSym').value>=2) return 'Mirror '+$('sSym').value+'×'; if(flowMode) return '2D scene (not 3D)'; return ''; }
