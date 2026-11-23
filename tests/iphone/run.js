@@ -16,6 +16,7 @@ function wav(sec,sr){ const n=sr*sec,b=Buffer.alloc(44+n*2); b.write('RIFF',0); 
   await p.goto(URL+'?scale=0.15&q=0'); await p.waitForFunction(()=>typeof frame!=='undefined'&&frame>2,null,{timeout:300000});
   const ua=await p.evaluate(()=>({ua:navigator.userAgent.includes('iPhone'),coarse:matchMedia('(pointer:coarse)').matches,w:innerWidth,h:innerHeight,dpr:devicePixelRatio,gl2:!!document.createElement('canvas').getContext('webgl2')}));
   rec('iPhone 16 Pro profile: iPhone user agent, touch, 402pt wide, WebGL2',ua.ua&&ua.coarse&&ua.w===402&&ua.gl2,JSON.stringify(ua));
+  console.log('INFO shader compile:',JSON.stringify(await p.evaluate(()=>({ms:progScene.ms,parallelCompile:!!parExt}))));
   if(shots) await p.screenshot({path:path.join(out,'01-start.png')});
   const ov=await p.evaluate(()=>({sw:document.documentElement.scrollWidth,iw:innerWidth}));
   rec('no sideways scrolling on the start screen',ov.sw<=ov.iw+1,JSON.stringify(ov));

@@ -2112,20 +2112,30 @@ canvas.addEventListener('webglcontextlost',e=>{e.preventDefault(); if(typeof off
 const hdr = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
 gl.getExtension('OES_texture_float_linear');
 
-function compile(type, src, label){
+function compile(type, src, label, defer){
   const s = gl.createShader(type); gl.shaderSource(s, src.replace(/^\s+/,'')); gl.compileShader(s);
-  if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) showErr(label+' shader error:\n'+gl.getShaderInfoLog(s));
+  if(!defer && !gl.getShaderParameter(s, gl.COMPILE_STATUS)) showErr(label+' shader error:\n'+gl.getShaderInfoLog(s));
   return s;
 }
-function makeProg(fsId, label, srcOverride){
+// The scene shader holds every fractal formula, so compiling it can take a long time (tens of seconds on some Windows/ANGLE setups, longer while another app
+// such as a Discord call is using the GPU). Where the browser offers KHR_parallel_shader_compile, start the compile and keep the page responsive,
+// polling until it is done (`lazy`); otherwise it compiles right here, as before. Anything that needs the program before then simply waits for it.
+const parExt = gl.getExtension('KHR_parallel_shader_compile');
+function makeProg(fsId, label, srcOverride, lazy){
   const p = gl.createProgram();
-  gl.attachShader(p, compile(gl.VERTEX_SHADER, $('vs').textContent, 'vertex'));
-  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, srcOverride||$(fsId).textContent, label));
+  const vsS = compile(gl.VERTEX_SHADER, $('vs').textContent, 'vertex', !!(lazy&&parExt)), fsS = compile(gl.FRAGMENT_SHADER, srcOverride||$(fsId).textContent, label, !!(lazy&&parExt));
+  gl.attachShader(p, vsS); gl.attachShader(p, fsS);
   gl.linkProgram(p);
-  if(!gl.getProgramParameter(p, gl.LINK_STATUS)) showErr(label+' link error:\n'+gl.getProgramInfoLog(p));
-  const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
-  for(let i=0;i<n;i++){ const info=gl.getActiveUniform(p,i); u[info.name.replace(/\[0\]$/,'')]={loc:gl.getUniformLocation(p,info.name),type:info.type}; }
-  return { p, u, set(o){
+  const u = {}; const obj = { p, u, ready:false, t0:performance.now(), poll(){ if(obj.ready) return true; if(parExt&&!gl.getProgramParameter(p, parExt.COMPLETION_STATUS_KHR)) return false; obj.finish(); return true; },
+    finish(){ if(obj.ready) return; 
+      if(!gl.getShaderParameter(vsS, gl.COMPILE_STATUS)) showErr('vertex shader error:\n'+gl.getShaderInfoLog(vsS));
+      if(!gl.getShaderParameter(fsS, gl.COMPILE_STATUS)) showErr(label+' shader error:\n'+gl.getShaderInfoLog(fsS));
+      if(!gl.getProgramParameter(p, gl.LINK_STATUS)) showErr(label+' link error:\n'+gl.getProgramInfoLog(p));
+      const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+      for(let i=0;i<n;i++){ const info=gl.getActiveUniform(p,i); u[info.name.replace(/\[0\]$/,'')]={loc:gl.getUniformLocation(p,info.name),type:info.type}; }
+      obj.ready=true; obj.ms=Math.round(performance.now()-obj.t0); },
+    set(o){
+    if(!obj.ready) obj.finish();
     gl.useProgram(p);
     for(const k in o){ const e=u[k]; if(!e) continue; const v=o[k];
       if(Array.isArray(v)||ArrayBuffer.isView(v)) ({2:()=>gl.uniform2fv(e.loc,v),3:()=>gl.uniform3fv(e.loc,v),4:()=>gl.uniform4fv(e.loc,v)})[v.length]();
@@ -2133,8 +2143,10 @@ function makeProg(fsId, label, srcOverride){
       else gl.uniform1f(e.loc,v);
     }
   }};
+  if(!(lazy&&parExt)) obj.finish();
+  return obj;
 }
-const progScene = makeProg('fs','scene'), progBlur = makeProg('fsBlur2','blur'), progComp = makeProg('fsComp','composite');
+const progScene = makeProg('fs','scene',null,true), progBlur = makeProg('fsBlur2','blur'), progComp = makeProg('fsComp','composite');
 gl.bindVertexArray(gl.createVertexArray());
 
 function makeTarget(w,h,float){
@@ -2669,8 +2681,12 @@ const QUAL=[{steps:90,sh:10,refl:24},{steps:125,sh:16,refl:40},{steps:150,sh:22,
 let lastRender=0;
 let resScale=+$('sRes').value, last=performance.now()/1000, ema=16.7, frame=0, lastDown=-99, ceilS=9;
 const vsArr=[]; let vsyncMs=16.7, lastRaf=0;
+// shown only while the big scene shader is still compiling
+function bootNote(done){ let e=document.getElementById('bootNote'); if(done){ if(e) e.remove(); return; } if(!e){ e=document.createElement('div'); e.id='bootNote'; e.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;max-width:80vw;text-align:center;padding:14px 18px;border-radius:12px;background:rgba(10,10,14,.88);color:#eee;font:14px/1.4 system-ui,sans-serif;pointer-events:none'; document.body.appendChild(e); }
+  e.textContent='Preparing the fractal engine… '+Math.round((performance.now()-progScene.t0)/1000)+' s. The first start is the slowest. The page stays usable while it works.'; }
 function frameFn(t){
   requestAnimationFrame(frameFn);
+  if(!progScene.ready){ if(!progScene.poll()){ bootNote(); return; } bootNote(true); }
   if(off.active) return;                 // the offline renderer drives frames on its own clock
   try{ frameBody(t); }catch(e){ if(!frameFn.bad){ frameFn.bad=1; console.error(e); showErr('Render error (continuing): '+e.message); setTimeout(()=>$('err').style.display='none',6000); } }
 }
@@ -3183,7 +3199,7 @@ $('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
-const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.22-diag', SPEC_KEY='fractalPulseSpecimens';
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.23-compile', SPEC_KEY='fractalPulseSpecimens';
 let specimens=[], spSel=null, thumbReq=null;
 const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
 function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,
@@ -3801,7 +3817,7 @@ function dgState(){ const p=player; return {
   audioCtx:actx?{state:actx.state,sampleRate:actx.sampleRate,baseLatency:+(actx.baseLatency||0).toFixed(4)}:null, source:lastSource||'', hasAudio,
   player:{paused:p.paused,t:+p.currentTime.toFixed(2),dur:isFinite(p.duration)?+p.duration.toFixed(2):null,ready:p.readyState,net:p.networkState,src:!!p.src,err:p.error?p.error.code:0},
   audioLoopGuard:{tripped:audioLoop.tripped}, guardOn:$('cSafeGuard').checked, calm:$('cCalm').checked, syncMs:+$('sSync').value, resScale:+resScale.toFixed(3), qual:$('sQual').value, fpsCap:$('sFps').value,
-  frames:frame, fps1s:DG.fps.length?DG.fps[DG.fps.length-1]:null, fpsMin:DG.fps.length?Math.min(...DG.fps):null, fpsAvg:DG.fps.length?+(DG.fps.reduce((a,b)=>a+b,0)/DG.fps.length).toFixed(1):null,
+  sceneCompileMs:progScene.ms||null, parallelCompile:!!parExt, frames:frame, fps1s:DG.fps.length?DG.fps[DG.fps.length-1]:null, fpsMin:DG.fps.length?Math.min(...DG.fps):null, fpsAvg:DG.fps.length?+(DG.fps.reduce((a,b)=>a+b,0)/DG.fps.length).toFixed(1):null,
   longTasks:DG.long, longTaskMs:Math.round(DG.longMs), playPauseFlips:DG.flips, errors:DG.errs,
   heapMB:performance.memory?+(performance.memory.usedJSHeapSize/1048576).toFixed(0):null, cores:navigator.hardwareConcurrency||null, deviceMemoryGB:navigator.deviceMemory||null, uptimeS:+((performance.now()-DG.t0)/1000).toFixed(0) }; }
 function dgReport(){ return JSON.stringify({format:'fractal-pulse-diagnostics',v:1,created:new Date().toISOString(),state:dgState(),events:DG.ev.slice(-250)},null,1); }

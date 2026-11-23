@@ -63,4 +63,10 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G27 turning the guard back on is remembered (the phone default is applied only once)',a2===true,String(a2)); await m.context().close();
     const d=await page(b,'scale=0.1&q=0&type=0'); const c=await d.evaluate(()=>({guard:document.getElementById('cSafeGuard').checked,sync:+document.getElementById('sSync').value}));
     rec('G27 on a desktop the guard stays on and sync stays at its default',c.guard&&c.sync===40,JSON.stringify(c)); await d.context().close(); }
+  // G28: the big scene shader compiles without freezing the page, and anything that needs it early just waits
+  { const p=await page(b,'scale=0.1&q=0&type=0');
+    const g=await p.evaluate(()=>({ready:progScene.ready,ms:progScene.ms,par:!!parExt,note:!!document.getElementById('bootNote'),diag:fpDiag.state().sceneCompileMs}));
+    rec('G28 the scene shader is ready, the "preparing" note is gone, and the compile time is recorded in diagnostics',g.ready&&g.ms>=0&&!g.note&&g.diag===g.ms,JSON.stringify(g));
+    const w=await p.evaluate(()=>{ const p2=makeProg('fs','early-scene',null,true); const early=p2.ready; p2.set({uSteps:5}); return {early,after:p2.ready,ok:Object.keys(p2.u).length>20}; });
+    rec('G28 using a program before its compile finished waits for it instead of failing',w.after&&w.ok,JSON.stringify(w)); await p.context().close(); }
 };
