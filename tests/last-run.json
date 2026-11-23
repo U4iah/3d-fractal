@@ -1,9 +1,9 @@
 {
- "commit": "1b4e4ff",
- "when": "2026-11-23T03:31:22.853Z",
+ "commit": "baa80f2",
+ "when": "2026-11-23T03:40:16.875Z",
  "quick": true,
- "pass": 132,
- "fail": 2,
+ "pass": 134,
+ "fail": 0,
  "results": [
   {
    "name": "G1 page loads, no console errors",
@@ -12,7 +12,7 @@
   },
   {
    "name": "G1 catalogue sizes",
-   "ok": false,
+   "ok": true,
    "info": "fractals=24 2Dscenes=12 themes=10 refs=14"
   },
   {
@@ -43,7 +43,7 @@
   {
    "name": "G4 take records (frames+events+observations)",
    "ok": true,
-   "info": "{\"dur\":1.551,\"frames\":9,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
+   "info": "{\"dur\":1.925,\"frames\":10,\"ev\":3,\"obs\":1,\"fmt\":\"fractal-pulse-performance\",\"v\":1}"
   },
   {
    "name": "G4 playback restores fractal/theme/sculpt",
@@ -58,7 +58,7 @@
   {
    "name": "G4 JSON round-trip, trim, reject garbage",
    "ok": true,
-   "info": "{\"a\":9,\"trimmedFrames\":8,\"rej\":\"rejected\"}"
+   "info": "{\"a\":10,\"trimmedFrames\":9,\"rej\":\"rejected\"}"
   },
   {
    "name": "G4 no console errors",
@@ -78,22 +78,22 @@
   {
    "name": "G6 bad hash survives: type=abc&pal=99&look=-4&",
    "ok": true,
-   "info": "frames=20"
+   "info": "frames=19"
   },
   {
    "name": "G6 bad hash survives: s=!!notbase64!!",
    "ok": true,
-   "info": "frames=19"
+   "info": "frames=22"
   },
   {
    "name": "G6 bad hash survives: type=999999&theme=-3",
    "ok": true,
-   "info": "frames=22"
+   "info": "frames=27"
   },
   {
    "name": "G7 frozen: time, camera, spin, hue, fractal all hold under Director+Show+cycle+orbit+live audio",
    "ok": true,
-   "info": "{\"s0\":{\"T\":0.6766200000000006,\"az\":0.6770787903351178},\"s1\":{\"T\":0.6766200000000006,\"az\":0.6770787903351178}}"
+   "info": "{\"s0\":{\"T\":0.84,\"az\":0.7490579676024981},\"s1\":{\"T\":0.84,\"az\":0.7490579676024981}}"
   },
   {
    "name": "G7 frozen: chaos/pulse/audio envelopes ignored",
@@ -103,7 +103,7 @@
   {
    "name": "G7 frozen: manual orbit still works",
    "ok": true,
-   "info": "az 0.68→-0.04"
+   "info": "az 0.75→0.04"
   },
   {
    "name": "G7 frozen: pinned parameter takes effect",
@@ -113,7 +113,7 @@
   {
    "name": "G7 resume: time advances and audio is live again",
    "ok": true,
-   "info": "{\"T\":1.5166199999999996,\"live\":true}"
+   "info": "{\"T\":1.8199999999999994,\"live\":true}"
   },
   {
    "name": "G7 every formula-parameter key plumbs through params()",
@@ -143,12 +143,12 @@
   {
    "name": "G8 specimen has id, name, collection, ISO dates, implementation provenance",
    "ok": true,
-   "info": "{\"app\":\"fractal-pulse\",\"appVersion\":\"fp-2026.11.23-art\",\"shaderRev\":1,\"formula\":{\"index\":14,\"name\":\"Icosahedral IFS\",\"rev\":1},\"scene2d\":null}"
+   "info": "{\"app\":\"fractal-pulse\",\"appVersion\":\"fp-2026.11.23-art2\",\"shaderRev\":1,\"formula\":{\"index\":14,\"name\":\"Icosahedral IFS\",\"rev\":1},\"scene2d\":null}"
   },
   {
    "name": "G8 specimen carries a preview thumbnail",
    "ok": true,
-   "info": "4307 chars"
+   "info": "4031 chars"
   },
   {
    "name": "G8 restore reproduces type, geometry, symmetry, camera, material and pinned parameter",
@@ -178,7 +178,7 @@
   {
    "name": "G8 capture a specimen from a performance take (source + timestamp recorded, frozen)",
    "ok": true,
-   "info": "{\"added\":1,\"kind\":\"take\",\"t\":1.428,\"frozen\":1}"
+   "info": "{\"added\":1,\"kind\":\"take\",\"t\":1.275,\"frozen\":1}"
   },
   {
    "name": "G8 library persists across reload",
@@ -193,17 +193,17 @@
   {
    "name": "G9 still render is exact size, non-blank",
    "ok": true,
-   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":83.91408333333334,\"meanAbsDiff\":0.6266979166666666,\"bigFrac\":0}"
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":83.52630208333333,\"meanAbsDiff\":0.5761041666666666,\"bigFrac\":0}"
   },
   {
    "name": "G9 tiled render matches single-pass render (no visible seams)",
    "ok": true,
-   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":83.91408333333334,\"meanAbsDiff\":0.6266979166666666,\"bigFrac\":0}"
+   "info": "{\"w\":320,\"h\":200,\"tiledA\":false,\"tiledB\":true,\"tiles\":20,\"mean\":83.52630208333333,\"meanAbsDiff\":0.5761041666666666,\"bigFrac\":0}"
   },
   {
    "name": "G9 transparent export: corners clear, object opaque, soft edges",
    "ok": true,
-   "info": "{\"corner\":1,\"corner2\":2,\"center\":255,\"opaque\":47086,\"partial\":15535,\"total\":65536}"
+   "info": "{\"corner\":2,\"corner2\":3,\"center\":255,\"opaque\":47425,\"partial\":15667,\"total\":65536}"
   },
   {
    "name": "G9 oversize requests are refused with a reason; cancel restores the live view",
@@ -213,17 +213,17 @@
   {
    "name": "G9 e-paper output is exactly 384×184 and only uses palette colours",
    "ok": true,
-   "info": "{\"bw/none\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bw/fs\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bwr/atk\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":656},\"bw/bayer\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0}}"
+   "info": "{\"bw/none\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bw/fs\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0},\"bwr/atk\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":40},\"bw/bayer\":{\"w\":384,\"h\":184,\"bad\":0,\"red\":0}}"
   },
   {
    "name": "G9 e-paper threshold changes the black/white balance; title strip is stamped",
    "ok": true,
-   "info": "{\"lo\":25958,\"hi\":0,\"strip\":114}"
+   "info": "{\"lo\":26010,\"hi\":0,\"strip\":114}"
   },
   {
    "name": "G9 e-paper red is only produced in the three-colour palette",
    "ok": true,
-   "info": "{\"bw\":0,\"bwr\":656}"
+   "info": "{\"bw\":0,\"bwr\":40}"
   },
   {
    "name": "G9 no console errors",
@@ -243,7 +243,7 @@
   {
    "name": "G10 take records source-media metadata and says the media is not embedded",
    "ok": true,
-   "info": "{\"name\":\"FL export.wav\",\"duration\":3,\"songOffset\":1.253,\"kind\":\"audio\",\"mime\":\"audio/wav\",\"size\":132344,\"reference\":\"original media is NOT embedded; the take stores the musical analysis recorded while it played\"}"
+   "info": "{\"name\":\"FL export.wav\",\"duration\":3,\"songOffset\":1.363,\"kind\":\"audio\",\"mime\":\"audio/wav\",\"size\":132344,\"reference\":\"original media is NOT embedded; the take stores the musical analysis recorded while it played\"}"
   },
   {
    "name": "G10 undecodable file gives a clear message naming the file",
@@ -263,7 +263,7 @@
   {
    "name": "G11 status line says who controls the artwork (touch / frozen / recording)",
    "ok": true,
-   "info": "{\"a\":\"Controlling · You (touch)\",\"b2\":\"Controlling · FROZEN\",\"c\":\"● REC TAKE 0:00.6 · You (touch)\",\"amber\":true}"
+   "info": "{\"a\":\"Controlling · You (touch)\",\"b2\":\"Controlling · FROZEN\",\"c\":\"● REC TAKE 0:00.8 · You (touch)\",\"amber\":true}"
   },
   {
    "name": "G11 timeline groups slider moves into gestures but keeps every raw event; irregular sample rate preserved",
@@ -273,7 +273,7 @@
   {
    "name": "G11 unsaved changes are flagged; hold-to-compare shows the saved version and returns to the edit",
    "ok": true,
-   "info": "{\"id\":true,\"clean\":true,\"dirty\":true,\"edited\":3,\"during\":0,\"base\":0,\"after\":3,\"idText\":\"FP·MWSPEA · UI test\"}"
+   "info": "{\"id\":true,\"clean\":true,\"dirty\":true,\"edited\":3,\"during\":0,\"base\":0,\"after\":3,\"idText\":\"FP·MWSPPU · UI test\"}"
   },
   {
    "name": "G11 clean view hides controls, preserves state, and returns",
@@ -318,7 +318,7 @@
   {
    "name": "G13 logotype is selectable and renders a solid wider than tall",
    "ok": true,
-   "info": "{\"n\":24627,\"w\":266,\"h\":172,\"sum\":21351818}"
+   "info": "{\"n\":24627,\"w\":266,\"h\":172,\"sum\":20970877}"
   },
   {
    "name": "G13 fractal skin changes the surface; carving removes material, relief keeps the letters whole",
@@ -333,12 +333,12 @@
   {
    "name": "G14 cathedral renders a solid with openings (not a filled block)",
    "ok": true,
-   "info": "{\"n\":40231,\"sum\":19350492}"
+   "info": "{\"n\":40231,\"sum\":19330541}"
   },
   {
    "name": "G14 spiral twist reshapes the architecture",
    "ok": true,
-   "info": "{\"a\":{\"n\":40231,\"sum\":19350492},\"c\":{\"n\":38101,\"sum\":18862210}}"
+   "info": "{\"a\":{\"n\":40231,\"sum\":19330541},\"c\":{\"n\":38101,\"sum\":18865161}}"
   },
   {
    "name": "G14 no console errors",
@@ -363,7 +363,7 @@
   {
    "name": "G15 Save puts a specimen on a slide; clicking the slide restores it",
    "ok": true,
-   "info": "{\"n\":1,\"filled\":1,\"restored\":0,\"spec\":\"Icosahedral IFS · 03:26 AM\"}"
+   "info": "{\"n\":1,\"filled\":1,\"restored\":0,\"spec\":\"Icosahedral IFS · 03:35 AM\"}"
   },
   {
    "name": "G15 B switches to the Figure skin (full-bleed artwork) and back",
@@ -448,7 +448,7 @@
   {
    "name": "G20 the guard samples the real picture every frame without errors",
    "ok": true,
-   "info": "{\"k0\":1,\"probed\":true,\"flashes\":0,\"err\":null,\"k1\":0.3000407599443954,\"trips\":1,\"peak\":4,\"frames\":65}"
+   "info": "{\"k0\":1,\"probed\":true,\"flashes\":0,\"err\":null,\"k1\":0.3000294490598257,\"trips\":1,\"peak\":4,\"frames\":67}"
   },
   {
    "name": "G20 a 5-flashes-per-second strobe trips the guard and damps pulses; it releases when steady; a gentle 2-per-second flicker does not trip it",
@@ -488,7 +488,7 @@
   {
    "name": "G22 the zip writer produces archives a real unzip accepts",
    "ok": true,
-   "info": "No errors detected in compressed data of /tmp/fp-test-1795404516889.zip."
+   "info": "No errors detected in compressed data of /tmp/fp-test-1795405055358.zip."
   },
   {
    "name": "G22 mesh of the live fractal: thousands of triangles, under 0.5% questionable edges, inside the bound, view restored",
@@ -513,7 +513,7 @@
   {
    "name": "G22 zip-segment output: frames are split into segments and each archive passes a real unzip",
    "ok": true,
-   "info": "{\"zr\":{\"frames\":9,\"downloads\":3,\"bytes\":196519},\"downloads\":3,\"zipOk\":\"No errors detected in compressed data of /tmp/fp-seg-1795404\"}"
+   "info": "{\"zr\":{\"frames\":9,\"downloads\":3,\"bytes\":196520},\"downloads\":3,\"zipOk\":\"No errors detected in compressed data of /tmp/fp-seg-1795405\"}"
   },
   {
    "name": "G22 no console errors",
@@ -522,8 +522,8 @@
   },
   {
    "name": "G23 the lab, video render, mesh export and comfort controls open from the bench buttons and from the Figure skin node",
-   "ok": false,
-   "info": "{\"bench\":true,\"names\":[\"Pareidolia lab\",\"Make a video of a take\",\"3D mesh export · experimental\",\"Text sculpture\",\"Comfort & safety\"],\"lbStart\":true,\"ofVideo\":true,\"mhBuild\":true,\"cCalm\":true,\"figure\":true,\"nodeThere\":true,\"nodeOpensLab\":false,\"legend\":true}"
+   "ok": true,
+   "info": "{\"bench\":true,\"names\":[\"Pareidolia lab\",\"Make a video of a take\",\"3D mesh export · experimental\",\"Text sculpture\",\"Comfort & safety\"],\"lbStart\":true,\"ofVideo\":true,\"mhBuild\":true,\"cCalm\":true,\"figure\":true,\"nodeThere\":true,\"nodeOpensLab\":true,\"legend\":true}"
   },
   {
    "name": "G23 no console errors",
@@ -538,7 +538,7 @@
   {
    "name": "G24 text renders as a solid wider than tall; wider text is wider; per-letter patterns change the surface; text is saved in the state and in specimens",
    "ok": true,
-   "info": "{\"shown\":\"Text sculpture\",\"same\":{\"n\":6552,\"w\":104,\"h\":85,\"sum\":2420619},\"diff\":{\"n\":6540,\"w\":104,\"h\":85,\"sum\":2409117},\"wide\":{\"n\":11300,\"w\":360,\"h\":49,\"sum\":3919705},\"txt\":\"HELLO WORLD\"}"
+   "info": "{\"shown\":\"Text sculpture\",\"same\":{\"n\":6561,\"w\":104,\"h\":85,\"sum\":2425786},\"diff\":{\"n\":6555,\"w\":104,\"h\":85,\"sum\":2426580},\"wide\":{\"n\":11298,\"w\":360,\"h\":49,\"sum\":3915002},\"txt\":\"HELLO WORLD\"}"
   },
   {
    "name": "G24 restoring a saved state brings back the text, font and per-letter setting",
@@ -558,12 +558,12 @@
   {
    "name": "G25 stopping a recording shows a card with the take length and a video button, saves the take, and lists it as the latest",
    "ok": true,
-   "info": "{\"cardShown\":true,\"title\":\"Take saved · 0:00.8\",\"hasVideoBtn\":true,\"dur\":0.785,\"stored\":1,\"storedDur\":0.785,\"len\":\"This take is 0:00.8 long · 5 samples · 0 events. The video will cover all of it.\",\"listed\":[\"Latest · Take Nov 23, 03:29 AM · 0:00.8\"]}"
+   "info": "{\"cardShown\":true,\"title\":\"Take saved · 0:00.7\",\"hasVideoBtn\":true,\"dur\":0.679,\"stored\":1,\"storedDur\":0.679,\"len\":\"This take is 0:00.7 long · 4 samples · 0 events. The video will cover all of it.\",\"listed\":[\"Latest · Take Nov 23, 03:38 AM · 0:00.7\"]}"
   },
   {
    "name": "G25 after a reload the take is still there, can be picked from the list, and the whole length is shown without asking for seconds",
    "ok": true,
-   "info": "{\"had\":1,\"loaded\":true,\"dur\":0.785,\"len\":\"This take is 0:00.8 long · 5 samples · 0 events. The video will cover all of it.\"}"
+   "info": "{\"had\":1,\"loaded\":true,\"dur\":0.679,\"len\":\"This take is 0:00.7 long · 4 samples · 0 events. The video will cover all of it.\"}"
   },
   {
    "name": "G25 \"Make video of the whole take\" shows progress and finishes with a saved-video message",
@@ -598,7 +598,7 @@
   {
    "name": "G25 zip segments are split by size, not only by frame count, so memory per archive stays bounded",
    "ok": true,
-   "info": "{\"z\":{\"frames\":12,\"downloads\":7,\"bytes\":254449},\"downloads\":7}"
+   "info": "{\"z\":{\"frames\":12,\"downloads\":7,\"bytes\":254450},\"downloads\":7}"
   },
   {
    "name": "G25 no console errors",
@@ -633,7 +633,7 @@
   {
    "name": "G28 only the shown formula is compiled at startup (one program, source shorter than the full shader), no preparing note left",
    "ok": true,
-   "info": "{\"oneLen\":33063,\"allLen\":33778,\"keys\":[\"0\"],\"note\":false,\"ms\":{\"0\":1},\"two\":true}"
+   "info": "{\"oneLen\":33246,\"allLen\":33961,\"keys\":[\"0\"],\"note\":false,\"ms\":{\"0\":1},\"two\":true}"
   },
   {
    "name": "G28 switching to another fractal prepares just that one, then rendering continues",
@@ -658,7 +658,7 @@
   {
    "name": "G29 the artistic themes draw differently from each other and from Neon (screenshots all distinct)",
    "ok": true,
-   "info": "{\"0\":\"b44aa51e\",\"4\":\"9b29280f\",\"5\":\"134f76a0\",\"6\":\"bd93c537\",\"7\":\"780fb44a\",\"8\":\"0ccc4243\",\"9\":\"8428b31c\"}"
+   "info": "{\"0\":\"1cecaa95\",\"4\":\"5fba97e3\",\"5\":\"cf3e55cd\",\"6\":\"7b521c62\",\"7\":\"a7d391f3\",\"8\":\"6adb95c3\",\"9\":\"8ddf1842\"}"
   },
   {
    "name": "G29 full screen hides every control (Clean view), and leaving brings them back and clears the mode",
