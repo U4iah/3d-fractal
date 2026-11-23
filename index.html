@@ -2146,7 +2146,18 @@ function makeProg(fsId, label, srcOverride, lazy){
   if(!(lazy&&parExt)) obj.finish();
   return obj;
 }
-const progScene = makeProg('fs','scene',null,true), progBlur = makeProg('fsBlur2','blur'), progComp = makeProg('fsComp','composite');
+const progBlur = makeProg('fsBlur2','blur'), progComp = makeProg('fsComp','composite');
+// One scene program per formula (or per morph pair), compiled only when it is first needed. Compiling all 24 formulas in one program took 215 s on a Windows laptop
+// (the browser reported "not responding"); one formula compiles in a fraction of that, in the background where the browser allows.
+const SCENE_EXPR={0:'deBulb(p,0)',1:'deBulb(p,1)',2:'deBulb(p,2)',3:'deBulb(p,3)',4:'deQJ(p)',5:'deBox(p,0)',6:'deMenger(p)',7:'deSier(p)',8:'deApol(p)',9:'deBulb(p,4)',10:'deOcta(p)',11:'deKlein(p)',12:'deQM(p)',13:'deMT(p)',14:'deIcosa(p)',15:'deBox(p,0)',16:'deBox(p,1)',17:'deBristor(p)',18:'deQJ3(p)',19:'deShip2(p,0)',20:'deShip2(p,1)',21:'deLogo(p)',22:'deCathedral(p)',23:'deText(p)'};
+function sceneSrc(types){ let src=$('fs').textContent; const i=src.indexOf('float evalType(int ty, vec3 p){'); const j=src.indexOf('float map(vec3 p){'); if(i<0||j<0||types.length>=24) return src;
+  const ex=ty=>SCENE_EXPR[ty]||SCENE_EXPR[20]; let body;
+  if(types.length===1) body='float evalType(int ty, vec3 p){ return '+ex(types[0])+'; }\n';
+  else { body='float evalType(int ty, vec3 p){\n  float d;\n'; types.forEach((ty,k)=>{ body+=(k===types.length-1?'  else':(k?'  else if(ty=='+ty+')':'  if(ty=='+ty+')'))+' d = '+ex(ty)+';\n'; }); body+='  return d;\n}\n'; }
+  return src.slice(0,i)+body+src.slice(j); }
+const sceneProgs=new Map();
+function sceneNeed(){ const m=morphTo>=0&&morphTo!==type; return m?[...new Set([type,morphTo])].sort((x,y)=>x-y):[type]; }
+function sceneProgFor(types,block){ const key=types.join(','); let pr=sceneProgs.get(key); if(!pr){ pr=makeProg('fs','scene '+key,sceneSrc(types),!block); pr.key=key; sceneProgs.set(key,pr); } else if(block&&!pr.ready) pr.finish(); return pr; }
 gl.bindVertexArray(gl.createVertexArray());
 
 function makeTarget(w,h,float){
@@ -2682,12 +2693,12 @@ let lastRender=0;
 let resScale=+$('sRes').value, last=performance.now()/1000, ema=16.7, frame=0, lastDown=-99, ceilS=9;
 const vsArr=[]; let vsyncMs=16.7, lastRaf=0;
 // shown only while the big scene shader is still compiling
-function bootNote(done){ let e=document.getElementById('bootNote'); if(done){ if(e) e.remove(); return; } if(!e){ e=document.createElement('div'); e.id='bootNote'; e.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;max-width:80vw;text-align:center;padding:14px 18px;border-radius:12px;background:rgba(10,10,14,.88);color:#eee;font:14px/1.4 system-ui,sans-serif;pointer-events:none'; document.body.appendChild(e); }
-  e.textContent='Preparing the fractal engine… '+Math.round((performance.now()-progScene.t0)/1000)+' s. The first start is the slowest. The page stays usable while it works.'; }
+function bootNote(sp){ let e=document.getElementById('bootNote'); if(!sp){ if(e) e.remove(); return; } if(!e){ e=document.createElement('div'); e.id='bootNote'; e.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;max-width:80vw;text-align:center;padding:14px 18px;border-radius:12px;background:rgba(10,10,14,.88);color:#eee;font:14px/1.4 system-ui,sans-serif;pointer-events:none'; document.body.appendChild(e); }
+  const nm=(typeof TYPES!=='undefined'&&TYPES[type]&&TYPES[type].name)||''; e.textContent='Preparing '+(nm||'the fractal')+'… '+Math.round((performance.now()-sp.t0)/1000)+' s. Each fractal is prepared once the first time it is used. The page stays usable while it works.'; }
 function frameFn(t){
   requestAnimationFrame(frameFn);
-  if(!progScene.ready){ if(!progScene.poll()){ bootNote(); return; } bootNote(true); }
   if(off.active) return;                 // the offline renderer drives frames on its own clock
+  if(!flowMode&&!expo.active&&!mesh.active){ const sp=sceneProgFor(sceneNeed(),false); if(!sp.poll()){ bootNote(sp); return; } bootNote(null); }
   try{ frameBody(t); }catch(e){ if(!frameFn.bad){ frameFn.bad=1; console.error(e); showErr('Render error (continuing): '+e.message); setTimeout(()=>$('err').style.display='none',6000); } }
 }
 function frameBody(nowMs){
@@ -2814,7 +2825,7 @@ function frameBody(nowMs){
     const fp=flowProg(flowVar);
     fp.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uDrop:A.drop});
   } else {
-  (mesh.active?mesh.prog:progScene).set({uSliceZ:mesh.z,uGridStep:mesh.step,uGridOrigin:mesh.origin,uTxt:5,uTxtExt:TXT.ext,uTxtDiff:TXT.diff?1:0,uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
+  (mesh.active?mesh.prog:sceneProgFor(sceneNeed(),true)).set({uSliceZ:mesh.z,uGridStep:mesh.step,uGridOrigin:mesh.origin,uTxt:5,uTxtExt:TXT.ext,uTxtDiff:TXT.diff?1:0,uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uEnergy:A.energy,uPulse:A.pulse*SAFE.k,uDrop:A.drop*SAFE.k,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:expo.active?expo.glow:+$('sGlow').value,
     uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uSliceAt:+$('sCutAt').value,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
@@ -3620,7 +3631,7 @@ window.fpOffline={renderOffline,zipStore,crc32,plan:offlinePlan};
 // is extracted with naive surface nets. This is an approximation: detail finer than a voxel is lost, thin features can vanish, and the result is the
 // offset surface of the fractal, not its exact boundary. It is NOT print-ready (no wall-thickness or overhang analysis).
 const mesh={active:false,cancel:false,n:0,z:0,step:0,origin:[0,0,0],prog:null,src:'',onSlice:null,last:null};
-function meshShaderSource(){ let src=$('fs').textContent; const k='void main(){'; const i=src.indexOf(k); if(i<0) return null; src=src.slice(0,i)+'void mainScene(){'+src.slice(i+k.length);
+function meshShaderSource(){ let src=sceneSrc(sceneNeed()); const k='void main(){'; const i=src.indexOf(k); if(i<0) return null; src=src.slice(0,i)+'void mainScene(){'+src.slice(i+k.length);
   return src+'\nuniform float uSliceZ, uGridStep; uniform vec3 uGridOrigin;\nvoid main(){ gRot=mat3(1.0); gEps=uGridStep*0.5; gPx=uGridStep*0.5; vec3 p=uGridOrigin+vec3(gl_FragCoord.xy-0.5,uSliceZ)*uGridStep; float d=map(p); outCol=vec4(d,0.0,0.0,1.0); }\n'; }
 // naive surface nets on a scalar field f (solid where f < iso). Returns {pos:Float32Array, idx:Uint32Array} in grid units.
 function surfaceNets(f,n,iso){
@@ -3817,7 +3828,7 @@ function dgState(){ const p=player; return {
   audioCtx:actx?{state:actx.state,sampleRate:actx.sampleRate,baseLatency:+(actx.baseLatency||0).toFixed(4)}:null, source:lastSource||'', hasAudio,
   player:{paused:p.paused,t:+p.currentTime.toFixed(2),dur:isFinite(p.duration)?+p.duration.toFixed(2):null,ready:p.readyState,net:p.networkState,src:!!p.src,err:p.error?p.error.code:0},
   audioLoopGuard:{tripped:audioLoop.tripped}, guardOn:$('cSafeGuard').checked, calm:$('cCalm').checked, syncMs:+$('sSync').value, resScale:+resScale.toFixed(3), qual:$('sQual').value, fpsCap:$('sFps').value,
-  sceneCompileMs:progScene.ms||null, parallelCompile:!!parExt, frames:frame, fps1s:DG.fps.length?DG.fps[DG.fps.length-1]:null, fpsMin:DG.fps.length?Math.min(...DG.fps):null, fpsAvg:DG.fps.length?+(DG.fps.reduce((a,b)=>a+b,0)/DG.fps.length).toFixed(1):null,
+  sceneCompileMs:(()=>{ const r={}; sceneProgs.forEach((v,k)=>{ if(v.ms!=null) r[k]=v.ms; }); return r; })(), parallelCompile:!!parExt, frames:frame, fps1s:DG.fps.length?DG.fps[DG.fps.length-1]:null, fpsMin:DG.fps.length?Math.min(...DG.fps):null, fpsAvg:DG.fps.length?+(DG.fps.reduce((a,b)=>a+b,0)/DG.fps.length).toFixed(1):null,
   longTasks:DG.long, longTaskMs:Math.round(DG.longMs), playPauseFlips:DG.flips, errors:DG.errs,
   heapMB:performance.memory?+(performance.memory.usedJSHeapSize/1048576).toFixed(0):null, cores:navigator.hardwareConcurrency||null, deviceMemoryGB:navigator.deviceMemory||null, uptimeS:+((performance.now()-DG.t0)/1000).toFixed(0) }; }
 function dgReport(){ return JSON.stringify({format:'fractal-pulse-diagnostics',v:1,created:new Date().toISOString(),state:dgState(),events:DG.ev.slice(-250)},null,1); }

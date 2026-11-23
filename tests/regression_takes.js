@@ -63,10 +63,14 @@ module.exports=async function({b,page,rec,errText,URL}){
     rec('G27 turning the guard back on is remembered (the phone default is applied only once)',a2===true,String(a2)); await m.context().close();
     const d=await page(b,'scale=0.1&q=0&type=0'); const c=await d.evaluate(()=>({guard:document.getElementById('cSafeGuard').checked,sync:+document.getElementById('sSync').value}));
     rec('G27 on a desktop the guard stays on and sync stays at its default',c.guard&&c.sync===40,JSON.stringify(c)); await d.context().close(); }
-  // G28: the big scene shader compiles without freezing the page, and anything that needs it early just waits
+  // G28: each fractal gets its own small shader, compiled on first use, so the page never compiles all 24 formulas at once
   { const p=await page(b,'scale=0.1&q=0&type=0');
-    const g=await p.evaluate(()=>({ready:progScene.ready,ms:progScene.ms,par:!!parExt,note:!!document.getElementById('bootNote'),diag:fpDiag.state().sceneCompileMs}));
-    rec('G28 the scene shader is ready, the "preparing" note is gone, and the compile time is recorded in diagnostics',g.ready&&g.ms>=0&&!g.note&&g.diag===g.ms,JSON.stringify(g));
-    const w=await p.evaluate(()=>{ const p2=makeProg('fs','early-scene',null,true); const early=p2.ready; p2.set({uSteps:5}); return {early,after:p2.ready,ok:Object.keys(p2.u).length>20}; });
-    rec('G28 using a program before its compile finished waits for it instead of failing',w.after&&w.ok,JSON.stringify(w)); await p.context().close(); }
+    const g=await p.evaluate(async()=>{ const one=sceneSrc([0]).length, all=$('fs').textContent.length; const k0=[...sceneProgs.keys()]; const ms0=Object.assign({},fpDiag.state().sceneCompileMs);
+      return {oneLen:one,allLen:all,keys:k0,note:!!document.getElementById('bootNote'),ms:ms0,two:sceneSrc([3,7]).includes('ty==3')&&sceneSrc([3,7]).includes('deSier')&&!sceneSrc([3,7]).includes('deKlein(p);')}; });
+    rec('G28 only the shown formula is compiled at startup (one program, source shorter than the full shader), no preparing note left',g.keys.length===1&&g.oneLen<g.allLen&&!g.note&&g.two,JSON.stringify(g));
+    const w=await p.evaluate(async()=>{ const before=sceneProgs.size; type=11; for(let i=0;i<400&&!sceneProgs.get('11');i++) await new Promise(r=>setTimeout(r,50)); for(let i=0;i<600&&!(sceneProgs.get('11')&&sceneProgs.get('11').ready);i++) await new Promise(r=>setTimeout(r,100)); const f0=frame; await new Promise(r=>setTimeout(r,1500)); return {before,after:sceneProgs.size,ready:!!(sceneProgs.get('11')&&sceneProgs.get('11').ready),advancing:frame>f0,note:!!document.getElementById('bootNote')}; });
+    rec('G28 switching to another fractal prepares just that one, then rendering continues',w.after===w.before+1&&w.ready&&w.advancing&&!w.note,JSON.stringify(w));
+    const m=await p.evaluate(async()=>{ morphTo=7; for(let i=0;i<600&&!(sceneProgs.get('7,11')&&sceneProgs.get('7,11').ready);i++) await new Promise(r=>setTimeout(r,100)); const f0=frame; await new Promise(r=>setTimeout(r,1500)); return {pair:!!sceneProgs.get('7,11'),ready:!!(sceneProgs.get('7,11')&&sceneProgs.get('7,11').ready),advancing:frame>f0}; });
+    rec('G28 a morph between two fractals builds one small shader for the pair and keeps rendering',m.pair&&m.ready&&m.advancing,JSON.stringify(m));
+    rec('G28 no console errors',p.errs.filter(e=>!/Failed to load|Fetch API cannot load/.test(e)).length===0,JSON.stringify(p.errs)); await p.context().close(); }
 };
