@@ -122,6 +122,7 @@
   body.clean #ui,body.clean #strip,body.clean #idchip,body.clean #ctl,body.clean #stat,body.clean #freezeBtn,body.clean #menuBtn,body.clean #title{opacity:0;pointer-events:none}
   #cleanBack{position:fixed;right:calc(10px + env(safe-area-inset-right));top:calc(10px + env(safe-area-inset-top));z-index:6;width:34px;height:34px;border-radius:50%;padding:0;text-align:center;opacity:0;pointer-events:none;background:rgba(15,14,21,.5)}
   body.clean #cleanBack{opacity:.35;pointer-events:auto}
+  body.idle,body.idle canvas{cursor:none} body.idle #cleanBack{opacity:0}
   #types.cards{grid-template-columns:repeat(3,1fr)}
   #types.cards button{position:relative;aspect-ratio:1.1;padding:0;overflow:hidden;background:#15131d center/cover no-repeat;display:flex;align-items:flex-end}
   #types.cards button .tn{display:block;width:100%;padding:14px 4px 3px;font-size:10.5px;line-height:1.15;background:linear-gradient(transparent,rgba(8,7,12,.88));text-align:left}
@@ -324,6 +325,15 @@
   #start .card button,#start .card label.btn{background:none;border:0;min-height:48px;padding:0 20px;font:500 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--on-ink);--fill:var(--ink);text-align:center;display:inline-grid;place-items:center}
   #start .card #bSilent{display:grid;width:100%;--fill:var(--ember);color:#0b090c}
   #start .fig{font:500 9.5px/1.6 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3);margin-top:22px}
+  #nodePop{position:fixed;z-index:30;width:360px;max-width:calc(100vw - 24px);max-height:calc(100vh - 130px);display:none;flex-direction:column;background:var(--panel,rgba(14,12,18,.97));color:var(--fg,#eee);border:1.5px solid var(--ink,#eee);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+  #nodePop.show{display:flex}
+  #nodePop::before{content:"";position:absolute;left:-10px;top:var(--tail,40px);width:18px;height:18px;background:var(--panel,rgba(14,12,18,.97));border-left:1.5px solid var(--ink,#eee);border-bottom:1.5px solid var(--ink,#eee);transform:rotate(45deg)}
+  #nodePop .npHead{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px;font:800 11px/1 var(--display,system-ui);letter-spacing:.14em;text-transform:uppercase}
+  #nodePop .npHead button{min-width:36px;min-height:36px;border-radius:50%;border:1px solid currentColor;background:none;color:inherit;cursor:pointer}
+  #nodePop .npBody{overflow:auto;padding:0 14px 14px}
+  #nodePop .wsec{display:block!important;opacity:1!important}
+  #nodePop .wsec>h2{display:none}
+  .node.is-open{filter:drop-shadow(0 0 8px var(--ember,#f60))}
 </style>
 <style id="bench">
   /* ───── SPECIMEN BENCH skin (desktop): an original instrument identity. Matte anodized rails, a brass-trimmed lens for the artwork,
@@ -519,6 +529,12 @@
     <button data-t="1">Realistic</button>
     <button data-t="2">Cosmic</button>
     <button data-t="3">Clay</button>
+    <button data-t="4">Ink &amp; paper</button>
+    <button data-t="5">Stained glass</button>
+    <button data-t="6">Riso poster</button>
+    <button data-t="7">Thermal</button>
+    <button data-t="8">Oil slick</button>
+    <button data-t="9">Op-art</button>
     <button id="bCustom">Custom ★</button>
     <button id="bSaveCustom">Save my look</button>
   </div>
@@ -710,7 +726,7 @@
     <button id="bRec">● Record clip</button>
     <button id="bSaveClip" style="display:none">⬇ Save clip</button>
     <button id="bShot">Screenshot <kbd>P</kbd></button>
-    <button id="bFull">Fullscreen <kbd>F</kbd></button>
+    <button id="bFull">Full screen (fractal only) <kbd>F</kbd></button>
   </div>
   <div id="info"></div>
 </div>
@@ -1372,6 +1388,77 @@ vec3 floorColor(vec3 rd, float tf, float sh, vec3 rc){
   return mix(c, envMap(vec3(rd.x,0.02,rd.z),false), fog);
 }
 
+uniform int uArt;                                  // 0 = none; 1..6 = the artistic looks (ink, stained glass, riso poster, thermal, oil slick, op-art)
+vec3 artBg(vec2 uv){
+  float r=length(uv);
+  if(uArt==1) return mix(vec3(.95,.91,.82), vec3(.80,.74,.62), smoothstep(.2,1.1,r));
+  if(uArt==2) return vec3(.015,.012,.03)+vec3(.02,.01,.04)*smoothstep(1.0,.0,r);
+  if(uArt==3) return vec3(.96,.93,.86);
+  if(uArt==4) return vec3(.0,.0,.012)+vec3(.05,.0,.08)*smoothstep(1.1,.0,r);
+  if(uArt==5) return vec3(.01,.012,.02)+vec3(.0,.01,.02)*smoothstep(1.0,.0,r);
+  return vec3(.96);
+}
+vec3 heatMap(float h){
+  h=clamp(h,0.,1.);
+  vec3 c=mix(vec3(0.,0.,.02), vec3(.25,.0,.45), smoothstep(0.,.22,h));
+  c=mix(c, vec3(.85,.05,.35), smoothstep(.2,.45,h));
+  c=mix(c, vec3(1.,.45,.0), smoothstep(.42,.68,h));
+  c=mix(c, vec3(1.,.92,.2), smoothstep(.65,.88,h));
+  return mix(c, vec3(1.), smoothstep(.88,1.,h));
+}
+float riDots(vec2 fc, float cell, float amount){      // halftone dots on a 45-degree grid: coverage grows with `amount`
+  vec2 g=mat2(.7071,-.7071,.7071,.7071)*fc/cell; return step(length(fract(g)-.5), sqrt(clamp(amount,0.,1.))*.72);
+}
+vec3 shadeArt(vec3 p, vec3 n, vec3 rd, float tc, int steps, float sh){
+  float NV=clamp(dot(n,-rd),0.,1.);
+  vec3 l=normalize(vec3(cos(uTime*0.2),0.7,sin(uTime*0.2)));
+  float diff=max(dot(n,l),0.)*mix(.35,1.,sh);
+  float aoS=clamp(1.-float(steps)/float(uSteps)*1.5,0.,1.); aoS=aoS*aoS*(3.-2.*aoS)*.85+.15;
+  float lum=clamp((.12+.88*diff)*aoS,0.,1.);
+  vec2 fc=gl_FragCoord.xy+uOrigin; float px=max(uFull.y/360.,1.0);   // pattern scale follows the picture height, so stills match the screen
+  float bands=tc*6.+uHue*6.+uPulse*.6;
+  if(uArt==1){                                            // INK: cross-hatched woodcut on paper, one vermilion seal colour
+    float ha=abs(fract((fc.x+fc.y)/(7.*px))-.5)*2., hb=abs(fract((fc.x-fc.y)/(7.*px))-.5)*2.;
+    float d=1.-lum;
+    float ink=max(step(ha,clamp((d-.12)*1.9,0.,1.)), step(hb,clamp((d-.42)*2.4,0.,1.)));
+    ink=max(ink,1.-smoothstep(.18,.34,NV));
+    vec3 paper=vec3(.93,.89,.80)*(.9+.1*lum);
+    vec3 c=mix(paper, vec3(.05,.05,.09), ink*.96);
+    float seal=step(.88,fract(bands*.5))*step(.4,lum);
+    return mix(c, vec3(.85,.16,.08), seal*(1.-ink)*.85);
+  }
+  if(uArt==2){                                            // STAINED GLASS: flat jewel cells from the orbit trap, dark leading, lit from behind
+    float id=floor(bands), fr=fract(bands);
+    vec3 j=pow(pal(id*.173+.05),vec3(1.4))*1.6;
+    float lead=max(smoothstep(.08,.0,min(fr,1.-fr)), 1.-smoothstep(.12,.3,NV));
+    vec3 c=j*(.5+.8*lum+.4*NV)*(.85+.5*uBass);
+    return mix(c, vec3(.01), lead);
+  }
+  if(uArt==3){                                            // RISO POSTER: three spot inks, halftone dots, slightly misregistered, on cream paper
+    float cell=6.*px;
+    float pink=riDots(fc, cell, smoothstep(.35,.95,1.-lum));
+    float teal=riDots(fc+vec2(2.,1.)*px, cell, smoothstep(.55,.95,1.-NV)*(.4+.6*fract(bands)));
+    float yel =riDots(fc+vec2(-2.,2.)*px, cell, (.25+.65*fract(bands*.5+.3))*smoothstep(.1,.5,lum+.2));
+    vec3 c=vec3(.96,.93,.86);
+    c*=mix(vec3(1.), vec3(1.,.28,.5), pink);
+    c*=mix(vec3(1.), vec3(.05,.62,.68), teal);
+    return c*mix(vec3(1.), vec3(1.,.86,.12), yel);
+  }
+  if(uArt==4){                                            // THERMAL: false-colour heat from light, depth and cavities
+    float h=clamp(.1+.75*lum+.2*NV*aoS+.25*uBass+.1*sin(bands*3.),0.,1.);
+    return heatMap(h);
+  }
+  if(uArt==5){                                            // OIL SLICK: thin-film interference swirling over a near-black body
+    float thick=1.6*NV+.55*tc+.35*sin(6.*p.x+3.*p.y+uTime*.3)+uHue;
+    vec3 film=.5+.5*cos(6.2831853*(thick*vec3(1.,1.12,1.27)+vec3(0.,.1,.2)));
+    return film*(.12+.95*diff)*aoS + vec3(1.)*pow(1.-NV,4.)*.6*(.5+uBeat);
+  }
+  float s=fract(lum*3.5+NV*1.6+tc*.9+uPulse*.5+uHue*2.);            // OP-ART: black and white contour bands that shimmer with the music, one accent colour in the cavities
+  float bw=smoothstep(.47,.5,s)-smoothstep(.97,1.,s);
+  vec3 c=mix(vec3(.04), vec3(.97), bw);
+  return mix(c, pal(.1+uHue)*1.2, (1.-aoS)*.5*bw);
+}
+
 void main(){
   gRot = rotM(uAng);
   vec2 uv = (gl_FragCoord.xy + uOrigin - 0.5*uFull)/uFull.y;
@@ -1381,14 +1468,14 @@ void main(){
   vec3 up = cross(rt, fw);
   vec3 rd = normalize(uv.x*rt + uv.y*up + uFocal*fw);
   gPx = 1.0/(uFull.y*uFocal);
-  bool real = (uTheme==1||uTheme==3), cosmic = (uTheme==2);
+  bool real = (uTheme==1||uTheme==3), cosmic = (uTheme==2), art = (uArt>0);
 
   float tf = 1e9;
   if(uFloorOn>0.5 && rd.y<-1e-4 && ro.y>uFloorY) tf = (uFloorY-ro.y)/rd.y;
   float t0, t1;
   bool inb = bsphere(ro,rd,t0,t1);
 
-  vec3 col = real ? envMap(rd,true) : (cosmic ? cosmicBg(rd) : background(rd));
+  vec3 col = real ? envMap(rd,true) : (art ? artBg(uv) : (cosmic ? cosmicBg(rd) : background(rd)));
   vec3 bgc = col;
   float halo = 0.0, t = 0.0; int steps = 0; bool hit = false;
   if(inb) hit = march(ro,rd,t0,min(t1,tf),uSteps,t,steps,halo);
@@ -1423,6 +1510,7 @@ void main(){
 
   if(hit){
     if(real){ gRefl = rc; gHasRefl = gotR; col = shadeReal(n,rd,tc,ao,sh); gHasRefl = false; }
+    else if(art) col = shadeArt(p,n,rd,tc,steps,sh);
     else if(cosmic) col = shadeCosmic(n,rd,tc,t,steps,L,sh,bgc);
     else col = shadeNeon(n,rd,tc,t,steps,L,sh,bgc);
   } else if(onFloor){
@@ -1434,7 +1522,7 @@ void main(){
     else if(onFloor){ if(uKeepFloor>0.5) aOut = 1.0; else { aOut = (1.0-sh)*uShadowAlpha; col = vec3(0.0); } }   // floor hidden, shadow kept
     else { aOut = 0.0; col = vec3(0.0); }
   }
-  if(!real) col += pal(0.15)*halo*0.011*uGlow*uExpo*(0.55 + 0.8*uBeat + 0.5*uEnergy + 0.3*uPulse + 1.2*uDrop);   // glow stays as emitted light
+  if(!real&&!art) col += pal(0.15)*halo*0.011*uGlow*uExpo*(0.55 + 0.8*uBeat + 0.5*uEnergy + 0.3*uPulse + 1.2*uDrop);   // glow stays as emitted light
   col = min(col, vec3(12.0));
   if(uLDR>0.5) col = col/(1.0+col);
   outCol = vec4(col, aOut);
@@ -2077,6 +2165,13 @@ const THEMES = [
   {id:1, name:'Realistic', bloomI:0.40, thresh:1.5, ca:0.12, exp:1.0,  punch:0.25, vig:0.28, grain:1.0, glow:0, warp:0.35},
   {id:2, name:'Cosmic',    bloomI:0.75, thresh:0.8, ca:0.8,  exp:1.05, punch:0.8,  vig:0.4,  grain:1.2, glow:0.7, warp:0.5},
   {id:3, name:'Clay',      bloomI:0.10, thresh:1.9, ca:0.0,  exp:1.14, punch:0.12, vig:0.10, grain:0.7, glow:0, warp:0.25},
+  // Artistic looks (each is its own way of drawing the same mathematics, not a recolour; see ART_THEMES.md)
+  {id:4, name:'Ink',       art:1, bloomI:0.0,  thresh:2.5, ca:0.0,  exp:1.0,  punch:0.1,  vig:0.18, grain:1.6, glow:0, warp:0.3},
+  {id:5, name:'Glass',     art:2, bloomI:0.55, thresh:0.7, ca:0.25, exp:1.0,  punch:0.5,  vig:0.35, grain:0.6, glow:0, warp:0.4},
+  {id:6, name:'Riso',      art:3, bloomI:0.0,  thresh:2.5, ca:0.0,  exp:1.0,  punch:0.1,  vig:0.12, grain:1.8, glow:0, warp:0.3},
+  {id:7, name:'Thermal',   art:4, bloomI:0.35, thresh:1.0, ca:0.15, exp:1.0,  punch:0.4,  vig:0.3,  grain:1.2, glow:0, warp:0.5},
+  {id:8, name:'Oil',       art:5, bloomI:0.30, thresh:1.1, ca:0.3,  exp:1.05, punch:0.45, vig:0.4,  grain:0.8, glow:0, warp:0.45},
+  {id:9, name:'Op-Art',    art:6, bloomI:0.0,  thresh:2.5, ca:0.0,  exp:1.0,  punch:0.15, vig:0.1,  grain:0.4, glow:0, warp:0.5},
 ];
 const lin = c => c.map(x=>Math.pow(x,2.2));
 const LOOKS = [
@@ -2578,7 +2673,15 @@ addEventListener('keydown',e=>{
   else if(k==='k'){ const s=$('sKal'); s.value = +s.value<2? 6 : (+s.value>=12? 0 : +s.value+2); save(); }
   else if(k===' '){ e.preventDefault(); const c=$('cCycle'); c.checked=!c.checked; toast('Auto-cycle '+(c.checked?'on':'off')); save(); }
 });
-function toggleFull(){ if(document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
+// Full screen = the fractal alone: browser full screen (where the browser allows it; iPhone Safari does not, a home-screen app already is) plus Clean view.
+// F toggles it; Esc, F, H or the faint x brings the controls back. The mouse pointer hides after a moment of stillness.
+let presenting=false, idleT=0;
+function presentMode(on){ presenting=on; try{ if(on&&document.documentElement.requestFullscreen&&!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); else if(!on&&document.fullscreenElement) document.exitFullscreen().catch(()=>{}); }catch(e){}
+  setClean(on); document.body.classList.remove('idle'); if(on) wakeIdle(); }
+function wakeIdle(){ document.body.classList.remove('idle'); clearTimeout(idleT); if(presenting) idleT=setTimeout(()=>document.body.classList.add('idle'),2500); }
+function toggleFull(){ presentMode(!presenting); }
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement&&presenting){ presenting=false; setClean(false); } });
+addEventListener('mousemove',wakeIdle,{passive:true});
 $('bFull').onclick=toggleFull; let shot=false; $('bShot').onclick=()=>shot=true;
 let drag=null; const ptrs=new Map(); let pinch0=0, ang0=0, azV=0, elV=0, lastMoveT=0, lastTap=0;
 let diveOn=false, divePh='idle', diveR=4, diveT=0, diveAim=[0,0], diveAuto=false; const F=[0,0,0], dBuf=new Float32Array(4);
@@ -2828,7 +2931,7 @@ function frameBody(nowMs){
     const fp=flowProg(flowVar);
     fp.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uDrop:A.drop});
   } else {
-  (mesh.active?mesh.prog:sceneProgFor(sceneNeed(),true)).set({uSliceZ:mesh.z,uGridStep:mesh.step,uGridOrigin:mesh.origin,uTxt:5,uTxtExt:TXT.ext,uTxtDiff:TXT.diff?1:0,uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme,uAng:ang,
+  (mesh.active?mesh.prog:sceneProgFor(sceneNeed(),true)).set({uSliceZ:mesh.z,uGridStep:mesh.step,uGridOrigin:mesh.origin,uTxt:5,uTxtExt:TXT.ext,uTxtDiff:TXT.diff?1:0,uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme<4?theme:0,uArt:(THEMES[theme].art||0),uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uEnergy:A.energy,uPulse:A.pulse*SAFE.k,uDrop:A.drop*SAFE.k,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:expo.active?expo.glow:+$('sGlow').value,
     uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uSliceAt:+$('sCutAt').value,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
@@ -3213,7 +3316,7 @@ $('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
-const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.23-fastboot', SPEC_KEY='fractalPulseSpecimens';
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.23-art', SPEC_KEY='fractalPulseSpecimens';
 let specimens=[], spSel=null, thumbReq=null;
 const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
 function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,
@@ -3460,9 +3563,24 @@ setInterval(()=>{ if(document.hidden) return; try{ chromeTick(); readouts.forEac
   const openSection=window.fpOpenSection=(h2)=>{ const secs=[...document.querySelectorAll('#ui .wsec')]; const sec=secs.find(x=>x.querySelector('h2')&&x.querySelector('h2').textContent.trim().replace(/^§\d+\s*/,'')===h2); if(!sec) return;
     const wss=(sec.dataset.ws||'explore').split(' '); const ws=wss.includes(workspace)?workspace:wss[0]; setWorkspace(ws); $('ui').classList.remove('hidden'); sec.classList.remove('collapsed'); setTimeout(()=>sec.scrollIntoView({block:'start',behavior:still?'auto':'smooth'}),30); };
   const ping=el=>{ el.classList.remove('is-pinged'); void el.offsetWidth; el.classList.add('is-pinged'); setTimeout(()=>el.classList.remove('is-pinged'),950); };
-  document.querySelectorAll('.node[data-open]').forEach(n=>n.addEventListener('click',()=>{ if(n.id==='nDir'){ const c=$('cDirector'); c.checked=!c.checked; c.dispatchEvent(new Event('change')); save(); toast(c.checked?'◈ The Director is awake: auto camera, looks and kaleidoscope':'The Director rests',2000); } openSection(n.dataset.open); }));
+  // Figure skin: a node opens ITS OWN controls in a popover beside the node (the section is moved there and put back on close), not the regular side menu.
+  const nodePopOn=()=>!document.body.classList.contains('bench') && matchMedia('(min-width:901px) and (pointer:fine)').matches && getComputedStyle(document.querySelector('div#figure')).display!=='none';
+  let popSec=null, popPh=null, popNode=null;
+  const closeNodePop=()=>{ const pop=$('nodePop'); if(popSec&&popPh&&popPh.parentNode){ popPh.parentNode.insertBefore(popSec,popPh); popPh.remove(); } popSec=null; popPh=null; if(popNode) popNode.classList.remove('is-open'); popNode=null; if(pop) pop.classList.remove('show'); };
+  window.fpCloseNodePop=closeNodePop;
+  const openNodePop=(n,h2)=>{ const secs=[...document.querySelectorAll('#ui .wsec, #nodePop .wsec')]; const sec=secs.find(x=>x.querySelector('h2')&&x.querySelector('h2').textContent.trim().replace(/^§\d+\s*/,'')===h2); if(!sec) return false;
+    if(popNode===n){ closeNodePop(); return true; } closeNodePop();
+    let pop=$('nodePop'); if(!pop){ pop=document.createElement('div'); pop.id='nodePop'; pop.setAttribute('role','dialog'); pop.innerHTML='<div class="npHead"><b id="npTitle"></b><button id="npX" aria-label="Close">✕</button></div><div class="npBody" id="npBody"></div>'; document.body.appendChild(pop); $('npX').onclick=closeNodePop; }
+    popPh=document.createComment('node-pop'); sec.parentNode.insertBefore(popPh,sec); $('npBody').appendChild(sec); sec.classList.remove('collapsed'); popSec=sec; popNode=n; n.classList.add('is-open');
+    $('npTitle').textContent=h2; pop.classList.add('show');
+    const r=n.getBoundingClientRect(), w=pop.offsetWidth||360, hh=Math.min(pop.offsetHeight||520, innerHeight-24);
+    const left=Math.min(Math.max(12,r.right+22), innerWidth-w-12), top=Math.min(Math.max(12,r.top+r.height/2-60), Math.max(12,innerHeight-hh-110));
+    pop.style.left=left+'px'; pop.style.top=top+'px'; pop.style.setProperty('--tail',Math.max(14,Math.min(hh-30,r.top+r.height/2-top))+'px'); $('npBody').scrollTop=0; return true; };
+  addEventListener('keydown',e=>{ if(e.key==='Escape'&&popSec){ e.stopPropagation(); closeNodePop(); } },true);
+  document.addEventListener('pointerdown',e=>{ if(popSec&&!e.target.closest('#nodePop')&&!e.target.closest('.node')&&!e.target.closest('#strip')) closeNodePop(); },true);
+  document.querySelectorAll('.node[data-open]').forEach(n=>n.addEventListener('click',()=>{ if(n.id==='nDir'){ const c=$('cDirector'); c.checked=!c.checked; c.dispatchEvent(new Event('change')); save(); toast(c.checked?'◈ The Director is awake: auto camera, looks and kaleidoscope':'The Director rests',2000); } if(nodePopOn()&&openNodePop(n,n.dataset.open)) return; openSection(n.dataset.open); }));
   document.querySelectorAll('#legend li').forEach(li=>li.addEventListener('click',()=>{ const el=$(li.dataset.n); if(el){ ping(el); if(el.focus) el.focus(); } }));
-  $('nArc').addEventListener('click',e=>{ if(!e.target.closest('.shard')) openSection('Specimens'); });
+  $('nArc').addEventListener('click',e=>{ if(!e.target.closest('.shard')){ if(nodePopOn()&&openNodePop($('nArc'),'Specimens')) return; openSection('Specimens'); } });
   // captions and live states
   window.figureTick=function(){ const live=!!(A.live&&!frozen), src=demoTimer?'demo beat':(mediaInfo&&lastFileName?lastFileName.replace(/\.[^.]+$/,'').slice(0,18):(mediaStream?'live input':(A.live?'audio':'silence')));
     $('capSrc').innerHTML='source · <b></b>'; $('capSrc').querySelector('b').textContent=src; $('wellSrc').classList.toggle('is-live',live);
@@ -3889,7 +4007,8 @@ setInterval(()=>{ if(document.hidden) return; const r=trapReason(), b=$('trapBtn
 // ═════════════════════ SPECIMEN BENCH skin: encoders with LED arcs, slide rack, the die ═════════════════════
 (function benchSkin(){
   const mq=matchMedia('(min-width:1100px) and (pointer:fine)'); let skin='bench'; try{ const v=localStorage.getItem('fpSkin'); skin=(v==='figure')?'figure':'bench'; }catch(e){}
-  const apply=()=>{ const on=mq.matches&&skin==='bench'; document.body.classList.toggle('bench',on); if(on&&!window.__bnInit){ window.__bnInit=1; $('ui').classList.add('hidden'); } };
+  const apply=()=>{ const on=mq.matches&&skin==='bench'; document.body.classList.toggle('bench',on); if(on&&!window.__bnInit){ window.__bnInit=1; $('ui').classList.add('hidden'); }
+    const fg=mq.matches&&skin==='figure'; if(fg&&!window.__fgInit){ window.__fgInit=1; $('ui').classList.add('hidden'); document.body.classList.remove('panelOpen'); } };   // Figure skin starts with the side menu closed: the nodes open their own controls
   const setSkin=v=>{ skin=v; try{ localStorage.setItem('fpSkin',v); }catch(e){} apply(); toast(v==='bench'?'Specimen bench':'Figure skin',1400); };
   mq.addEventListener&&mq.addEventListener('change',apply); apply();
   $('skinBtn').onclick=()=>setSkin(skin==='bench'?'figure':'bench');
@@ -3954,8 +4073,8 @@ new MutationObserver(syncPanel).observe($('ui'),{attributes:true,attributeFilter
 $('sFreeze').onclick=()=>$('bFreeze').click(); $('sRec').onclick=()=>$('bTakeRec').click(); $('sPlay').onclick=()=>{ if(playing) playStop(); else if(take) playStart(); else toast('No take yet: tap ● to record one'); }; $('sCap').onclick=()=>{ $('bSpFreezeSave').click(); toast('💎 Specimen captured (frozen) · see Forge',2200); };
 document.querySelectorAll('#strip .ws').forEach(b=>b.onclick=()=>{ const ui=$('ui'),same=workspace===b.dataset.ws&&!ui.classList.contains('hidden'); if(same){ ui.classList.add('hidden'); } else { setWorkspace(b.dataset.ws); ui.classList.remove('hidden'); ui.scrollTop=0; } });
 $('grab').onclick=()=>$('ui').classList.toggle('tall');
-const setClean=on=>{ document.body.classList.toggle('clean',on); if(on) $('ui').classList.add('hidden'); toast(on?'Clean view · tap the faint ✕ (or press H) to bring controls back':'Controls back',1800); };
-$('sClean').onclick=()=>setClean(true); $('cleanBack').onclick=()=>setClean(false);
+const setClean=on=>{ if(!on&&presenting){ presenting=false; try{ if(document.fullscreenElement) document.exitFullscreen().catch(()=>{}); }catch(e){} } document.body.classList.toggle('clean',on); if(on) $('ui').classList.add('hidden'); toast(on?'Clean view · tap the faint ✕ (or press H) to bring controls back':'Controls back',1800); };
+$('sClean').onclick=()=>setClean(true); $('cleanBack').onclick=()=>{ if(presenting) presentMode(false); else setClean(false); };
 addEventListener('keydown',e=>{ if(e.ctrlKey||e.metaKey||e.altKey||(e.target.tagName==='INPUT'&&e.target.type!=='checkbox')||e.target.tagName==='TEXTAREA') return; const k=e.key;
   if(k==='h'||k==='H'){ e.stopImmediatePropagation(); setClean(!document.body.classList.contains('clean')); } else if(k==='Escape'){ if(document.body.classList.contains('clean')) setClean(false); else $('ui').classList.add('hidden'); }
   else if(k==='?'){ toast('H clean view · Z freeze · 1–9 fractal · ←/→ next · Space auto-cycle · P screenshot · F fullscreen · G 2D scenes',6000); } },true);
@@ -4170,7 +4289,7 @@ addEventListener('message',e=>{ const d=e.data; if(d && typeof d==='object' && d
 $('menuBtn').onclick=()=>$('ui').classList.toggle('hidden');
 if(isMobile) $('ui').classList.add('hidden');
 if(isMobile || !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) ['bTab','bTab2'].forEach(i=>$(i).style.display='none');
-if(!document.documentElement.requestFullscreen) $('bFull').style.display='none';
+if(!document.documentElement.requestFullscreen) $('bFull').textContent='Hide all controls (fractal only) F';
 let wake=null; async function keepAwake(){ try{ if(navigator.wakeLock && !wake) wake=await navigator.wakeLock.request('screen'); if(wake) wake.addEventListener('release',()=>wake=null); }catch(e){} }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && hasAudio) keepAwake(); });
 $('start').addEventListener('click',()=>keepAwake());
