@@ -1391,9 +1391,9 @@ vec3 floorColor(vec3 rd, float tf, float sh, vec3 rc){
 uniform int uArt;                                  // 0 = none; 1..6 = the artistic looks (ink, stained glass, riso poster, thermal, oil slick, op-art)
 vec3 artBg(vec2 uv){
   float r=length(uv);
-  if(uArt==1) return mix(vec3(.95,.91,.82), vec3(.80,.74,.62), smoothstep(.2,1.1,r));
+  if(uArt==1) return mix(vec3(.96,.86,.68), vec3(.80,.66,.46), smoothstep(.2,1.1,r));
   if(uArt==2) return vec3(.015,.012,.03)+vec3(.02,.01,.04)*smoothstep(1.0,.0,r);
-  if(uArt==3) return vec3(.96,.93,.86);
+  if(uArt==3) return vec3(.99,.906,.737);
   if(uArt==4) return vec3(.0,.0,.012)+vec3(.05,.0,.08)*smoothstep(1.1,.0,r);
   if(uArt==5) return vec3(.01,.012,.02)+vec3(.0,.01,.02)*smoothstep(1.0,.0,r);
   return vec3(.96);
@@ -1422,14 +1422,15 @@ vec3 shadeArt(vec3 p, vec3 n, vec3 rd, float tc, int steps, float sh){
     float d=1.-lum;
     float ink=max(step(ha,clamp((d-.12)*1.9,0.,1.)), step(hb,clamp((d-.42)*2.4,0.,1.)));
     ink=max(ink,1.-smoothstep(.18,.34,NV));
-    vec3 paper=vec3(.93,.89,.80)*(.9+.1*lum);
-    vec3 c=mix(paper, vec3(.05,.05,.09), ink*.96);
+    vec3 paper=vec3(.95,.83,.64)*(.9+.1*lum);
+    vec3 c=mix(paper, vec3(.03,.025,.03), ink*.97);
     float seal=step(.88,fract(bands*.5))*step(.4,lum);
-    return mix(c, vec3(.85,.16,.08), seal*(1.-ink)*.85);
+    return mix(c, vec3(.80,.27,.16), seal*(1.-ink)*.85);
   }
   if(uArt==2){                                            // STAINED GLASS: flat jewel cells from the orbit trap, dark leading, lit from behind
     float id=floor(bands), fr=fract(bands);
-    vec3 j=pow(pal(id*.173+.05),vec3(1.4))*1.6;
+    vec3 jw[8]=vec3[8](vec3(.80,.04,.14),vec3(.97,.40,.03),vec3(.98,.72,.06),vec3(.90,.08,.45),vec3(.48,.08,.78),vec3(.08,.30,.90),vec3(.06,.55,.30),vec3(.65,.10,.10));
+    vec3 j=jw[int(mod(id*3.+floor(uHue*8.),8.))]*1.45;
     float lead=max(smoothstep(.08,.0,min(fr,1.-fr)), 1.-smoothstep(.12,.3,NV));
     vec3 c=j*(.5+.8*lum+.4*NV)*(.85+.5*uBass);
     return mix(c, vec3(.01), lead);
@@ -1439,10 +1440,10 @@ vec3 shadeArt(vec3 p, vec3 n, vec3 rd, float tc, int steps, float sh){
     float pink=riDots(fc, cell, smoothstep(.35,.95,1.-lum));
     float teal=riDots(fc+vec2(2.,1.)*px, cell, smoothstep(.55,.95,1.-NV)*(.4+.6*fract(bands)));
     float yel =riDots(fc+vec2(-2.,2.)*px, cell, (.25+.65*fract(bands*.5+.3))*smoothstep(.1,.5,lum+.2));
-    vec3 c=vec3(.96,.93,.86);
-    c*=mix(vec3(1.), vec3(1.,.28,.5), pink);
-    c*=mix(vec3(1.), vec3(.05,.62,.68), teal);
-    return c*mix(vec3(1.), vec3(1.,.86,.12), yel);
+    vec3 c=vec3(.99,.906,.737);
+    c*=mix(vec3(1.), vec3(.92,.30,.55), pink);
+    c*=mix(vec3(1.), vec3(.22,.60,.56), teal);
+    return c*mix(vec3(1.), vec3(1.,.80,.22), yel);
   }
   if(uArt==4){                                            // THERMAL: false-colour heat from light, depth and cavities
     float h=clamp(.1+.75*lum+.2*NV*aoS+.25*uBass+.1*sin(bands*3.),0.,1.);
@@ -3316,7 +3317,7 @@ $('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
-const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.23-art', SPEC_KEY='fractalPulseSpecimens';
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.23-art2', SPEC_KEY='fractalPulseSpecimens';
 let specimens=[], spSel=null, thumbReq=null;
 const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
 function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,

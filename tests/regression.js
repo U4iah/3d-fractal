@@ -17,7 +17,7 @@ const errText=p=>p.evaluate(()=>document.getElementById('err').textContent||'');
   { const p=await page(b,'scale=0.15&q=0&type=0'); await p.waitForTimeout(1500);
     rec('G1 page loads, no console errors',p.errs.length===0 && !(await errText(p)),p.errs[0]||'');
     const nT=await p.evaluate(()=>TYPES.length), nF=await p.evaluate(()=>FLOWS.length), nTh=await p.evaluate(()=>THEMES.length), nR=await p.evaluate(()=>REFS.length);
-    rec('G1 catalogue sizes',nT>=21&&nF>=12&&nTh===4&&nR>=9,`fractals=${nT} 2Dscenes=${nF} themes=${nTh} refs=${nR}`);
+    rec('G1 catalogue sizes',nT>=21&&nF>=12&&nTh===10&&nR>=9,`fractals=${nT} 2Dscenes=${nF} themes=${nTh} refs=${nR}`);
     for(let t=0;t<4;t++){ await p.evaluate(t=>setTheme(t,true),t); await p.waitForTimeout(700); }
     rec('G1 all 4 themes switch without error',!(await errText(p))&&p.errs.length===0);
     const rt=await p.evaluate(()=>{ FractalPulse.apply({type:6,shape:.4,detail:.7,hue:.3,zoom:1.2}); const st=exportState(); const t=b64e(st); const back=b64d(t); return JSON.stringify(back)===JSON.stringify(st); });
