@@ -447,7 +447,7 @@
     <button id="bDemo">▶ Built-in demo beat</button>
     <label class="btn">♪ Import audio / video<input id="fFile" type="file" accept="audio/*,video/*,.mp3,.wav,.wave,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.mp4,.m4v,.mov,.webm,.mka" hidden></label>
     <button id="bMic">🎤 Microphone</button>
-    <button id="bTab">🖥 Tab / system audio</button>
+    <button id="bTab">🖥 Computer audio (tab, Discord, any app)</button>
   </div>
   <button id="bSilent" style="width:100%;margin-top:6px;text-align:center;padding:12px">✋ Sculpt by touch (no music)</button>
   <p class="fig">Fig. FP·I · drag &amp; drop audio or video anytime<br><span id="buildTag"></span></p>
@@ -531,7 +531,7 @@
     <button id="bDemo2">Demo beat</button>
     <label class="btn">Import media…<input id="fFile2" type="file" accept="audio/*,video/*,.mp3,.wav,.wave,.m4a,.aac,.flac,.ogg,.oga,.opus,.aif,.aiff,.caf,.mp4,.m4v,.mov,.webm,.mka" hidden></label>
     <button id="bMic2">Mic</button>
-    <button id="bTab2">Tab audio</button>
+    <button id="bTab2">Computer audio</button>
   </div>
   <audio id="player" controls style="display:none"></audio>
   <h2>Sculpt · no music needed</h2>
@@ -2327,13 +2327,16 @@ async function useMic(){
 async function useTab(){
   try{
     ensureCtx();
-    const s = await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
-    if(!s.getAudioTracks().length){ s.getTracks().forEach(t=>t.stop()); throw new Error('no audio track shared — tick “Share audio” in the picker'); }
+    toast('In the picker: pick a browser TAB (for a website) and tick “Share tab audio”, or pick ENTIRE SCREEN and tick “Share system audio” (that includes Discord and any other app).',7000);
+    const s = await navigator.mediaDevices.getDisplayMedia({video:true,audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},systemAudio:'include',selfBrowserSurface:'exclude',surfaceSwitching:'include'});
+    if(!s.getAudioTracks().length){ s.getTracks().forEach(t=>t.stop()); throw new Error('no audio was shared. Choose a Tab or Entire Screen and tick “Share audio” in the picker. (Chrome cannot share the sound of a single app window; use Entire Screen to include Discord.)'); }
     s.getVideoTracks().forEach(t=>t.stop());
-    stopSources();
+    stopSources(); lastSource='tab';
     mediaStream = new MediaStream(s.getAudioTracks());
+    mediaStream.getAudioTracks()[0].addEventListener('ended',()=>{ if(lastSource==='tab'){ toast('Audio sharing stopped. Tap Computer audio to pick again.',5000); } });
     srcNode = actx.createMediaStreamSource(mediaStream); srcNode.connect(analyser); done();
-  }catch(e){ showErr('Tab audio unavailable: '+e.message); setTimeout(()=>$('err').style.display='none',5000); }
+    toast('Listening to your computer’s audio',2500);
+  }catch(e){ if(e&&e.name==='NotAllowedError'){ toast('Sharing was cancelled',2500); } else { showErr('Computer audio unavailable: '+(e&&e.message||e)); setTimeout(()=>$('err').style.display='none',9000); } }
 }
 const guard=(fn,label)=>function(){ try{ return fn.apply(this,arguments); }catch(e){ showErr(label+' failed: '+(e&&e.message||e)); setTimeout(()=>$('err').style.display='none',9000); } };
 ['bDemo','bDemo2'].forEach(i=>$(i).onclick=guard(startDemo,'The demo beat'));
@@ -3210,7 +3213,7 @@ $('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
-const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.23-compile', SPEC_KEY='fractalPulseSpecimens';
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.23-fastboot', SPEC_KEY='fractalPulseSpecimens';
 let specimens=[], spSel=null, thumbReq=null;
 const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
 function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,
