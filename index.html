@@ -77,6 +77,9 @@
   #freezeBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(60px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;text-align:center;padding:0;font-size:16px;background:rgba(10,12,24,.6);}
   #freezeBtn.on{background:rgba(185,168,255,.35);border-color:var(--accent)}
   #sculptParams .row span{flex:0 0 112px;font-size:12px}
+  #arBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(108px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;text-align:center;padding:0;font:700 12px/1 system-ui,sans-serif;background:rgba(10,12,24,.6);display:none}
+  #arBtn.on{border-color:var(--ember,#f60);background:rgba(255,100,0,.28)}
+  body.panelOpen #arBtn{right:calc(448px + env(safe-area-inset-right))}
   #menuBtn{position:fixed;top:calc(10px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));z-index:4;width:40px;height:40px;border-radius:50%;
       text-align:center;padding:0;font-size:18px;background:rgba(10,12,24,.6);}
   .tlrow{display:flex;gap:4px;margin:4px 0}.tlrow select{min-width:0;flex:2;padding:6px}.tlrow select+select{flex:1}.tlrow button{padding:6px 10px}.tlrow.cur select{border-color:var(--accent)}
@@ -447,6 +450,7 @@
 <div id="chaosBar"></div>
 <div id="pad"><div id="padLbl">shape ↔ · detail ↕</div><div id="padDot"></div></div>
 <button id="freezeBtn" aria-label="freeze" title="Freeze / Resume (Z)">❄</button>
+<button id="arBtn" aria-label="AR view" title="AR view: put the fractal in front of the camera">AR</button>
 <button id="menuBtn" aria-label="menu">☰</button>
 <div id="err"></div>
 
@@ -726,6 +730,7 @@
     <button id="bRec">● Record clip</button>
     <button id="bSaveClip" style="display:none">⬇ Save clip</button>
     <button id="bShot">Screenshot <kbd>P</kbd></button>
+    <button id="bAR">AR view (camera behind the fractal)</button><button id="bARc">Re-centre AR</button>
     <button id="bFull">Full screen (fractal only) <kbd>F</kbd></button>
   </div>
   <div id="info"></div>
@@ -739,6 +744,7 @@ out vec4 outCol;
 
 uniform vec2  uRes;
 uniform vec2  uOrigin, uFull;                     // tile origin / full-frame size in pixels (tiled still export); normally (0,0) and uRes
+uniform float uRoll;                              // AR: phone roll, so the fractal stays upright in the room
 uniform float uAlphaMode, uKeepFloor, uShadowAlpha; // transparent export: alpha = coverage; floor can become a shadow catcher
 uniform float uTime;
 uniform vec3  uCam;
@@ -1463,6 +1469,7 @@ vec3 shadeArt(vec3 p, vec3 n, vec3 rd, float tc, int steps, float sh){
 void main(){
   gRot = rotM(uAng);
   vec2 uv = (gl_FragCoord.xy + uOrigin - 0.5*uFull)/uFull.y;
+  { float cr=cos(uRoll), sr=sin(uRoll); uv = mat2(cr,sr,-sr,cr)*uv; }
   vec3 ro = uCam;
   vec3 fw = normalize(uTarget-ro);
   vec3 rt = normalize(cross(fw, vec3(0,1,0)));
@@ -2055,6 +2062,7 @@ uniform float uTrail;
 uniform vec2  uRes;                               // size of THIS render target
 uniform vec2  uOrigin, uFull;                     // tile origin / full-frame size (tiled still export); normally (0,0) and uRes
 uniform float uAlpha;                             // 1 = write coverage alpha (premultiplied light) for transparent export
+uniform sampler2D uCam; uniform float uAR; uniform vec4 uCamXf;   // AR: camera picture behind the fractal (cover-fit transform in xy)
 uniform float uTime, uBeat, uDrop, uBloomI, uCA, uTrans, uKal, uKalRot, uHue, uExp, uPunch, uVig, uGrain, uSharp, uFlat;
 
 float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
@@ -2114,6 +2122,7 @@ void main(){
   }
   float aOut = 1.0;
   if(uAlpha>0.5){ float sa = texture(uScene,toTex(q)).a; aOut = clamp(max(sa, max(col.r,max(col.g,col.b))), 0.0, 1.0); }   // object coverage or emitted glow
+  if(uAR>0.5){ vec2 su=gl_FragCoord.xy/uRes; vec2 cu=vec2(uCamXf.x*(su.x-0.5)+0.5, uCamXf.y*((1.0-su.y)-0.5)+0.5); o=vec4(texture(uCam,cu).rgb*(1.0-aOut)+col,1.0); return; }
   o = vec4(col,aOut);
 }
 </script>
@@ -2888,7 +2897,7 @@ function frameBody(nowMs){
   if(camMode===1) zoomAuto=0.45+0.55*(0.5+0.5*Math.cos(camT*0.22));
   let dist=cfg.cam*zoomMul*zoomAuto*(1-0.035*A.beat-0.06*A.drop+0.03*Math.sin(T*0.17));
   if(cfg.inside && divePh==='idle') dist=Math.max(0.25,dist);
-  const floorOn = theme===1 && !cfg.inside, floorY=-1.275;
+  const floorOn = (theme===1||AR.on) && !cfg.inside, floorY=-1.275;
   // ── dive state machine: in → hold → out → in … (focus re-anchored to the surface by GPU depth read-back) ──
   const R0=dist/Math.max(0.05,zoomMul), DIVE_MIN=0.012*1.5, diveSim=!(playing&&playCam)&&!frozen;
   if(diveSim && diveOn && divePh==='idle'){ divePh='in'; diveR=R0; diveAim=[0,0]; }
@@ -2924,6 +2933,8 @@ function frameBody(nowMs){
   const XO=expo.active?[expo.cur.x0-expo.margin,expo.cur.y0-expo.margin]:[0,0], XF=expo.active?[expo.W,expo.H]:[sw,sh];
   const hw=innerWidth, hh=isMobile?56:90; if(hudC.width!==hw||hudC.height!==hh){ hudC.width=hw; hudC.height=hh; hudC.style.height=hh+'px'; }
 
+  if(AR.on) arFrame(dt,cw,ch);
+  const Ft=AR.on?arTarget(cam,F):F;
   // pass 1 — fractal → HDR scene buffer
   gl.bindFramebuffer(gl.FRAMEBUFFER,scenes[cur].fbo); gl.viewport(0,0,sw,sh);
   bindTex(3,fftTex); gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,1,gl.RED,gl.UNSIGNED_BYTE,fftBytes);
@@ -2932,7 +2943,7 @@ function frameBody(nowMs){
     const fp=flowProg(flowVar);
     fp.set({uRes:[sw,sh],uOrigin:XO,uFull:XF,uTime:T,uFlowRot:az*0.7,uFlowZoom:zoomMul*(1-0.05*A.beat-0.1*A.drop),uFlowPhase:(T*0.022+hue*0.6+(+$('sHue').value)),uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uDrop:A.drop});
   } else {
-  (mesh.active?mesh.prog:sceneProgFor(sceneNeed(),true)).set({uSliceZ:mesh.z,uGridStep:mesh.step,uGridOrigin:mesh.origin,uTxt:5,uTxtExt:TXT.ext,uTxtDiff:TXT.diff?1:0,uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:expo.active&&expo.alpha?1:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[F[0],F[1],F[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:Q.refl,uTheme:theme<4?theme:0,uArt:(THEMES[theme].art||0),uAng:ang,
+  (mesh.active?mesh.prog:sceneProgFor(sceneNeed(),true)).set({uSliceZ:mesh.z,uGridStep:mesh.step,uGridOrigin:mesh.origin,uTxt:5,uTxtExt:TXT.ext,uTxtDiff:TXT.diff?1:0,uRes:[sw,sh],uOrigin:XO,uFull:XF,uAlphaMode:(expo.active&&expo.alpha)||AR.on?1:0,uRoll:AR.on?AR.roll:0,uKeepFloor:expo.active&&expo.floor==='keep'?1:0,uShadowAlpha:0.6,uTime:T,uCam:cam,uTarget:[Ft[0],Ft[1],Ft[2]],uFocal:(1.5+0.12*A.beat+0.25*A.drop)*Math.min(1,(expo.active?expo.W/expo.H:cw/ch)*1.15),uType:type,uType2:morphing?morphTo:type,uNW:morphing?2:1,uZero:0,uMorph:morphing?morphT:0,uK:eA.k,uK2:eB.k,uSteps:Q.steps,uIter:Math.round(+$('sIterB').value)+Math.round(10*diveAmt)+((type>=19||(morphing&&morphTo>=19))?10:0),uShadowSteps:Q.sh,uReflSteps:AR.on?0:Q.refl,uTheme:theme<4?theme:0,uArt:(THEMES[theme].art||0),uAng:ang,
     uBass:A.bass,uMid:A.mid,uHigh:A.high,uBeat:A.beat*SAFE.k,uEnergy:A.energy,uPulse:A.pulse*SAFE.k,uDrop:A.drop*SAFE.k,
     uPower:P.power,uJC:P.jc,uQW:P.qw,uScale:P.scale,uFoldA:P.fold,uPower2:P2.power,uJC2:P2.jc,uQW2:P2.qw,uScale2:P2.scale,uFoldA2:P2.fold,uHue:hue+(+$('sHue').value),uGlow:expo.active?expo.glow:+$('sGlow').value,
     uSym:+$('sSym').value,uSlice:$('cSlice').checked?1:0,uSliceAt:+$('sCutAt').value,uBound:cfg.bound,uExpo:cfg.expo||1,uSize:cfg.size,uTwist:twist,uBend:bend,uStep:stepF,
@@ -2970,7 +2981,7 @@ function frameBody(nowMs){
   gl.bindFramebuffer(gl.FRAMEBUFFER,expo.active?expoT.fbo:(useTrail?trails[tw].fbo:null)); gl.viewport(0,0,cw,ch);
   bindTex(0,scenes[cur].tex); bindTex(1,scenes[1-cur].tex); bindTex(2,bloomB.tex); bindTex(3,trails[1-tw].tex);
   const kv=+$('sKal').value, kal=(playing&&playLook)?playKal:(kv>=2?kv:(dirKal||(chaosL>0.6?chaosKal:0)));
-  progComp.set({uScene:0,uPrev:1,uBloom:2,uFB:3,uTrail:useTrail?Math.min(0.96,trailAmt):0,uRes:[cw,ch],uTime:T,uBeat:A.beat*SAFE.k,uDrop:A.drop*SAFE.k,uOrigin:XO,uFull:expo.active?XF:[cw,ch],uAlpha:expo.active&&expo.alpha?1:0,uSharp:expo.active?0:clamp((1-resScale)*0.9,0.08,0.55),uBloomI:th.bloomI*(expo.active?expo.bloom:+$('sBloom').value),uFlat:flowMode?1:0,uExp:flowMode?1.0:th.exp,uPunch:th.punch,uVig:flowMode?0.16:th.vig,uGrain:th.grain,
+  progComp.set({uScene:0,uPrev:1,uBloom:2,uFB:3,uTrail:(useTrail&&!AR.on)?Math.min(0.96,trailAmt):0,uRes:[cw,ch],uTime:T,uBeat:A.beat*SAFE.k,uDrop:A.drop*SAFE.k,uOrigin:XO,uFull:expo.active?XF:[cw,ch],uAlpha:(expo.active&&expo.alpha)||(AR.on&&AR.have)?1:0,uCam:6,uAR:(AR.on&&AR.have)?1:0,uCamXf:AR.xf,uSharp:expo.active?0:clamp((1-resScale)*0.9,0.08,0.55),uBloomI:th.bloomI*(expo.active?expo.bloom:+$('sBloom').value),uFlat:flowMode?1:0,uExp:flowMode?1.0:th.exp,uPunch:th.punch,uVig:flowMode?0.16:th.vig,uGrain:th.grain,
     uCA:th.ca*(+$('sBloom').value>0?1:0.4),uTrans:expo.active?0:transT*transT*(3-2*transT)*1.0,uKal:expo.active?expo.kal:(SAFE.calm?0:kal),uKalRot:kalRot,uHue:hue});
   gl.drawArrays(gl.TRIANGLES,0,3);
   if(useTrail){ gl.bindFramebuffer(gl.READ_FRAMEBUFFER,trails[tw].fbo); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);
@@ -3317,7 +3328,7 @@ $('bEpSave').onclick=()=>{ const c=document.createElement('canvas'); c.width=EP.
 // ═════════════════════ SPECIMENS: versioned, reproducible mathematical objects ═════════════════════
 // Provenance: SHADER_REV bumps whenever fractal math or shading changes in a way that alters appearance; FORMULA_REV bumps a single formula.
 // A restored specimen from a different revision is flagged (drift) rather than claimed to be an exact reproduction.
-const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.23-art2', SPEC_KEY='fractalPulseSpecimens';
+const SHADER_REV=1, FORMULA_REV={}, APP_VERSION='fp-2026.11.26-ar', SPEC_KEY='fractalPulseSpecimens';
 let specimens=[], spSel=null, thumbReq=null;
 const specNewId=()=>'sp-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
 function implBlock(st){ const ty=nrm(st.type|0,TYPES.length); return {app:'fractal-pulse',appVersion:APP_VERSION,shaderRev:SHADER_REV,
@@ -3971,6 +3982,47 @@ let _dgTaps=[]; ['buildTag','buildTag2'].forEach(id=>{ const el=$(id); if(el) el
 if(/[?&]diag=1/.test(location.search)){ dgStart(); setTimeout(dgOpen,1500); }
 window.fpDiag={start:dgStart,open:dgOpen,report:dgReport,state:dgState,log:dgLog};
 
+// ── AR view (option 1: camera behind the fractal, phone motion moves the view) ──
+// The back camera is drawn behind the fractal; turning the phone turns the view, so the fractal seems to float in the room. A soft shadow lands on an
+// invisible floor under it. There is no surface tracking: it can drift, and it cannot sit on a particular table. Drag still spins it, pinch resizes it.
+const AR={on:false,stream:null,video:null,tex:null,have:false,raw:null,s:null,ref:null,yaw:0,pitch:0,roll:0,xf:[1,1,0,0],orient:false};
+function arRot(a,b,g,o){ const c=Math.cos,s=Math.sin; const Rx=t=>[[1,0,0],[0,c(t),-s(t)],[0,s(t),c(t)]], Ry=t=>[[c(t),0,s(t)],[0,1,0],[-s(t),0,c(t)]], Rz=t=>[[c(t),-s(t),0],[s(t),c(t),0],[0,0,1]];
+  const m=(A,B)=>A.map(r=>[0,1,2].map(j=>r[0]*B[0][j]+r[1]*B[1][j]+r[2]*B[2][j])); return m(m(m(m(Ry(a),Rx(b)),Rz(-g)),Rx(-Math.PI/2)),Rz(-o)); }
+function arOnOri(e){ if(e.alpha==null||e.beta==null) return; const d=Math.PI/180, o=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*d; const M=arRot(e.alpha*d,e.beta*d,e.gamma*d,o);
+  const f=[-M[0][2],-M[1][2],-M[2][2]], u=[M[0][1],M[1][1],M[2][1]], r=[f[1]*u[2]-f[2]*u[1], f[2]*u[0]-f[0]*u[2], f[0]*u[1]-f[1]*u[0]];
+  AR.raw={yaw:Math.atan2(f[0],-f[2]),pitch:Math.asin(Math.max(-1,Math.min(1,f[1]))),roll:Math.atan2(r[1],u[1])}; AR.orient=true; }
+const arWrap=a=>{ while(a>Math.PI) a-=2*Math.PI; while(a<-Math.PI) a+=2*Math.PI; return a; };
+function arFrame(dt,cw,ch){
+  if(AR.raw){ if(!AR.s||!AR.ref){ AR.s={...AR.raw}; AR.ref={yaw:AR.raw.yaw,pitch:AR.raw.pitch}; } else { const k=Math.min(1,dt*12); AR.s.yaw+=arWrap(AR.raw.yaw-AR.s.yaw)*k; AR.s.pitch+=(AR.raw.pitch-AR.s.pitch)*k; AR.s.roll+=arWrap(AR.raw.roll-AR.s.roll)*k; }
+    AR.yaw=arWrap(AR.s.yaw-AR.ref.yaw); AR.pitch=AR.s.pitch-AR.ref.pitch; AR.roll=AR.s.roll; }
+  const v=AR.video; if(v&&v.readyState>=2&&v.videoWidth){ gl.activeTexture(gl.TEXTURE0+6); gl.bindTexture(gl.TEXTURE_2D,AR.tex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,v); gl.activeTexture(gl.TEXTURE0); AR.have=true;
+    const va=v.videoWidth/v.videoHeight, ca=cw/ch; AR.xf=ca>va?[1,va/ca,0,0]:[ca/va,1,0,0]; } }
+function arTarget(cam,F){ const d=[F[0]-cam[0],F[1]-cam[1],F[2]-cam[2]], L=Math.hypot(d[0],d[1],d[2])||1; let dir=d.map(x=>x/L);
+  const rl=Math.hypot(dir[2],dir[0])||1, rt=[-dir[2]/rl,0,dir[0]/rl], cy=Math.cos(AR.yaw), sy=Math.sin(AR.yaw);
+  dir=dir.map((x,i)=>x*cy+rt[i]*sy); let n=Math.hypot(dir[0],dir[1],dir[2])||1; dir=dir.map(x=>x/n);
+  const cp=Math.cos(AR.pitch), sp=Math.sin(AR.pitch); dir=[dir[0]*cp,dir[1]*cp+sp,dir[2]*cp]; n=Math.hypot(dir[0],dir[1],dir[2])||1; dir=dir.map(x=>x/n);
+  return [cam[0]+dir[0]*L,cam[1]+dir[1]*L,cam[2]+dir[2]*L]; }
+async function arStart(){
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){ showErr('This browser has no camera access, so AR view is not available.'); setTimeout(()=>$('err').style.display='none',6000); return; }
+  try{
+    let motion=true; if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){ try{ motion=(await DeviceOrientationEvent.requestPermission())==='granted'; }catch(e){ motion=false; } }
+    if(gyroOn&&$('bTilt')) $('bTilt').click();
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    const v=document.createElement('video'); v.muted=true; v.playsInline=true; v.setAttribute('playsinline',''); v.setAttribute('webkit-playsinline',''); v.srcObject=stream; v.style.cssText='position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none'; document.body.appendChild(v);
+    try{ await v.play(); }catch(e){}
+    if(!AR.tex){ AR.tex=gl.createTexture(); gl.activeTexture(gl.TEXTURE0+6); gl.bindTexture(gl.TEXTURE_2D,AR.tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([0,0,0,255])); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); gl.activeTexture(gl.TEXTURE0); }
+    AR.stream=stream; AR.video=v; AR.have=false; AR.raw=null; AR.s=null; AR.ref=null; AR.yaw=AR.pitch=AR.roll=0; AR.on=true;
+    if(motion) addEventListener('deviceorientation',arOnOri);
+    document.body.classList.add('ar'); $('arBtn').classList.add('on'); $('bAR').classList.add('on'); $('bAR').textContent='AR view: on (tap to stop)';
+    toast(motion?'AR view on. Turn the phone to look around; drag spins the fractal, pinch resizes it.':'AR view on (no motion access: the view stays put). Drag spins, pinch resizes.',5000);
+  }catch(e){ AR.on=false; const n=e&&e.name; showErr(n==='NotAllowedError'?'Camera permission is blocked. On iPhone: Settings, Safari, Camera, allow. Then try AR view again.':(n==='NotFoundError'?'No camera found for AR view.':'AR view could not start: '+(e&&e.message||e))); setTimeout(()=>$('err').style.display='none',9000); }
+}
+function arStop(){ removeEventListener('deviceorientation',arOnOri); if(AR.stream) AR.stream.getTracks().forEach(t=>t.stop()); if(AR.video) AR.video.remove(); AR.stream=null; AR.video=null; AR.on=false; AR.have=false; AR.roll=0;
+  document.body.classList.remove('ar'); $('arBtn').classList.remove('on'); $('bAR').classList.remove('on'); $('bAR').textContent='AR view (camera behind the fractal)'; toast('AR view off',1500); }
+$('arBtn').onclick=$('bAR').onclick=()=>AR.on?arStop():arStart();
+$('bARc').onclick=()=>{ AR.s=null; AR.ref=null; toast('Re-centred: the fractal is straight ahead',1800); };
+{ const can=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia); $('arBtn').style.display=(can&&isMobile)?'block':'none'; if(!can){ $('bAR').style.display='none'; $('bARc').style.display='none'; } }
+window.fpAR={AR,feed:(a,b,g)=>arOnOri({alpha:a,beta:b,gamma:g}),start:arStart,stop:arStop,target:arTarget};
 // ── never trapped: kaleidoscope / mirror / 2D mode each announce themselves, and one tap (or X) returns to plain 3D ──
 function trapReason(){ const kv=+$('sKal').value; if(playing&&playLook&&playKal>=2) return 'Kaleidoscope from the playing take'; if(kv>=2) return 'Kaleidoscope '+kv+'×'; if(dirKal>=2) return 'Director kaleidoscope'; if(chaosL>0.6) return 'Chaos kaleidoscope'; if(+$('sSym').value>=2) return 'Mirror '+$('sSym').value+'×'; if(flowMode) return '2D scene (not 3D)'; return ''; }
 function backTo3D(){ $('sKal').value=0; $('sSym').value=0; dirKal=0; chaosL=0; chaosExt=0; chaosSpeed=0; if(flowMode) setFlow(false,true); if(playing&&playLook) playKal=0; $('cTakeLook').checked=playing?false:$('cTakeLook').checked; [$('sKal'),$('sSym')].forEach(x=>x.dispatchEvent(new Event('input',{bubbles:true}))); save(); toast('Back to plain 3D',1600); }

@@ -87,4 +87,22 @@ module.exports=async function({b,page,rec,errText,URL}){
       document.getElementById('nMat').click(); await new Promise(r=>setTimeout(r,200)); const closed=!pop.classList.contains('show'); const back=!!document.querySelector('#ui #themes'); return {fig,shown,has,uiHidden,inView,changed,closed,back}; });
     rec('G29 in the Figure skin a node opens its own controls beside it (not the side menu), the controls work, and clicking the node again puts them back',np.fig&&np.shown&&np.has&&np.uiHidden&&np.inView&&np.changed&&np.closed&&np.back,JSON.stringify(np));
     rec('G29 no console errors',p.errs.filter(e=>!/Failed to load|Fetch API cannot load/.test(e)).length===0,JSON.stringify(p.errs)); await p.context().close(); }
+  // G30: AR view (camera behind the fractal, phone motion turns the view). Uses Chromium's fake camera; motion is simulated.
+  { const pw=require('playwright'); const ab=await pw.chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox','--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
+    const c=await ab.newContext({viewport:{width:390,height:800},hasTouch:true,isMobile:true,permissions:['camera']}); const p=await c.newPage(); const errs=[]; p.on('console',m=>{ if(m.type()==='error') errs.push(m.text()); }); p.on('pageerror',e=>errs.push(e.message));
+    await p.goto(URL+'?scale=0.2&q=0&type=0'); await p.waitForFunction(()=>typeof frame!=='undefined'&&frame>2,null,{timeout:300000}); await p.evaluate(()=>document.getElementById('bSilent').click()); await p.waitForTimeout(1500);
+    const patch=async()=>{ const buf=await p.screenshot({clip:{x:2,y:130,width:40,height:40}}); const {PNG}=(()=>{ try{ return require('pngjs'); }catch(e){ return {}; } })(); return buf; };
+    const before=require('crypto').createHash('md5').update(await patch()).digest('hex');
+    const st=await p.evaluate(async()=>{ const vis=getComputedStyle(document.getElementById('arBtn')).display!=='none'; await fpAR.start(); for(let i=0;i<150&&!fpAR.AR.have;i++) await new Promise(r=>setTimeout(r,100)); return {vis,on:fpAR.AR.on,have:fpAR.AR.have,playing:!!(fpAR.AR.video&&!fpAR.AR.video.paused),cls:document.body.classList.contains('ar'),btn:document.getElementById('bAR').textContent}; });
+    rec('G30 on a phone the AR button shows; starting AR turns on the camera, uploads its picture, and marks the app as in AR mode',st.vis&&st.on&&st.have&&st.playing&&st.cls&&/on/.test(st.btn),JSON.stringify(st));
+    await p.waitForTimeout(1500); const after=require('crypto').createHash('md5').update(await patch()).digest('hex');
+    rec('G30 with AR on, the background is the camera picture (the corner pixels changed from the theme background)',after!==before,before+' -> '+after);
+    const mo=await p.evaluate(async()=>{ const w=ms=>new Promise(r=>setTimeout(r,ms)); const cam=[0,0,4], F=[0,0,0]; fpAR.feed(0,90,0); await w(700); const t0=fpAR.target(cam,F);
+      fpAR.feed(340,90,0); await w(1500); const yaw=fpAR.AR.yaw, t1=fpAR.target(cam,F);
+      fpAR.feed(0,90,0); await w(300); fpAR.start; document.getElementById('bARc').click(); await w(300); fpAR.feed(0,100,0); await w(1500); const pitch=fpAR.AR.pitch, t2=fpAR.target(cam,F);
+      fpAR.feed(270,110,90); await w(1500); const roll=fpAR.AR.roll; return {yawDeg:+(yaw*180/Math.PI).toFixed(1),dx:+(t1[0]-t0[0]).toFixed(3),pitchDeg:+(pitch*180/Math.PI).toFixed(1),dy:+(t2[1]-t0[1]).toFixed(3),rollDeg:+(roll*180/Math.PI).toFixed(1)}; });
+    rec('G30 turning the phone right 20 degrees turns the view right (view target moves right), tilting up 10 degrees lifts it, and roll is tracked',Math.abs(mo.yawDeg-20)<2&&mo.dx>0.3&&Math.abs(mo.pitchDeg-10)<2&&mo.dy>0.2&&Math.abs(Math.abs(mo.rollDeg)-20)<2,JSON.stringify(mo));
+    const sp=await p.evaluate(async()=>{ const tr=fpAR.AR.stream.getTracks(); const v=fpAR.AR.video; fpAR.stop(); await new Promise(r=>setTimeout(r,300)); return {on:fpAR.AR.on,cls:document.body.classList.contains('ar'),ended:tr.every(t=>t.readyState==='ended'),removed:!document.body.contains(v)}; });
+    rec('G30 stopping AR releases the camera and restores the normal view',!sp.on&&!sp.cls&&sp.ended&&sp.removed,JSON.stringify(sp));
+    rec('G30 no console errors',errs.filter(e=>!/Failed to load|Fetch API cannot load/.test(e)).length===0,JSON.stringify(errs.slice(0,3))); await ab.close(); }
 };
